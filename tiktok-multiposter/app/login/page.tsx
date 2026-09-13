@@ -41,7 +41,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
               <div className="vyralVideoShade"/><div className="vyralVideoTop"><span>◆ SOURCE 01</span><b>LIVE</b></div><div className="vyralVideoBottom"><span>01 VIDEO</span><strong>04 DESTINOS</strong></div>
             </div><div className="vyralPhoneButton"/>
           </div>
-          <div className="vyralNode node1"><i>01</i><b>@toby.main</b><span>PUBLICADO</span></div><div className="vyralNode node2"><i>02</i><b>@toby.media</b><span>PUBLICADO</span></div><div className="vyralNode node3"><i>03</i><b>@toby.lab</b><span>PUBLICADO</span></div><div className="vyralNode node4"><i>04</i><b>@toby.clips</b><span>PUBLICADO</span></div>
+          <div className="vyralNode node1"><i>01</i><b>@tobi.main</b><span>PUBLICADO</span></div><div className="vyralNode node2"><i>02</i><b>@tobi.media</b><span>PUBLICADO</span></div><div className="vyralNode node3"><i>03</i><b>@tobi.lab</b><span>PUBLICADO</span></div><div className="vyralNode node4"><i>04</i><b>@tobi.clips</b><span>PUBLICADO</span></div>
         </div>
       </section>
 
