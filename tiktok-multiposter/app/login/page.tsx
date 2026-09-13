@@ -23,11 +23,11 @@ export default async function LoginPage({
 
         <div className="loginHeroCopy">
           <div className="loginEyebrow">
-            <span>CREATE</span>
+            <span>CREÁ</span>
             <i />
-            <span>DISTRIBUTE</span>
+            <span>DISTRIBUÍ</span>
             <i />
-            <span>GROW</span>
+            <span>CRECÉ</span>
           </div>
 
           <h1 className="loginHeadline">
