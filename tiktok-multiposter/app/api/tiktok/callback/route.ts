@@ -2,11 +2,8 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { env } from "../../../../lib/env";
 import { exchangeCode, saveAccount } from "../../../../lib/tiktok";
-import { isLoggedIn } from "../../../../lib/auth";
 
 export async function GET(req: Request) {
-  if (!(await isLoggedIn())) return NextResponse.redirect(new URL("/login", req.url));
-
   const appUrl = env("APP_URL").replace(/\/$/, "");
   const url = new URL(req.url);
   const code = url.searchParams.get("code");
@@ -20,6 +17,9 @@ export async function GET(req: Request) {
     return NextResponse.redirect(`${appUrl}/?oauth_error=${encodeURIComponent(error)}`);
   }
 
+  // The signed state cookie is the CSRF/session continuity check for this flow.
+  // It is shared between root/www so the callback remains valid even when the
+  // production domain redirects between those two hosts.
   if (!code || !state || !expected || state !== expected) {
     return NextResponse.redirect(`${appUrl}/?oauth_error=state_mismatch`);
   }
