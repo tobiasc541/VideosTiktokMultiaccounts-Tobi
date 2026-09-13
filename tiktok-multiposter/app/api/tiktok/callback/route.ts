@@ -1,7 +1,27 @@
+import crypto from "crypto";
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { env } from "../../../../lib/env";
 import { exchangeCode, saveAccount } from "../../../../lib/tiktok";
+
+function isValidSignedState(state: string | null) {
+  if (!state) return false;
+  const parts = state.split(".");
+  if (parts.length !== 3) return false;
+
+  const [issuedAt, nonce, signature] = parts;
+  if (!/^\d+$/.test(issuedAt) || !/^[a-f0-9]{48}$/.test(nonce) || !/^[a-f0-9]{64}$/.test(signature)) return false;
+
+  const age = Math.floor(Date.now() / 1000) - Number(issuedAt);
+  if (age < 0 || age > 10 * 60) return false;
+
+  const payload = `${issuedAt}.${nonce}`;
+  const expected = crypto
+    .createHmac("sha256", env("APP_PASSWORD"))
+    .update(payload)
+    .digest("hex");
+
+  return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
+}
 
 export async function GET(req: Request) {
   const appUrl = env("APP_URL").replace(/\/$/, "");
@@ -9,18 +29,12 @@ export async function GET(req: Request) {
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
   const error = url.searchParams.get("error");
-  const store = await cookies();
-  const expected = store.get("tt_oauth_state")?.value;
-  store.delete("tt_oauth_state");
 
   if (error) {
     return NextResponse.redirect(`${appUrl}/?oauth_error=${encodeURIComponent(error)}`);
   }
 
-  // The signed state cookie is the CSRF/session continuity check for this flow.
-  // It is shared between root/www so the callback remains valid even when the
-  // production domain redirects between those two hosts.
-  if (!code || !state || !expected || state !== expected) {
+  if (!code || !isValidSignedState(state)) {
     return NextResponse.redirect(`${appUrl}/?oauth_error=state_mismatch`);
   }
 
