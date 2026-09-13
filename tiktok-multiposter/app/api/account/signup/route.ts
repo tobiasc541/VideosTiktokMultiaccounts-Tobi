@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { env } from "../../../../lib/env";
 
+const VYRAL_PRODUCTION_URL = "https://libreriadelemprendedor.com";
+
 function supabaseAdmin() {
   return createClient(env("SUPABASE_URL"), env("SUPABASE_SERVICE_ROLE_KEY"), {
     auth: { persistSession: false, autoRefreshToken: false }
@@ -30,7 +32,7 @@ export async function POST(req: Request) {
     password,
     options: {
       data: { full_name: name },
-      emailRedirectTo: `${env("APP_URL")}/login?verified=1`
+      emailRedirectTo: `${VYRAL_PRODUCTION_URL}/login?verified=1`
     }
   });
 
