@@ -16,19 +16,18 @@ export default async function LoginPage({
       <div className="loginGlow loginGlowTwo" />
       <div className="loginGrid" />
 
-      <section className="loginHero" aria-label="Multi Poster">
-        <div className="loginBrand">
-          <div className="logo">MP</div>
-          <div>
-            <div className="loginBrandName">Multi Poster</div>
-            <div className="loginBrandTag">CONTENT OPERATING SYSTEM</div>
-          </div>
+      <section className="loginHero" aria-label="VYRAL">
+        <div className="vyralWordmark" aria-label="VYRAL">
+          V<span>Y</span>RAL
         </div>
 
         <div className="loginHeroCopy">
           <div className="loginEyebrow">
-            <span className="loginPulse" />
-            MULTIPLICÁ TU ALCANCE
+            <span>CREATE</span>
+            <i />
+            <span>DISTRIBUTE</span>
+            <i />
+            <span>GROW</span>
           </div>
 
           <h1 className="loginHeadline">
@@ -63,17 +62,16 @@ export default async function LoginPage({
         </div>
 
         <div className="loginHeroFooter">
-          <span>Multi Poster © 2026</span>
-          <span className="loginStatus"><i /> Sistema online</span>
+          <div className="poweredBy">
+            <span>Powered by</span>
+            <strong>Tobias Carrizo</strong>
+          </div>
         </div>
       </section>
 
       <section className="loginAccess">
         <div className="loginAccessInner">
-          <div className="loginMobileBrand">
-            <div className="logo">MP</div>
-            <span>Multi Poster</span>
-          </div>
+          <div className="loginMobileBrand">VYRAL</div>
 
           <div className="loginCardHeading">
             <span className="loginMiniLabel">ACCESO PRIVADO</span>
