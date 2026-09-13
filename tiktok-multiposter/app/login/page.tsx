@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { isLoggedIn } from "../../lib/auth";
 import "./landing.css";
+import "./landing-polish.css";
 
 export default async function LoginPage({
   searchParams
@@ -126,10 +127,30 @@ export default async function LoginPage({
         </div>
 
         <div className="vyralNetworkVisual" aria-label="Ejemplo visual de distribución multicuentas">
+          <div className="vyralNetworkHud hudTop">LIVE DISTRIBUTION / 04</div>
+          <div className="vyralNetworkHud hudBottom">SOURCE VERIFIED · READY TO SCALE</div>
           <div className="vyralOrbit orbitOne" />
           <div className="vyralOrbit orbitTwo" />
           <div className="vyralPulse" />
-          <div className="vyralCore"><small>VIDEO</small><strong>01</strong><span>READY</span></div>
+          <div className="vyralOrbitDot dot1"/><div className="vyralOrbitDot dot2"/><div className="vyralOrbitDot dot3"/>
+
+          <div className="vyralVideoCore">
+            <video
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="metadata"
+              aria-label="Video de demostración VYRAL"
+              src="https://storage.googleapis.com/coverr-main/mp4/Mt_Baker.mp4"
+            />
+            <div className="vyralVideoShade" />
+            <div className="vyralVideoTop"><span>◆ SOURCE 01</span><b>READY</b></div>
+            <div className="vyralVideoPlay">▶</div>
+            <div className="vyralVideoBottom"><span>01 VIDEO</span><strong>04 DESTINOS</strong></div>
+            <i className="corner tl"/><i className="corner tr"/><i className="corner bl"/><i className="corner br"/>
+          </div>
+
           <div className="vyralNode node1"><i>01</i><b>@brand.main</b><span>PUBLICADO</span></div>
           <div className="vyralNode node2"><i>02</i><b>@brand.media</b><span>PUBLICADO</span></div>
           <div className="vyralNode node3"><i>03</i><b>@brand.lab</b><span>PUBLICADO</span></div>
@@ -172,7 +193,8 @@ export default async function LoginPage({
           <div className="vyralSectionIndex">05 / VYRAL AI</div>
           <div className="vyralKicker">LA PRÓXIMA CAPA</div>
           <h2>Tu descripción,<br/><em>pensada para rendir.</em></h2>
-          <p>VYRAL AI va a ayudarte a transformar una idea simple en distintas versiones de caption listas para publicar.</p>
+          <p className="vyralAiLead">VYRAL AI va a ayudarte a transformar una idea simple en distintas versiones de caption listas para publicar.</p>
+          <div className="vyralAiMiniStats"><span>03 estilos</span><span>01 click</span><span>∞ variantes</span></div>
         </div>
         <div className="vyralAiCard">
           <div className="aiCardTop"><span>✦ VYRAL AI</span><i>GENERANDO</i></div>
