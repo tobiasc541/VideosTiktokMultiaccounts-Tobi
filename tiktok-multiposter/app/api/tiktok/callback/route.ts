@@ -7,6 +7,7 @@ import { isLoggedIn } from "../../../../lib/auth";
 export async function GET(req: Request) {
   if (!(await isLoggedIn())) return NextResponse.redirect(new URL("/login", req.url));
 
+  const appUrl = env("APP_URL").replace(/\/$/, "");
   const url = new URL(req.url);
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
@@ -16,22 +17,21 @@ export async function GET(req: Request) {
   store.delete("tt_oauth_state");
 
   if (error) {
-    return NextResponse.redirect(new URL(`/?oauth_error=${encodeURIComponent(error)}`, req.url));
+    return NextResponse.redirect(`${appUrl}/?oauth_error=${encodeURIComponent(error)}`);
   }
 
   if (!code || !state || !expected || state !== expected) {
-    return NextResponse.json({ error: "OAuth state inválido o código faltante." }, { status: 400 });
+    return NextResponse.redirect(`${appUrl}/?oauth_error=state_mismatch`);
   }
 
   try {
-    const redirectUri = `${env("APP_URL").replace(/\/$/, "")}/api/tiktok/callback`;
+    const redirectUri = `${appUrl}/api/tiktok/callback`;
     const token = await exchangeCode(code, redirectUri);
     await saveAccount(token);
-    return NextResponse.redirect(new URL("/", req.url));
+    return NextResponse.redirect(`${appUrl}/?connected=1`);
   } catch (e: any) {
-    return NextResponse.json(
-      { error: e.message || "No se pudo conectar TikTok." },
-      { status: 500 }
+    return NextResponse.redirect(
+      `${appUrl}/?oauth_error=${encodeURIComponent(e.message || "No se pudo conectar TikTok.")}`
     );
   }
 }
