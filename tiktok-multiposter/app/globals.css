@@ -19,7 +19,22 @@ button { cursor: pointer; }
 .shell { width: min(1040px, calc(100% - 32px)); margin: 0 auto; padding: 38px 0 70px; }
 .topbar { display: flex; justify-content: space-between; gap: 20px; align-items: center; margin-bottom: 28px; }
 .brand { display:flex; align-items:center; gap:12px; font-weight:800; letter-spacing:-.03em; font-size:22px; }
-.logo { width: 40px; height:40px; border-radius:12px; display:grid; place-items:center; background: linear-gradient(135deg, var(--cyan), var(--pink)); color:#07090d; font-weight:900; }
+.logo {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  display:block;
+  flex: 0 0 48px;
+  background-image: url("/ChatGPT%20Image%2013%20sept%202026%2C%2014_44_04%20(1).png");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  color: transparent;
+  font-size: 0;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,.10);
+  box-shadow: 0 8px 28px rgba(37,244,238,.10), 0 8px 28px rgba(255,45,117,.08);
+}
 .muted { color:var(--muted); }
 .panel { background:var(--panel); border:1px solid var(--line); box-shadow:0 18px 70px rgba(0,0,0,.35); backdrop-filter:blur(18px); border-radius:22px; padding:22px; }
 .grid { display:grid; grid-template-columns: 1fr 1fr; gap:18px; }
