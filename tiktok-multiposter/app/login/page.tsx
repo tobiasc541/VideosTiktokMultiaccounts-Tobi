@@ -4,6 +4,8 @@ import { isLoggedIn } from "../../lib/auth";
 import "./landing.css";
 import "./landing-polish.css";
 
+const demoVideo = "data:video/mp4;base64,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[... truncated ...]";
+
 export default async function LoginPage({
   searchParams
 }: {
@@ -21,197 +23,32 @@ export default async function LoginPage({
         <div className="vyralScanline" />
 
         <section className="loginHero" aria-label="VYRAL">
-          <div className="vyralWordmark" aria-label="VYRAL">
-            V<span>Y</span>RAL
-          </div>
-
+          <div className="vyralWordmark" aria-label="VYRAL">V<span>Y</span>RAL</div>
           <div className="loginHeroCopy">
-            <div className="loginEyebrow">
-              <span>CREÁ</span>
-              <i />
-              <span>DISTRIBUÍ</span>
-              <i />
-              <span>CRECÉ</span>
-            </div>
-
-            <h1 className="loginHeadline">
-              Publicá una vez.
-              <br />
-              <span>Convertí tiempo en</span>
-              <br />
-              <em>más oportunidades.</em>
-            </h1>
-
-            <p className="loginLead">
-              Un solo flujo para llevar tu contenido a todas tus cuentas. Menos tareas repetitivas,
-              más tiempo para crear, vender y hacer crecer tu negocio.
-            </p>
-
-            <div className="loginStats">
-              <div className="loginStat"><strong>01</strong><span>Video</span></div>
-              <div className="loginStatDivider" />
-              <div className="loginStat"><strong>∞</strong><span>Oportunidades</span></div>
-              <div className="loginStatDivider" />
-              <div className="loginStat"><strong>1</strong><span>Dashboard</span></div>
-            </div>
+            <div className="loginEyebrow"><span>CREÁ</span><i /><span>DISTRIBUÍ</span><i /><span>CRECÉ</span></div>
+            <h1 className="loginHeadline">Publicá una vez.<br /><span>Convertí tiempo en</span><br /><em>más oportunidades.</em></h1>
+            <p className="loginLead">Un solo flujo para llevar tu contenido a todas tus cuentas. Menos tareas repetitivas, más tiempo para crear, vender y hacer crecer tu negocio.</p>
+            <div className="loginStats"><div className="loginStat"><strong>01</strong><span>Video</span></div><div className="loginStatDivider" /><div className="loginStat"><strong>∞</strong><span>Oportunidades</span></div><div className="loginStatDivider" /><div className="loginStat"><strong>1</strong><span>Dashboard</span></div></div>
           </div>
-
-          <div className="loginHeroFooter">
-            <div className="poweredBy"><span>Powered by</span><strong>Tobias Carrizo</strong></div>
-            <a className="vyralScrollCue" href="#producto" aria-label="Descubrir VYRAL">
-              <span>DESCUBRÍ VYRAL</span><i>↓</i>
-            </a>
-          </div>
+          <div className="loginHeroFooter"><div className="poweredBy"><span>Powered by</span><strong>Tobias Carrizo</strong></div><a className="vyralScrollCue" href="#producto" aria-label="Descubrir VYRAL"><span>DESCUBRÍ VYRAL</span><i>↓</i></a></div>
         </section>
 
-        <section className="loginAccess">
-          <div className="loginAccessInner">
-            <div className="loginMobileBrand">VYRAL</div>
-
-            <div className="loginCardHeading">
-              <span className="loginMiniLabel">ACCESO PRIVADO</span>
-              <h2>Bienvenido.</h2>
-              <p>Ingresá a tu centro de publicación.</p>
-            </div>
-
-            <form className="loginForm" action="/api/login" method="post">
-              {q.error && <div className="errorBox">La contraseña ingresada es incorrecta.</div>}
-              <div>
-                <label className="loginLabel" htmlFor="password">Contraseña</label>
-                <div className="loginFieldWrap">
-                  <input id="password" className="loginField" type="password" name="password" placeholder="Ingresá tu contraseña" autoComplete="current-password" autoFocus required />
-                  <span className="loginFieldIcon">→</span>
-                </div>
-              </div>
-              <button className="loginButton" type="submit"><span>Ingresar al dashboard</span><span className="loginButtonArrow">↗</span></button>
-            </form>
-
-            <div className="loginSecurity">
-              <span className="loginSecurityIcon">◆</span>
-              <div><strong>Acceso protegido</strong><p>Tu panel y tus cuentas permanecen en un entorno privado.</p></div>
-            </div>
-
-            <div className="loginLegal"><Link href="/terms">Términos</Link><span>·</span><Link href="/privacy">Privacidad</Link></div>
-          </div>
-        </section>
+        <section className="loginAccess"><div className="loginAccessInner"><div className="loginMobileBrand">VYRAL</div><div className="loginCardHeading"><span className="loginMiniLabel">ACCESO PRIVADO</span><h2>Bienvenido.</h2><p>Ingresá a tu centro de publicación.</p></div><form className="loginForm" action="/api/login" method="post">{q.error && <div className="errorBox">La contraseña ingresada es incorrecta.</div>}<div><label className="loginLabel" htmlFor="password">Contraseña</label><div className="loginFieldWrap"><input id="password" className="loginField" type="password" name="password" placeholder="Ingresá tu contraseña" autoComplete="current-password" autoFocus required /><span className="loginFieldIcon">→</span></div></div><button className="loginButton" type="submit"><span>Ingresar al dashboard</span><span className="loginButtonArrow">↗</span></button></form><div className="loginSecurity"><span className="loginSecurityIcon">◆</span><div><strong>Acceso protegido</strong><p>Tu panel y tus cuentas permanecen en un entorno privado.</p></div></div><div className="loginLegal"><Link href="/terms">Términos</Link><span>·</span><Link href="/privacy">Privacidad</Link></div></div></section>
       </div>
 
-      <section className="vyralTicker" aria-label="Capacidades de VYRAL">
-        <div className="vyralTickerTrack">
-          <span>MULTICUENTA</span><i>◆</i><span>UN SOLO FLUJO</span><i>◆</i><span>ANALYTICS</span><i>◆</i><span>VYRAL AI</span><i>◆</i><span>DISTRIBUCIÓN</span><i>◆</i>
-          <span>MULTICUENTA</span><i>◆</i><span>UN SOLO FLUJO</span><i>◆</i><span>ANALYTICS</span><i>◆</i><span>VYRAL AI</span><i>◆</i><span>DISTRIBUCIÓN</span><i>◆</i>
-        </div>
-      </section>
+      <section className="vyralTicker" aria-label="Capacidades de VYRAL"><div className="vyralTickerTrack"><span>MULTICUENTA</span><i>◆</i><span>UN SOLO FLUJO</span><i>◆</i><span>ANALYTICS</span><i>◆</i><span>VYRAL AI</span><i>◆</i><span>DISTRIBUCIÓN</span><i>◆</i><span>MULTICUENTA</span><i>◆</i><span>UN SOLO FLUJO</span><i>◆</i><span>ANALYTICS</span><i>◆</i><span>VYRAL AI</span><i>◆</i><span>DISTRIBUCIÓN</span><i>◆</i></div></section>
 
-      <section className="vyralSection vyralIntro" id="producto">
-        <div className="vyralSectionIndex">01 / EL SISTEMA</div>
-        <div className="vyralIntroGrid">
-          <div>
-            <div className="vyralKicker">MENOS REPETICIÓN. MÁS DISTRIBUCIÓN.</div>
-            <h2>Una publicación.<br/><em>Todo tu ecosistema.</em></h2>
-          </div>
-          <div className="vyralIntroCopy">
-            <p>VYRAL transforma un proceso repetitivo en una sola acción. Preparás una vez, elegís tu red de cuentas y distribuís desde un mismo lugar.</p>
-            <div className="vyralMicroStats"><span><b>01</b> carga</span><span><b>N</b> cuentas</span><span><b>∞</b> escala</span></div>
-          </div>
-        </div>
-      </section>
+      <section className="vyralSection vyralIntro" id="producto"><div className="vyralSectionIndex">01 / EL SISTEMA</div><div className="vyralIntroGrid"><div><div className="vyralKicker">MENOS REPETICIÓN. MÁS DISTRIBUCIÓN.</div><h2>Una publicación.<br/><em>Todo tu ecosistema.</em></h2></div><div className="vyralIntroCopy"><p>VYRAL transforma un proceso repetitivo en una sola acción. Preparás una vez, elegís tu red de cuentas y distribuís desde un mismo lugar.</p><div className="vyralMicroStats"><span><b>01</b> carga</span><span><b>N</b> cuentas</span><span><b>∞</b> escala</span></div></div></div></section>
 
-      <section className="vyralSection vyralNetworkSection">
-        <div className="vyralNetworkCopy">
-          <div className="vyralSectionIndex">02 / MULTICUENTA</div>
-          <div className="vyralKicker">DISTRIBUCIÓN CENTRALIZADA</div>
-          <h2>Un video entra.<br/><em>Tu red se activa.</em></h2>
-          <p>Seleccioná las cuentas que quieras. VYRAL organiza el flujo y ejecuta cada publicación desde un solo dashboard.</p>
-          <div className="vyralFeaturePills"><span>Selección múltiple</span><span>Privacidad por TikTok</span><span>Estado por cuenta</span></div>
-        </div>
+      <section className="vyralSection vyralNetworkSection"><div className="vyralNetworkCopy"><div className="vyralSectionIndex">02 / MULTICUENTA</div><div className="vyralKicker">DISTRIBUCIÓN CENTRALIZADA</div><h2>Un video entra.<br/><em>Tu red se activa.</em></h2><p>Seleccioná las cuentas que quieras. VYRAL organiza el flujo y ejecuta cada publicación desde un solo dashboard.</p><div className="vyralFeaturePills"><span>Selección múltiple</span><span>Privacidad por TikTok</span><span>Estado por cuenta</span></div></div><div className="vyralNetworkVisual" aria-label="Ejemplo visual de distribución multicuentas"><div className="vyralNetworkHud hudTop">LIVE DISTRIBUTION / 04</div><div className="vyralNetworkHud hudBottom">SOURCE VERIFIED · READY TO SCALE</div><div className="vyralOrbit orbitOne" /><div className="vyralOrbit orbitTwo" /><div className="vyralPulse" /><div className="vyralOrbitDot dot1"/><div className="vyralOrbitDot dot2"/><div className="vyralOrbitDot dot3"/><div className="vyralVideoCore"><video autoPlay muted loop playsInline preload="metadata" aria-label="Video real de demostración VYRAL" src={demoVideo}/><div className="vyralVideoShade" /><div className="vyralVideoTop"><span>◆ SOURCE 01</span><b>READY</b></div><div className="vyralVideoPlay">▶</div><div className="vyralVideoBottom"><span>01 VIDEO</span><strong>04 DESTINOS</strong></div><i className="corner tl"/><i className="corner tr"/><i className="corner bl"/><i className="corner br"/></div><div className="vyralNode node1"><i>01</i><b>@brand.main</b><span>PUBLICADO</span></div><div className="vyralNode node2"><i>02</i><b>@brand.media</b><span>PUBLICADO</span></div><div className="vyralNode node3"><i>03</i><b>@brand.lab</b><span>PUBLICADO</span></div><div className="vyralNode node4"><i>04</i><b>@brand.clips</b><span>PUBLICADO</span></div><div className="vyralBeam beam1"/><div className="vyralBeam beam2"/><div className="vyralBeam beam3"/><div className="vyralBeam beam4"/></div></section>
 
-        <div className="vyralNetworkVisual" aria-label="Ejemplo visual de distribución multicuentas">
-          <div className="vyralNetworkHud hudTop">LIVE DISTRIBUTION / 04</div>
-          <div className="vyralNetworkHud hudBottom">SOURCE VERIFIED · READY TO SCALE</div>
-          <div className="vyralOrbit orbitOne" />
-          <div className="vyralOrbit orbitTwo" />
-          <div className="vyralPulse" />
-          <div className="vyralOrbitDot dot1"/><div className="vyralOrbitDot dot2"/><div className="vyralOrbitDot dot3"/>
+      <section className="vyralSection vyralStepsSection"><div className="vyralSectionIndex">03 / FLUJO</div><div className="vyralStepsHead"><div><div className="vyralKicker">DE CERO A PUBLICADO</div><h2>Cuatro pasos.<br/><em>Cero caos.</em></h2></div><p>Todo lo importante vive dentro del mismo recorrido. Sin saltar entre cuentas. Sin repetir el mismo trabajo.</p></div><div className="vyralSteps"><article><span>01</span><div className="vyralStepIcon">＋</div><h3>Conectá</h3><p>Sumá las cuentas que forman tu red.</p></article><article><span>02</span><div className="vyralStepIcon">▶</div><h3>Prepará</h3><p>Subí el video y definí su publicación.</p></article><article><span>03</span><div className="vyralStepIcon">⌁</div><h3>Distribuí</h3><p>Elegí múltiples destinos y lanzá.</p></article><article><span>04</span><div className="vyralStepIcon">↗</div><h3>Medí</h3><p>Leé el impacto conjunto de toda la red.</p></article></div></section>
 
-          <div className="vyralVideoCore">
-            <video
-              autoPlay
-              muted
-              loop
-              playsInline
-              preload="metadata"
-              aria-label="Video de demostración VYRAL"
-              src="https://storage.googleapis.com/coverr-main/mp4/Mt_Baker.mp4"
-            />
-            <div className="vyralVideoShade" />
-            <div className="vyralVideoTop"><span>◆ SOURCE 01</span><b>READY</b></div>
-            <div className="vyralVideoPlay">▶</div>
-            <div className="vyralVideoBottom"><span>01 VIDEO</span><strong>04 DESTINOS</strong></div>
-            <i className="corner tl"/><i className="corner tr"/><i className="corner bl"/><i className="corner br"/>
-          </div>
+      <section className="vyralSection vyralAnalyticsSection"><div className="vyralAnalyticsMock"><div className="mockTop"><div><small>VYRAL / ANALYTICS</small><strong>Rendimiento de red</strong></div><span>30 DÍAS</span></div><div className="mockMetrics"><div><small>VISTAS</small><b>284.750</b><em>+18,4%</em></div><div><small>LIKES</small><b>31.420</b><em>+11,2%</em></div><div><small>ALCANCE EXTRA</small><b>+192%</b><em>VYRAL</em></div></div><div className="mockChart"><i style={{height:"24%"}}/><i style={{height:"38%"}}/><i style={{height:"31%"}}/><i style={{height:"49%"}}/><i style={{height:"57%"}}/><i style={{height:"52%"}}/><i style={{height:"68%"}}/><i style={{height:"62%"}}/><i style={{height:"78%"}}/><i style={{height:"72%"}}/><i style={{height:"91%"}}/><i style={{height:"84%"}}/><i style={{height:"100%"}}/><i style={{height:"92%"}}/></div><div className="mockSweep" /></div><div className="vyralAnalyticsCopy"><div className="vyralSectionIndex">04 / ANALYTICS</div><div className="vyralKicker">TODO EN UNA SOLA LECTURA</div><h2>No mires cuentas.<br/><em>Mirá el impacto.</em></h2><p>Entendé vistas, interacción, crecimiento y el alcance adicional que genera distribuir el mismo contenido en múltiples cuentas.</p><div className="vyralMetricLine"><span>Mejor cuenta individual</span><b>118.400</b></div><div className="vyralMetricLine accent"><span>Vistas adicionales por distribución</span><b>+166.350</b></div></div></section>
 
-          <div className="vyralNode node1"><i>01</i><b>@brand.main</b><span>PUBLICADO</span></div>
-          <div className="vyralNode node2"><i>02</i><b>@brand.media</b><span>PUBLICADO</span></div>
-          <div className="vyralNode node3"><i>03</i><b>@brand.lab</b><span>PUBLICADO</span></div>
-          <div className="vyralNode node4"><i>04</i><b>@brand.clips</b><span>PUBLICADO</span></div>
-          <div className="vyralBeam beam1"/><div className="vyralBeam beam2"/><div className="vyralBeam beam3"/><div className="vyralBeam beam4"/>
-        </div>
-      </section>
+      <section className="vyralSection vyralAiSection"><div className="vyralAiAura" /><div className="vyralAiCopy"><div className="vyralSectionIndex">05 / VYRAL AI</div><div className="vyralKicker">LA PRÓXIMA CAPA</div><h2>Tu descripción,<br/><em>pensada para rendir.</em></h2><p className="vyralAiLead">VYRAL AI va a ayudarte a transformar una idea simple en distintas versiones de caption listas para publicar.</p><div className="vyralAiMiniStats"><span>03 estilos</span><span>01 click</span><span>∞ variantes</span></div></div><div className="vyralAiCard"><div className="aiCardTop"><span>✦ VYRAL AI</span><i>GENERANDO</i></div><div className="aiPrompt">Quiero una descripción corta, directa y con potencial viral para un video de producto.</div><div className="aiAnswer"><span className="aiCursor">|</span><p>Tu próximo favorito acaba de aparecer. Mirá hasta el final y decime si vos también lo usarías. ✦</p><div><b>#parati</b><b>#viral</b><b>#tiktok</b></div></div><div className="aiVariants"><span>VIRAL</span><span>COMERCIAL</span><span>NATURAL</span></div></div></section>
 
-      <section className="vyralSection vyralStepsSection">
-        <div className="vyralSectionIndex">03 / FLUJO</div>
-        <div className="vyralStepsHead"><div><div className="vyralKicker">DE CERO A PUBLICADO</div><h2>Cuatro pasos.<br/><em>Cero caos.</em></h2></div><p>Todo lo importante vive dentro del mismo recorrido. Sin saltar entre cuentas. Sin repetir el mismo trabajo.</p></div>
-        <div className="vyralSteps">
-          <article><span>01</span><div className="vyralStepIcon">＋</div><h3>Conectá</h3><p>Sumá las cuentas que forman tu red.</p></article>
-          <article><span>02</span><div className="vyralStepIcon">▶</div><h3>Prepará</h3><p>Subí el video y definí su publicación.</p></article>
-          <article><span>03</span><div className="vyralStepIcon">⌁</div><h3>Distribuí</h3><p>Elegí múltiples destinos y lanzá.</p></article>
-          <article><span>04</span><div className="vyralStepIcon">↗</div><h3>Medí</h3><p>Leé el impacto conjunto de toda la red.</p></article>
-        </div>
-      </section>
-
-      <section className="vyralSection vyralAnalyticsSection">
-        <div className="vyralAnalyticsMock">
-          <div className="mockTop"><div><small>VYRAL / ANALYTICS</small><strong>Rendimiento de red</strong></div><span>30 DÍAS</span></div>
-          <div className="mockMetrics"><div><small>VISTAS</small><b>284.750</b><em>+18,4%</em></div><div><small>LIKES</small><b>31.420</b><em>+11,2%</em></div><div><small>ALCANCE EXTRA</small><b>+192%</b><em>VYRAL</em></div></div>
-          <div className="mockChart"><i style={{height:"24%"}}/><i style={{height:"38%"}}/><i style={{height:"31%"}}/><i style={{height:"49%"}}/><i style={{height:"57%"}}/><i style={{height:"52%"}}/><i style={{height:"68%"}}/><i style={{height:"62%"}}/><i style={{height:"78%"}}/><i style={{height:"72%"}}/><i style={{height:"91%"}}/><i style={{height:"84%"}}/><i style={{height:"100%"}}/><i style={{height:"92%"}}/></div>
-          <div className="mockSweep" />
-        </div>
-        <div className="vyralAnalyticsCopy">
-          <div className="vyralSectionIndex">04 / ANALYTICS</div>
-          <div className="vyralKicker">TODO EN UNA SOLA LECTURA</div>
-          <h2>No mires cuentas.<br/><em>Mirá el impacto.</em></h2>
-          <p>Entendé vistas, interacción, crecimiento y el alcance adicional que genera distribuir el mismo contenido en múltiples cuentas.</p>
-          <div className="vyralMetricLine"><span>Mejor cuenta individual</span><b>118.400</b></div>
-          <div className="vyralMetricLine accent"><span>Vistas adicionales por distribución</span><b>+166.350</b></div>
-        </div>
-      </section>
-
-      <section className="vyralSection vyralAiSection">
-        <div className="vyralAiAura" />
-        <div className="vyralAiCopy">
-          <div className="vyralSectionIndex">05 / VYRAL AI</div>
-          <div className="vyralKicker">LA PRÓXIMA CAPA</div>
-          <h2>Tu descripción,<br/><em>pensada para rendir.</em></h2>
-          <p className="vyralAiLead">VYRAL AI va a ayudarte a transformar una idea simple en distintas versiones de caption listas para publicar.</p>
-          <div className="vyralAiMiniStats"><span>03 estilos</span><span>01 click</span><span>∞ variantes</span></div>
-        </div>
-        <div className="vyralAiCard">
-          <div className="aiCardTop"><span>✦ VYRAL AI</span><i>GENERANDO</i></div>
-          <div className="aiPrompt">Quiero una descripción corta, directa y con potencial viral para un video de producto.</div>
-          <div className="aiAnswer"><span className="aiCursor">|</span><p>Tu próximo favorito acaba de aparecer. Mirá hasta el final y decime si vos también lo usarías. ✦</p><div><b>#parati</b><b>#viral</b><b>#tiktok</b></div></div>
-          <div className="aiVariants"><span>VIRAL</span><span>COMERCIAL</span><span>NATURAL</span></div>
-        </div>
-      </section>
-
-      <section className="vyralSection vyralFinal">
-        <div className="vyralFinalGrid" />
-        <div className="vyralFinalMark">V<span>Y</span>RAL</div>
-        <div className="vyralKicker">CREÁ — DISTRIBUÍ — CRECÉ</div>
-        <h2>Un solo lugar.<br/><em>Mucho más alcance.</em></h2>
-        <p>Centralizá tu operación y convertí cada publicación en una oportunidad de multiplicar tu presencia.</p>
-        <a href="#inicio" className="vyralFinalCta">Ingresar a VYRAL <span>↗</span></a>
-      </section>
+      <section className="vyralSection vyralFinal"><div className="vyralFinalGrid" /><div className="vyralFinalMark">V<span>Y</span>RAL</div><div className="vyralKicker">CREÁ — DISTRIBUÍ — CRECÉ</div><h2>Un solo lugar.<br/><em>Mucho más alcance.</em></h2><p>Centralizá tu operación y convertí cada publicación en una oportunidad de multiplicar tu presencia.</p><a href="#inicio" className="vyralFinalCta">Ingresar a VYRAL <span>↗</span></a></section>
 
       <footer className="vyralFooter"><div className="vyralFooterBrand">V<span>Y</span>RAL</div><p>Content Distribution System</p><div><Link href="/terms">Términos</Link><Link href="/privacy">Privacidad</Link></div></footer>
     </main>
