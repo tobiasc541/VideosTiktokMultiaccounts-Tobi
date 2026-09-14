@@ -17,7 +17,22 @@ export async function POST(req: Request) {
   const messages = Array.isArray(metadata.support_messages) ? metadata.support_messages.slice(-99) : [];
 
   if (action === "close") {
-    await client.auth.admin.updateUserById(userId, { user_metadata: { ...metadata, support_status: "closed" } });
+    const archive = Array.isArray(metadata.support_archive) ? metadata.support_archive.slice(-29) : [];
+    archive.push({
+      id: crypto.randomUUID(),
+      subject: metadata.support_subject || "Consulta de soporte",
+      messages,
+      closedAt: new Date().toISOString()
+    });
+    const next = {
+      ...metadata,
+      support_archive: archive,
+      support_status: "new",
+      support_messages: [],
+      support_subject: "",
+      support_last_closed_at: new Date().toISOString()
+    };
+    await client.auth.admin.updateUserById(userId, { user_metadata: next });
   } else if (text) {
     messages.push({ id: crypto.randomUUID(), from: "admin", text, createdAt: new Date().toISOString() });
     await client.auth.admin.updateUserById(userId, { user_metadata: { ...metadata, support_status: "answered", support_messages: messages } });
