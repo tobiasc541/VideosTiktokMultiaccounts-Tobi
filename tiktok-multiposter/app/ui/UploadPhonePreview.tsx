@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import styles from "./UploadPhonePreview.module.css";
+import "./UploadPhonePreview.css";
 
 export default function UploadPhonePreview() {
   useEffect(() => {
@@ -79,5 +79,5 @@ export default function UploadPhonePreview() {
     };
   }, []);
 
-  return <span className={styles.previewShell} aria-hidden="true" />;
+  return null;
 }
