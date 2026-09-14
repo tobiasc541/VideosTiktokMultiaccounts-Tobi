@@ -10,12 +10,7 @@ const plans = [
     cadence: "/ mes",
     accounts: "Hasta 2 cuentas",
     description: "Para empezar con VYRAL y centralizar publicaciones de forma simple.",
-    features: [
-      "Hasta 2 cuentas conectadas",
-      "Publicación multicuentas",
-      "Panel centralizado",
-      "Historial de publicaciones"
-    ],
+    features: ["Hasta 2 cuentas conectadas", "Publicación multicuentas", "Panel centralizado", "Historial de publicaciones"],
     unavailable: ["Sin Analytics", "Sin VYRAL AI"],
     checkout: "https://vyralmulticuentas.lemonsqueezy.com/checkout/buy/084513ad-2a9c-453a-ae56-1ee76c73bb40"
   },
@@ -26,15 +21,8 @@ const plans = [
     cadence: "/ mes",
     accounts: "Hasta 5 cuentas",
     description: "Para creadores y negocios que quieren multiplicar alcance y medir lo que funciona.",
-    features: [
-      "Hasta 5 cuentas conectadas",
-      "Publicación multicuentas",
-      "Analytics unificados",
-      "VYRAL AI",
-      "Historial completo"
-    ],
-    unavailable: [],
-    featured: true,
+    features: ["Hasta 5 cuentas conectadas", "Publicación multicuentas", "Analytics unificados", "VYRAL AI", "Historial completo"],
+    unavailable: [], featured: true,
     checkout: "https://vyralmulticuentas.lemonsqueezy.com/checkout/buy/1637355e-15b2-49ca-8bd1-1d5137d8e30b"
   },
   {
@@ -44,14 +32,7 @@ const plans = [
     cadence: "/ mes",
     accounts: "Hasta 30 cuentas",
     description: "Para operaciones que quieren maximizar distribución, volumen y oportunidades de crecimiento.",
-    features: [
-      "Hasta 30 cuentas conectadas",
-      "Publicación multicuentas",
-      "Analytics unificados",
-      "VYRAL AI",
-      "Historial completo",
-      "Prioridad en nuevas funciones"
-    ],
+    features: ["Hasta 30 cuentas conectadas", "Publicación multicuentas", "Analytics unificados", "VYRAL AI", "Historial completo", "Prioridad en nuevas funciones"],
     unavailable: [],
     checkout: "https://vyralmulticuentas.lemonsqueezy.com/checkout/buy/fbf20548-29e5-40af-8627-b52224bb3ed8"
   }
@@ -64,20 +45,25 @@ export default async function PlansPage({ searchParams }: { searchParams: Promis
 
   return (
     <main className="vyralPlansPage">
+      <div className="vyralSocialOrbit" aria-hidden="true">
+        <img className="socialTikTok" src="/tiktok.png" alt="" />
+        <img className="socialInstagram" src="/instagram.png" alt="" />
+        <img className="socialFacebook" src="/facebook.png" alt="" />
+      </div>
       <div className="vyralPlansWrap">
         <header className="vyralPlansTop">
           <div className="vyralAuthBrand">V<span>Y</span>RAL</div>
           <small>PASO 03 / PLAN</small>
           <h1>Elegí cuántas cuentas querés activar.</h1>
           <p>A más cuentas conectadas, más puntos de distribución para cada video. Podés empezar simple y escalar cuando lo necesites.</p>
+          <div className="vyralPlansClaim">Hacerse viral nunca fue tan fácil.</div>
         </header>
         {q.error && <div className="vyralAuthError" style={{maxWidth:600,margin:"0 auto 18px",textAlign:"center"}}>No pudimos iniciar el pago. Probá nuevamente.</div>}
         <section className="vyralPlanGrid">
           {plans.map((plan) => (
             <article className={`vyralPlanCard${plan.featured ? " featured" : ""}`} key={plan.id}>
               {plan.featured && <div className="vyralPlanBadge">MÁS ELEGIDO</div>}
-              <small>PLAN VYRAL</small>
-              <h2>{plan.name}</h2>
+              <small>PLAN VYRAL</small><h2>{plan.name}</h2>
               <div className="vyralPlanPrice"><strong>{plan.price}</strong><span>{plan.cadence}</span></div>
               <div className="vyralPlanAccounts">{plan.accounts}</div>
               <p>{plan.description}</p>
@@ -89,7 +75,13 @@ export default async function PlansPage({ searchParams }: { searchParams: Promis
             </article>
           ))}
         </section>
-        <p className="vyralPlansNote"><b>Facturación mensual.</b> El plan se activa después de confirmar el pago. Actualmente el checkout está conectado al entorno de prueba de Lemon Squeezy.</p>
+        <footer className="vyralPlansTrust">
+          <span className="vyralSecure">⌁ Pago seguro</span>
+          <a href="/terms">Términos y condiciones</a>
+          <span>·</span>
+          <a href="/privacy">Política de privacidad</a>
+          <p>Facturación mensual. Tu plan se activa después de confirmar el pago.</p>
+        </footer>
       </div>
     </main>
   );
