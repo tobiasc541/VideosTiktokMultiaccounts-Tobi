@@ -20,8 +20,8 @@ const tips = {
   ai: { title:"Gasto en inteligencia artificial", text:"Ingresá lo que pagás por herramientas de IA que usás para captions, ideas, copies, respuestas o asistencia de contenido." },
   tools: { title:"Apps y software", text:"Incluí publicación, analytics, automatizaciones, social media tools y otras plataformas que VYRAL podría centralizar." },
   videos: { title:"Videos por mes", text:"VYRAL usa este dato para recomendar automáticamente el plan según su capacidad mensual: Inicio hasta 50, Crecimiento hasta 200 y Escala hasta 500 videos." },
-  accounts: { title:"Cuentas por publicación", text:"Cuantas más cuentas reciben el mismo contenido, más trabajo repetitivo existe cuando se publica manualmente. Esto impacta en el tiempo operativo recuperable." },
-  hourValue: { title:"Costo por hora del equipo", text:"Puede ser tu hora o la de un editor, community manager o miembro del equipo. Se usa para valorar las horas operativas que VYRAL puede recuperar." }
+  accounts: { title:"Cuentas por publicación", text:"Cuantas más cuentas reciben el mismo video, más veces tenés que repetir manualmente la misma carga. VYRAL centraliza esas cargas en un solo flujo." },
+  hourValue: { title:"Costo por hora del equipo", text:"Puede ser tu hora o la de un community manager, editor o miembro del equipo. La usamos para poner valor al tiempo que hoy se pierde repitiendo publicaciones." }
 } as const;
 type TipKey = keyof typeof tips;
 
@@ -52,15 +52,20 @@ export default function LandingGrowthExperience(){
     return {id:"escala",name:"Escala",price:19.99,limit:500};
   },[videos]);
 
-  const editHours = videos * .5;
-  const savedMinutesPerVideo = 5 + Math.max(0,accounts-1)*8;
-  const savedHours = videos * savedMinutesPerVideo / 60;
+  // Conservative operating assumption: ~45 seconds to repeat one manual upload.
+  // VYRAL still needs one upload per piece, so only duplicate account uploads count as recoverable time.
+  const secondsPerManualUpload = 45;
+  const manualUploads = videos * accounts;
+  const vyralUploads = videos;
+  const duplicateUploadsAvoided = Math.max(0, manualUploads - vyralUploads);
+  const manualHours = manualUploads * secondsPerManualUpload / 3600;
+  const vyralHours = vyralUploads * secondsPerManualUpload / 3600;
+  const savedHours = duplicateUploadsAvoided * secondsPerManualUpload / 3600;
   const laborValue = savedHours * hourValue;
   const replaceableSoftware = aiCost + toolsCost;
   const grossPotential = replaceableSoftware + laborValue;
   const monthlySavings = Math.max(0,grossPotential-plan.price);
   const yearlySavings = monthlySavings*12;
-  const overCapacity = videos>plan.limit;
 
   return <>
     <NetworkFlowEnhancer/>
@@ -69,20 +74,20 @@ export default function LandingGrowthExperience(){
       <div className="vyralImpactGlow one"/><div className="vyralImpactGlow two"/>
       <div className="vyralImpactCopy">
         <div className="vyralSectionIndex">IMPACTO / OPERACIÓN</div><div className="vyralKicker">ECOMMERCE · CREADORES · AGENCIAS</div>
-        <h2>Menos herramientas.<br/><em>Más margen para crecer.</em></h2>
-        <p>Decinos cuánto producís y cuánto cuesta hoy tu operación. VYRAL calcula automáticamente el plan recomendado, las horas operativas que podrías recuperar y el impacto económico estimado.</p>
+        <h2>Menos cargas.<br/><em>Más tiempo para crecer.</em></h2>
+        <p>El ahorro de tiempo no se calcula con edición de video. Se calcula con lo que VYRAL realmente resuelve: dejar de subir la misma pieza una y otra vez en cada cuenta.</p>
         <div className="vyralAudienceChips"><span>◌ Ecommerce</span><span>✦ Creadores</span><span>⌁ Equipos de contenido</span><span>↗ Agencias</span></div>
-        <div className="vyralAssumptionCard"><span>SUPUESTO TRANSPARENTE</span><b>30 min de edición por video</b><p>Lo usamos para dimensionar tu producción, pero <strong>no</strong> lo contamos como tiempo ahorrado porque VYRAL no reemplaza la edición creativa.</p></div>
+        <div className="vyralAssumptionCard"><span>CÁLCULO SIMPLE Y TRANSPARENTE</span><b>45 segundos por carga manual</b><p>Tomamos un promedio conservador dentro del rango de 30–60 segundos por publicación. <strong>No contamos edición</strong>, porque VYRAL no reemplaza ese trabajo.</p></div>
       </div>
 
       <div className="vyralSavingsCard">
-        <div className="vyralSavingsTop"><div><span>SIMULADOR DE OPERACIÓN</span><small>Vos cargás 5 datos. VYRAL calcula el resto.</small></div><i>LIVE</i></div>
+        <div className="vyralSavingsTop"><div><span>SIMULADOR DE DISTRIBUCIÓN</span><small>Vos cargás 5 datos. VYRAL calcula el trabajo repetitivo.</small></div><i>LIVE</i></div>
 
         <div className="vyralSavingsInputs">
           <div className="vyralSavingsControl"><div className="vyralSavingsLabel"><span>Gasto mensual en IA</span><InfoButton id="ai" open={openTip} onToggle={id=>setOpenTip(openTip===id?null:id)}/><b>US$ {aiCost}/mes</b></div><input type="range" min="0" max="300" value={aiCost} onChange={e=>setAiCost(Number(e.target.value))}/></div>
           <div className="vyralSavingsControl"><div className="vyralSavingsLabel"><span>Gasto mensual en apps / software</span><InfoButton id="tools" open={openTip} onToggle={id=>setOpenTip(openTip===id?null:id)}/><b>US$ {toolsCost}/mes</b></div><input type="range" min="0" max="500" value={toolsCost} onChange={e=>setToolsCost(Number(e.target.value))}/></div>
           <div className="vyralSavingsControl featured"><div className="vyralSavingsLabel"><span>Videos que publicás por mes</span><InfoButton id="videos" open={openTip} onToggle={id=>setOpenTip(openTip===id?null:id)}/><b>{videos} videos</b></div><input type="range" min="1" max="500" value={videos} onChange={e=>setVideos(Number(e.target.value))}/></div>
-          <div className="vyralSavingsControl"><div className="vyralSavingsLabel"><span>Cuentas promedio por video</span><InfoButton id="accounts" open={openTip} onToggle={id=>setOpenTip(openTip===id?null:id)}/><b>{accounts} cuentas</b></div><input type="range" min="1" max="30" value={accounts} onChange={e=>setAccounts(Number(e.target.value))}/></div>
+          <div className="vyralSavingsControl featured"><div className="vyralSavingsLabel"><span>Cuentas promedio por video</span><InfoButton id="accounts" open={openTip} onToggle={id=>setOpenTip(openTip===id?null:id)}/><b>{accounts} cuentas</b></div><input type="range" min="1" max="30" value={accounts} onChange={e=>setAccounts(Number(e.target.value))}/></div>
           <div className="vyralSavingsControl"><div className="vyralSavingsLabel"><span>Costo por hora de tu equipo</span><InfoButton id="hourValue" open={openTip} onToggle={id=>setOpenTip(openTip===id?null:id)}/><b>US$ {hourValue}/h</b></div><input type="range" min="1" max="100" value={hourValue} onChange={e=>setHourValue(Number(e.target.value))}/></div>
         </div>
 
@@ -91,21 +96,26 @@ export default function LandingGrowthExperience(){
           <div className="vyralAutoPlanBadge">{plan.id==="inicio"?"01":plan.id==="pro"?"02":"03"}</div>
         </div>
 
+        <div className="vyralPublishCompare">
+          <article><small>PUBLICANDO MANUALMENTE</small><strong>{manualUploads}</strong><span>cargas/mes · ≈ {manualHours.toFixed(1)} h</span><p>{videos} videos × {accounts} cuentas</p></article>
+          <div className="vyralVs">VS</div>
+          <article className="vyralWay"><small>PUBLICANDO CON VYRAL</small><strong>{vyralUploads}</strong><span>cargas/mes · ≈ {vyralHours.toFixed(1)} h</span><p>una carga central por video</p></article>
+        </div>
+
         <div className="vyralCalcStory">
-          <article><small>PRODUCCIÓN MENSUAL</small><strong>{videos}</strong><span>videos · {editHours.toFixed(0)} h estimadas de edición</span></article>
-          <article><small>TIEMPO OPERATIVO RECUPERABLE</small><strong>{savedHours.toFixed(1)} h</strong><span>{savedMinutesPerVideo} min repetitivos por video</span></article>
+          <article><small>CARGAS REPETITIVAS EVITADAS</small><strong>{duplicateUploadsAvoided}</strong><span>acciones manuales que desaparecen</span></article>
+          <article><small>TIEMPO RECUPERABLE</small><strong>{savedHours.toFixed(1)} h</strong><span>por mes sólo en distribución</span></article>
           <article><small>VALOR DEL TIEMPO RECUPERADO</small><strong>US$ {laborValue.toFixed(0)}</strong><span>{savedHours.toFixed(1)} h × US$ {hourValue}/h</span></article>
         </div>
 
         <div className="vyralSavingsBreakdown">
           <span><b>IA + apps que podrías centralizar</b><strong>US$ {replaceableSoftware.toFixed(0)}/mes</strong></span>
-          <span><b>Valor del tiempo operativo recuperado</b><strong>+ US$ {laborValue.toFixed(0)}/mes</strong></span>
+          <span><b>Valor del tiempo de distribución recuperado</b><strong>+ US$ {laborValue.toFixed(0)}/mes</strong></span>
           <span><b>Plan {plan.name}</b><strong>− US$ {plan.price.toFixed(2)}/mes</strong></span>
         </div>
 
         <div className="vyralSavingsResult"><small>AHORRO POTENCIAL ESTIMADO</small><strong>US$ {monthlySavings.toFixed(0)}<span> AHORRADOS / MES</span></strong><div className="vyralYearly"><b>US$ {yearlySavings.toFixed(0)}</b><span>AHORRO POTENCIAL / AÑO</span></div></div>
-        {overCapacity&&<div className="vyralCapacityNote">Tu volumen supera la capacidad incluida del plan mostrado. Para más de 500 videos/mes necesitaremos una configuración de mayor capacidad.</div>}
-        <small className="vyralEstimateNote">Estimación basada en tus datos y en {savedMinutesPerVideo} min de trabajo operativo repetitivo por pieza. No es una promesa de resultados ni supone reducción de personal.</small>
+        <small className="vyralEstimateNote">Estimación basada en tus datos y en 45 segundos por carga manual repetida. No incluye tiempo de edición ni supone reducción de personal.</small>
       </div>
     </section>
 
