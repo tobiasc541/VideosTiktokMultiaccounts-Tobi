@@ -6,22 +6,23 @@ const plans = [
   {
     id: "inicio",
     name: "Inicio",
-    price: "US$ 1",
+    price: "US$ 1,99",
     cadence: "/ mes",
     accounts: "Hasta 2 cuentas",
-    description: "Para probar VYRAL y centralizar publicaciones sin funciones avanzadas.",
+    description: "Para empezar con VYRAL y centralizar publicaciones de forma simple.",
     features: [
       "Hasta 2 cuentas conectadas",
       "Publicación multicuentas",
       "Panel centralizado",
       "Historial de publicaciones"
     ],
-    unavailable: ["Sin Analytics", "Sin VYRAL AI"]
+    unavailable: ["Sin Analytics", "Sin VYRAL AI"],
+    checkout: "https://vyralmulticuentas.lemonsqueezy.com/checkout/buy/084513ad-2a9c-453a-ae56-1ee76c73bb40"
   },
   {
     id: "pro",
     name: "Crecimiento",
-    price: "US$ 9,99",
+    price: "US$ 6,99",
     cadence: "/ mes",
     accounts: "Hasta 5 cuentas",
     description: "Para creadores y negocios que quieren multiplicar alcance y medir lo que funciona.",
@@ -33,24 +34,26 @@ const plans = [
       "Historial completo"
     ],
     unavailable: [],
-    featured: true
+    featured: true,
+    checkout: "https://vyralmulticuentas.lemonsqueezy.com/checkout/buy/1637355e-15b2-49ca-8bd1-1d5137d8e30b"
   },
   {
     id: "escala",
     name: "Escala",
     price: "US$ 19,99",
     cadence: "/ mes",
-    accounts: "Hasta 10 cuentas",
+    accounts: "Hasta 30 cuentas",
     description: "Para operaciones que quieren maximizar distribución, volumen y oportunidades de crecimiento.",
     features: [
-      "Hasta 10 cuentas conectadas",
+      "Hasta 30 cuentas conectadas",
       "Publicación multicuentas",
       "Analytics unificados",
       "VYRAL AI",
       "Historial completo",
       "Prioridad en nuevas funciones"
     ],
-    unavailable: []
+    unavailable: [],
+    checkout: "https://vyralmulticuentas.lemonsqueezy.com/checkout/buy/fbf20548-29e5-40af-8627-b52224bb3ed8"
   }
 ];
 
@@ -68,7 +71,7 @@ export default async function PlansPage({ searchParams }: { searchParams: Promis
           <h1>Elegí cuántas cuentas querés activar.</h1>
           <p>A más cuentas conectadas, más puntos de distribución para cada video. Podés empezar simple y escalar cuando lo necesites.</p>
         </header>
-        {q.error && <div className="vyralAuthError" style={{maxWidth:600,margin:"0 auto 18px",textAlign:"center"}}>No pudimos guardar el plan. Probá nuevamente.</div>}
+        {q.error && <div className="vyralAuthError" style={{maxWidth:600,margin:"0 auto 18px",textAlign:"center"}}>No pudimos iniciar el pago. Probá nuevamente.</div>}
         <section className="vyralPlanGrid">
           {plans.map((plan) => (
             <article className={`vyralPlanCard${plan.featured ? " featured" : ""}`} key={plan.id}>
@@ -82,14 +85,11 @@ export default async function PlansPage({ searchParams }: { searchParams: Promis
                 {plan.features.map((feature) => <span key={feature}>{feature}</span>)}
                 {plan.unavailable.map((feature) => <span className="off" key={feature}>{feature}</span>)}
               </div>
-              <form action="/api/account/plan" method="post">
-                <input type="hidden" name="plan" value={plan.id} />
-                <button type="submit">Elegir {plan.name} →</button>
-              </form>
+              <a className="vyralPlanCheckout" href={plan.checkout}>Elegir {plan.name} →</a>
             </article>
           ))}
         </section>
-        <p className="vyralPlansNote"><b>Facturación mensual.</b> La selección de plan ya queda asociada a tu cuenta; el cobro online se conectará en el siguiente paso.</p>
+        <p className="vyralPlansNote"><b>Facturación mensual.</b> El plan se activa después de confirmar el pago. Actualmente el checkout está conectado al entorno de prueba de Lemon Squeezy.</p>
       </div>
     </main>
   );
