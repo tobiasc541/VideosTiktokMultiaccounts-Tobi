@@ -5,6 +5,7 @@ import Link from "next/link";
 import NetworkFlowEnhancer from "./NetworkFlowEnhancer";
 import "./landing-growth.css";
 import "./landing-ultra.css";
+import "./landing-simulator-v2.css";
 
 const rows = [
   ["Publicación multicuentas", "Incluido", "Varias herramientas / procesos"],
@@ -51,9 +52,7 @@ export default function LandingGrowthExperience(){
     return {id:"escala",name:"Escala",price:19.99,limit:500};
   },[videos]);
 
-  // Transparencia: VYRAL no cuenta la edición creativa como ahorro. Se asumen 30 min de edición por pieza sólo como contexto de producción.
   const editHours = videos * .5;
-  // Trabajo operativo estimado: 5 min base por pieza + 8 min por cada destino adicional.
   const savedMinutesPerVideo = 5 + Math.max(0,accounts-1)*8;
   const savedHours = videos * savedMinutesPerVideo / 60;
   const laborValue = savedHours * hourValue;
