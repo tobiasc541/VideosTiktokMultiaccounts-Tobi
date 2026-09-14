@@ -12,15 +12,15 @@ const names:Record<Lang,string>={es:"Español",en:"English",ar:"العربية",
 
 export default function LocaleSelector(){
  const[open,setOpen]=useState(false);const[code,setCode]=useState("AR");const[query,setQuery]=useState("");
+ useEffect(()=>{try{const saved=localStorage.getItem("vyral-country")||"AR";if(countries.some(c=>c.code===saved))setCode(saved)}catch{}},[]);
  const current=countries.find(c=>c.code===code)||countries[0];
- const emit=(c:Country)=>{
-  setCode(c.code);
-  try{localStorage.setItem("vyral-country",c.code);localStorage.setItem("vyral-lang",c.lang);localStorage.setItem("vyral-timezone",c.tz);document.cookie=`vyral-country=${c.code}; path=/; max-age=31536000; samesite=lax`}catch{}
-  document.documentElement.lang=c.lang;document.documentElement.dir="ltr";document.body.dataset.vyralLang=c.lang;
-  window.dispatchEvent(new CustomEvent("vyral:locale",{detail:{country:c.code,lang:c.lang,tz:c.tz,zone:c.zone,flag:c.flag,name:c.name}}));
+ const choose=(c:Country)=>{
+  const changed=c.code!==code;
+  setCode(c.code);setOpen(false);setQuery("");
+  try{localStorage.setItem("vyral-country",c.code);localStorage.setItem("vyral-lang",c.lang);localStorage.setItem("vyral-timezone",c.tz);localStorage.setItem("vyral-zone",c.zone);document.cookie=`vyral-country=${c.code}; path=/; max-age=31536000; samesite=lax`;document.cookie=`vyral-lang=${c.lang}; path=/; max-age=31536000; samesite=lax`}catch{}
+  if(changed){window.location.reload();return;}
  };
- useEffect(()=>{let saved="AR";try{saved=localStorage.getItem("vyral-country")||"AR"}catch{}const c=countries.find(x=>x.code===saved)||countries[0];emit(c)},[]);
  const filtered=useMemo(()=>countries.filter(c=>(`${c.name} ${c.code} ${names[c.lang]}`).toLowerCase().includes(query.toLowerCase())),[query]);
  const labels=current.lang==="ar"?{title:"الدولة · اللغة · المنطقة الزمنية",search:"ابحث عن دولة…"}:current.lang==="pt"?{title:"PAÍS · IDIOMA · FUSO HORÁRIO",search:"Buscar país…"}:current.lang==="en"?{title:"COUNTRY · LANGUAGE · TIME ZONE",search:"Search country…"}:{title:"PAÍS · IDIOMA · ZONA HORARIA",search:"Buscar país…"};
- return <div className="vyralLocaleDock"><button type="button" className="vyralLocaleTrigger" onClick={()=>setOpen(v=>!v)} aria-label="Country and language"><span className="flag">{current.flag}</span><span>{current.code}</span><b>⌄</b></button>{open&&<div className="vyralLocalePanel"><small>{labels.title}</small><strong>{current.flag} {current.name}</strong><p>{names[current.lang]} · {current.zone}</p><input className="vyralCountrySearch" value={query} onChange={e=>setQuery(e.target.value)} placeholder={labels.search}/><div className="vyralCountryGrid">{filtered.map(c=><button type="button" key={c.code} className={c.code===code?"active":""} onClick={()=>{emit(c);setOpen(false);setQuery("")}}><span className="flag">{c.flag}</span><b>{c.name}</b><small>{names[c.lang]} · {c.zone}</small></button>)}</div></div>}</div>
+ return <div className="vyralLocaleDock"><button type="button" className="vyralLocaleTrigger" onClick={()=>setOpen(v=>!v)} aria-label="Country and language"><span className="flag">{current.flag}</span><span>{current.code}</span><b>⌄</b></button>{open&&<div className="vyralLocalePanel"><small>{labels.title}</small><strong>{current.flag} {current.name}</strong><p>{names[current.lang]} · {current.zone}</p><input className="vyralCountrySearch" value={query} onChange={e=>setQuery(e.target.value)} placeholder={labels.search}/><div className="vyralCountryGrid">{filtered.map(c=><button type="button" key={c.code} className={c.code===code?"active":""} onClick={()=>choose(c)}><span className="flag">{c.flag}</span><b>{c.name}</b><small>{names[c.lang]} · {c.zone}</small></button>)}</div></div>}</div>
 }
