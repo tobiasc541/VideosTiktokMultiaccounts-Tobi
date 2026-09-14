@@ -16,13 +16,13 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           <div className="vyralWordmark" aria-label="VYRAL">V<span>Y</span>RAL</div>
           <div className="loginHeroCopy">
             <div className="loginEyebrow"><span>CREÁ</span><i /><span>DISTRIBUÍ</span><i /><span>CRECÉ</span></div>
-            <h1 className="loginHeadline">Publicá una vez.<br/><span>Convertí tiempo en</span><br/><em>más oportunidades.</em></h1>
+            <h1 className="loginHeadline">Publicá una vez.<br/><span>Llegá más lejos.</span><br/><em>Multiplicá oportunidades.</em></h1>
             <p className="loginLead">Un solo flujo para llevar tu contenido a todas tus cuentas. Menos tareas repetitivas, más tiempo para crear, vender y hacer crecer tu negocio.</p>
             <div className="loginStats"><div className="loginStat"><strong>01</strong><span>Video</span></div><div className="loginStatDivider"/><div className="loginStat"><strong>∞</strong><span>Oportunidades</span></div><div className="loginStatDivider"/><div className="loginStat"><strong>1</strong><span>Dashboard</span></div></div>
           </div>
           <div className="loginHeroFooter"><div className="poweredBy"><span>Powered by</span><strong>Tobias Carrizo</strong></div><a className="vyralScrollCue" href="#producto" aria-label="Descubrir VYRAL"><span>DESCUBRÍ VYRAL</span><i>↓</i></a></div>
         </section>
-        <section className="loginAccess"><div className="loginAccessInner"><div className="loginMobileBrand">VYRAL</div><div className="loginCardHeading"><span className="loginMiniLabel">TU CUENTA VYRAL</span><h2>Bienvenido.</h2><p>Ingresá para continuar con tu operación.</p></div>
+        <section className="loginAccess"><div className="loginAccessInner"><div className="loginMobileBrand">VYRAL</div><div className="loginCardHeading"><span className="loginMiniLabel">ACCESO A TU PANEL</span><h2>Bienvenido.</h2><p>Ingresá para continuar con tu operación.</p></div>
           {q.verified === "1" && <div className="loginSuccessBox">Correo verificado. Ya podés ingresar a tu cuenta.</div>}
           {q.reset === "1" && <div className="loginSuccessBox">Contraseña actualizada. Ya podés ingresar con tu nueva contraseña.</div>}
           <form className="loginForm" action="/api/account/login" method="post">
