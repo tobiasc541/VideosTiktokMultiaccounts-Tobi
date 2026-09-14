@@ -13,6 +13,7 @@ import PlanFeatureGate from "./ui/PlanFeatureGate";
 import PremiumAnalyticsPanel from "./ui/PremiumAnalyticsPanel";
 import "./ui/dashboard-addons.css";
 import "./ui/premium-analytics.css";
+import "./ui/plan-gates-extra.css";
 
 export const dynamic = "force-dynamic";
 
