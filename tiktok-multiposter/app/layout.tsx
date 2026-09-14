@@ -4,6 +4,7 @@ import "./login/auth-login.css";
 import CreatorPromoEntry from "./components/CreatorPromoEntry";
 import LocaleSelector from "./components/LocaleSelector";
 import LocaleRuntime3 from "./components/LocaleRuntime3";
+import LocaleCoverageFinal from "./components/LocaleCoverageFinal";
 
 const appIcon = "/vyral-mark.svg";
 
@@ -24,6 +25,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <CreatorPromoEntry />
         <LocaleSelector />
         <LocaleRuntime3 />
+        <LocaleCoverageFinal />
         {children}
         <div className="vyralPersistentSignature" aria-hidden="true"><span>Powered by</span><strong>Tobias Carrizo</strong></div>
       </body>
