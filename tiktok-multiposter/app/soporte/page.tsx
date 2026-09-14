@@ -18,6 +18,7 @@ export default async function SupportPage() {
   const meta = data.user?.user_metadata || {};
   const messages = Array.isArray(meta.support_messages) ? meta.support_messages as SupportMessage[] : [];
   const status = String(meta.support_status || "new");
+  const lastClosedAt = meta.support_last_closed_at ? new Date(meta.support_last_closed_at) : null;
 
   return (
     <main className="supportPage">
@@ -35,8 +36,10 @@ export default async function SupportPage() {
             <h1>Estamos para ayudarte.<br/><em>Sin vueltas.</em></h1>
             <p>Dejanos tu consulta. Esta conversación se actualiza sola cada 5 segundos cuando llega una respuesta.</p>
           </div>
-          <div className="supportStatus"><span>Estado</span><strong>{status === "answered" ? "Respondido" : status === "open" ? "En revisión" : status === "closed" ? "Cerrado" : "Listo para recibir tu consulta"}</strong></div>
+          <div className="supportStatus"><span>Estado</span><strong>{status === "answered" ? "Respondido" : status === "open" ? "En revisión" : "Listo para recibir tu consulta"}</strong></div>
         </div>
+
+        {lastClosedAt && !messages.length && <div className="supportClosedNotice"><strong>Consulta cerrada correctamente.</strong><span>El equipo dio por finalizado el caso el {lastClosedAt.toLocaleString("es-AR")}. Si necesitás algo más, podés abrir una nueva consulta desde acá.</span></div>}
 
         <section className="supportGrid">
           <div className="supportComposer">
@@ -52,8 +55,8 @@ export default async function SupportPage() {
           </div>
 
           <div className="supportThread">
-            <div className="supportThreadHead"><div><small>HISTORIAL · LIVE</small><h2>Conversación con VYRAL</h2></div><span>{messages.length} mensajes</span></div>
-            {!messages.length ? <div className="supportEmpty">Todavía no tenés consultas. Cuando envíes una, la conversación va a aparecer acá.</div> : (
+            <div className="supportThreadHead"><div><small>CONVERSACIÓN ACTIVA · LIVE</small><h2>Chat con VYRAL</h2></div><span>{messages.length} mensajes</span></div>
+            {!messages.length ? <div className="supportEmpty">No tenés ninguna consulta abierta. Cuando envíes una nueva, la conversación aparecerá acá.</div> : (
               <div className="supportMessages">
                 {messages.map((m) => <div className={`supportMessage ${m.from}`} key={m.id}><small>{m.from === "admin" ? "VYRAL SUPPORT" : "VOS"}</small><p>{m.text}</p><span>{new Date(m.createdAt).toLocaleString("es-AR")}</span></div>)}
               </div>
