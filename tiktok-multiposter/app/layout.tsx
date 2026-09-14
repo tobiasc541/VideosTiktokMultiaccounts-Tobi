@@ -18,7 +18,11 @@ export const metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es">
-      <body><CreatorPromoEntry />{children}</body>
+      <body>
+        <CreatorPromoEntry />
+        {children}
+        <div className="vyralPersistentSignature" aria-hidden="true"><span>Powered by</span><strong>Tobias Carrizo</strong></div>
+      </body>
     </html>
   );
 }
