@@ -12,6 +12,7 @@ import AnalyticsFilterPanel from "./ui/AnalyticsFilterPanel";
 import PlanFeatureGate from "./ui/PlanFeatureGate";
 import PremiumAnalyticsPanel from "./ui/PremiumAnalyticsPanel";
 import UploadPhonePreview from "./ui/UploadPhonePreview";
+import PublishScheduleControls from "./ui/PublishScheduleControls";
 import NotificationCenter from "./ui/NotificationCenter";
 import AutomationStudio from "./ui/AutomationStudio";
 import ProductTour from "./ui/ProductTour";
@@ -44,6 +45,7 @@ export default async function Home() {
   return <div className={`dashboardPageWrap plan-${planId} ${starter ? "starterPlan" : "premiumPlan"}`}>
     <Dashboard initialAccounts={accounts} />
     <UploadPhonePreview />
+    <PublishScheduleControls />
     <NotificationCenter daysLeft={daysLeft} planId={planId} accountCount={accounts.length} />
     <AutomationStudio />
     <ProductTour />
