@@ -27,6 +27,11 @@ export default async function AdminPage() {
   const tickets = users.filter((u) => Array.isArray(u.user_metadata?.support_messages) && u.user_metadata.support_messages.length > 0);
   const supportTickets = tickets.filter((u)=>u.user_metadata?.support_subject !== "Cancelación de suscripción");
   const pendingCancellations = users.filter((u)=>Boolean(u.user_metadata?.cancel_requested_at) && !u.user_metadata?.cancel_approved_at);
+  const creatorApplications = users.filter((u)=>u.user_metadata?.creator_status === "pending");
+  const approvedCreators = users.filter((u)=>u.user_metadata?.creator_status === "approved");
+  const creatorSubscribers = approvedCreators.reduce((n,u)=>n+Number(u.user_metadata?.creator_referrals||0),0);
+  const creatorRevenue = approvedCreators.reduce((n,u)=>n+Number(u.user_metadata?.creator_revenue||0),0);
+  const creatorCommission = approvedCreators.reduce((n,u)=>n+Number(u.user_metadata?.creator_commission||0),0);
   const openTickets = supportTickets.filter((u) => u.user_metadata?.support_status === "open").length;
   const paidUsers = users.filter((u) => Boolean(u.user_metadata?.plan)).length;
   const giveawayUsers = users.filter(u=>u.email).map(u=>({ id:u.id, email:u.email || "", name:u.user_metadata?.full_name || "Usuario VYRAL" }));
@@ -37,18 +42,25 @@ export default async function AdminPage() {
       <aside className="adminSidebar">
         <div className="adminLogo">V<b>Y</b>RAL</div>
         <div className="adminRole">SUPER ADMIN</div>
-        <nav><a href="#overview">Overview</a><a href="#cancellations">Cancelaciones</a><a href="#support">Soporte</a><a href="#giveaway">Sorteos</a><a href="#users">Usuarios</a></nav>
+        <nav><a href="#overview">Overview</a><a href="#creators">Creators</a><a href="#cancellations">Cancelaciones</a><a href="#support">Soporte</a><a href="#giveaway">Sorteos</a><a href="#users">Usuarios</a></nav>
         <div className="adminSideBottom"><span>{admin.email}</span><form action="/api/logout" method="post"><button>Cerrar sesión</button></form></div>
       </aside>
 
       <section className="adminMain">
-        <header className="adminHeader" id="overview"><div><small>CONTROL CENTER</small><h1>Tu operación, <em>bajo control.</em></h1><p>Usuarios, cancelaciones, soporte y sorteos desde un solo panel privado.</p></div><div className="adminLive"><i/> LIVE · 5S</div></header>
+        <header className="adminHeader" id="overview"><div><small>CONTROL CENTER</small><h1>Tu operación, <em>bajo control.</em></h1><p>Usuarios, creators, cancelaciones, soporte y sorteos desde un solo panel privado.</p></div><div className="adminLive"><i/> LIVE · 5S</div></header>
 
         <section className="adminStats">
           <article><span>01</span><small>USUARIOS</small><strong>{users.length}</strong><p>Cuentas registradas</p></article>
           <article><span>02</span><small>CON PLAN</small><strong>{paidUsers}</strong><p>Usuarios con plan asignado</p></article>
-          <article><span>03</span><small>TICKETS ABIERTOS</small><strong>{openTickets}</strong><p>Actualización automática</p></article>
+          <article><span>03</span><small>CREATOR SALES</small><strong>{creatorSubscribers}</strong><p>Suscripciones por código</p></article>
           <article><span>04</span><small>CANCELACIONES</small><strong>{pendingCancellations.length}</strong><p>Esperando tu decisión</p></article>
+        </section>
+
+        <section className="adminSection" id="creators">
+          <div className="adminSectionHead"><div><small>VYRAL CREATOR PROGRAM</small><h2>Códigos promocionales</h2></div><span>{creatorApplications.length} solicitudes pendientes</span></div>
+          <div className="adminStats" style={{marginTop:0}}><article><small>CREATORS ACTIVOS</small><strong>{approvedCreators.length}</strong><p>Códigos aprobados</p></article><article><small>USUARIOS ATRIBUIDOS</small><strong>{creatorSubscribers}</strong><p>Registrados con código</p></article><article><small>FACTURACIÓN</small><strong>US$ {creatorRevenue.toFixed(2)}</strong><p>Ingresos atribuidos</p></article><article><small>COMISIONES</small><strong>US$ {creatorCommission.toFixed(2)}</strong><p>10% recurrente acumulado</p></article></div>
+          {!creatorApplications.length ? <div className="adminEmpty">No hay solicitudes nuevas de Creator Viral.</div> : creatorApplications.map((u)=><article className="adminTicket" key={u.id}><div className="adminTicketTop"><div><strong>{u.user_metadata?.creator_handle || u.user_metadata?.full_name || u.email}</strong><span>{u.email} · {u.user_metadata?.creator_platform || "Sin red"}</span></div><div className="adminTicketStatus open">REVISIÓN</div></div><h3>Solicitud de código promocional</h3><p style={{color:"#7a8791",fontSize:10,lineHeight:1.6}}>{u.user_metadata?.creator_note || "Sin descripción adicional."}</p><form action="/api/admin/creator-decision" method="post" className="adminCancelActions"><input type="hidden" name="userId" value={u.id}/><input name="code" placeholder="Código opcional (ej: TOBI10)" maxLength={12}/><button name="decision" value="approve">✓ Aprobar y crear código</button><button className="ghost" name="decision" value="reject">Rechazar</button></form></article>)}
+          {!!approvedCreators.length && <div className="adminUserTable" style={{marginTop:16}}><div className="adminUserHead"><span>Creator</span><span>Código</span><span>Usuarios</span><span>Facturación</span><span>Comisión</span></div>{approvedCreators.map((u)=><div className="adminUserRow" key={u.id}><div><strong>{u.user_metadata?.creator_handle || u.user_metadata?.full_name || "Creator"}</strong><small>{u.email}</small></div><strong>{u.user_metadata?.creator_code || "—"}</strong><strong>{Number(u.user_metadata?.creator_referrals||0)}</strong><strong>US$ {Number(u.user_metadata?.creator_revenue||0).toFixed(2)}</strong><strong>US$ {Number(u.user_metadata?.creator_commission||0).toFixed(2)}</strong></div>)}</div>}
         </section>
 
         <section className="adminSection adminCancellationSection" id="cancellations">
