@@ -2,7 +2,7 @@ import "./globals.css";
 import "./brand.css";
 import "./login/auth-login.css";
 import CreatorPromoEntry from "./components/CreatorPromoEntry";
-import LocaleController from "./components/LocaleController";
+import LocaleSelector from "./components/LocaleSelector";
 import LocaleIntegrityGuard from "./components/LocaleIntegrityGuard";
 import LocaleDynamicFinalizer from "./components/LocaleDynamicFinalizer";
 import LocaleFeatureCoverage from "./components/LocaleFeatureCoverage";
@@ -24,7 +24,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="es">
       <body>
         <CreatorPromoEntry />
-        <LocaleController />
+        <LocaleSelector />
         <LocaleIntegrityGuard />
         <LocaleDynamicFinalizer />
         <LocaleFeatureCoverage />
