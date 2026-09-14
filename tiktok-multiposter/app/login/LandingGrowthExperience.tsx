@@ -6,6 +6,7 @@ import Link from "next/link";
 import VyralCore3D from "./VyralCore3D";
 import NetworkFlowEnhancer from "./NetworkFlowEnhancer";
 import "./landing-growth.css";
+import "./landing-ultra.css";
 
 const rows = [
   ["Publicación multicuentas", "Incluido", "Varias herramientas / procesos"],
