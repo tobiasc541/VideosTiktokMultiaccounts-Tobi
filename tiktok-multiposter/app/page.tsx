@@ -11,6 +11,7 @@ import CreditBadge from "./ui/CreditBadge";
 import AnalyticsFilterPanel from "./ui/AnalyticsFilterPanel";
 import PlanFeatureGate from "./ui/PlanFeatureGate";
 import PremiumAnalyticsPanel from "./ui/PremiumAnalyticsPanel";
+import UploadPhonePreview from "./ui/UploadPhonePreview";
 import "./ui/dashboard-addons.css";
 import "./ui/premium-analytics.css";
 import "./ui/plan-gates-extra.css";
@@ -47,6 +48,7 @@ export default async function Home() {
   const accounts = await listAccounts();
   return <div className={`dashboardPageWrap plan-${planId} ${starter ? "starterPlan" : "premiumPlan"}`}>
     <Dashboard initialAccounts={accounts} />
+    <UploadPhonePreview />
     <DashboardExtrasController />
     <PlanFeatureGate starter={starter} />
     {daysLeft !== null && daysLeft <= 1 && daysLeft > 0 && <div className="subscriptionExpiryBanner"><div><small>RENOVACIÓN</small><strong>Tu plan vence mañana.</strong><span>Renová ahora para mantener el acceso sin interrupciones.</span></div><Link href="/mi-plan#upgrade">Administrar plan ↗</Link></div>}
