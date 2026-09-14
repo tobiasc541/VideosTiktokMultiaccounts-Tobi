@@ -12,6 +12,7 @@ import AnalyticsFilterPanel from "./ui/AnalyticsFilterPanel";
 import PlanFeatureGate from "./ui/PlanFeatureGate";
 import PremiumAnalyticsPanel from "./ui/PremiumAnalyticsPanel";
 import "./ui/dashboard-addons.css";
+import "./ui/premium-analytics.css";
 
 export const dynamic = "force-dynamic";
 
