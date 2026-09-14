@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { getAdminSession, isLoggedIn } from "../lib/auth";
 import { listAccounts } from "../lib/tiktok";
 import Dashboard from "./ui/Dashboard";
+import TopViralDemo from "./ui/TopViralDemo";
+import "./ui/dashboard-addons.css";
 
 export const dynamic = "force-dynamic";
 
@@ -10,8 +12,16 @@ export default async function Home() {
   if (!(await isLoggedIn())) redirect("/login");
   if (await getAdminSession()) redirect("/admin");
   const accounts = await listAccounts();
-  return <>
+  return <div className="dashboardPageWrap">
     <Dashboard initialAccounts={accounts} />
-    <Link href="/soporte" style={{position:"fixed",right:22,bottom:22,zIndex:1000,textDecoration:"none",background:"linear-gradient(135deg,#e8fffe,#75f6f0)",color:"#071013",fontWeight:900,fontSize:12,padding:"12px 16px",borderRadius:999,boxShadow:"0 16px 45px rgba(0,0,0,.35)"}}>Soporte 24/7 ↗</Link>
-  </>;
+
+    <nav className="dashboardSideExtras" aria-label="Cuenta y soporte">
+      <Link href="/mi-plan"><span>◇</span><b>Planes</b></Link>
+      <Link href="/soporte"><span>?</span><b>Soporte 24/7</b></Link>
+    </nav>
+
+    <div className="dashboardTopContent">
+      <TopViralDemo />
+    </div>
+  </div>;
 }
