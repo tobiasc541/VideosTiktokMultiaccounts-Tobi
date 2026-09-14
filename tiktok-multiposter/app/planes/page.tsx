@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getCustomerSession } from "../../lib/auth";
 import "../registro/auth-flow.css";
+import "./plans-polish.css";
 
 const plans = [
   {
