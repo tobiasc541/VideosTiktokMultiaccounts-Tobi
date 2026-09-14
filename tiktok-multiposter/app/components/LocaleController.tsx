@@ -3,104 +3,19 @@
 import { useEffect, useRef, useState } from "react";
 import "./locale-controller.css";
 
-type Country = "AR" | "US";
-
-const exact: Record<string,string> = {
-  "Dashboard":"Dashboard","Publicar":"Publish","Cuentas":"Accounts","Historial":"History","Analytics":"Analytics",
-  "Planes":"Plans","Preguntas frecuentes":"FAQ","Soporte 24/7":"24/7 Support","Cerrar sesión":"Log out",
-  "Nueva publicación":"New post","Subí tu video":"Upload your video","Descripción":"Caption","Privacidad":"Privacy","Seleccioná cuentas":"Select accounts",
-  "Tus cuentas conectadas":"Your connected accounts","Historial de publicaciones":"Publishing history","Todo tu rendimiento, en un solo lugar.":"All your performance, in one place.",
-  "Centro de operaciones":"Operations center","Tu contenido. Multiplicado.":"Your content. Multiplied.","CENTRO DE OPERACIONES":"OPERATIONS CENTER",
-  "Una vista rápida de tu operación. Entrá a cada módulo para trabajar en detalle.":"A quick view of your operation. Open each module to work in detail.",
-  "+ Conectar TikTok":"+ Connect TikTok","Crear una nueva publicación":"Create a new post","Ir a Publicar ↗":"Go to Publish ↗","Ver Cuentas ↗":"View Accounts ↗","Ver Historial ↗":"View History ↗","Abrir Analytics ↗":"Open Analytics ↗",
-  "Rendimiento":"Performance","Últimos 30 días":"Last 30 days","Vistas":"Views","Seguidores":"Followers","Compartidos":"Shares","Distribución multicuentas":"Multi-account distribution",
-  "Mejor cuenta individual":"Best individual account","Vistas adicionales":"Additional views","Multiplicador":"Multiplier",
-  "Prepará un video y distribuílo en las cuentas que elijas.":"Prepare one video and distribute it to the accounts you choose.",
-  "Administrá la red de cuentas conectadas a VYRAL.":"Manage the network of accounts connected to VYRAL.",
-  "Envíos, estados y errores de tus publicaciones.":"Deliveries, statuses and errors from your posts.",
-  "Crear mi cuenta":"Create my account","Ingresar a VYRAL":"Sign in to VYRAL","Registrate en VYRAL →":"Sign up for VYRAL →",
-  "Bienvenido.":"Welcome.","Ingresá para continuar con tu operación.":"Sign in to continue.","Correo electrónico":"Email","Contraseña":"Password","¿Olvidaste tu contraseña?":"Forgot your password?","¿Todavía no tenés cuenta?":"Don't have an account yet?",
-  "Publicá una vez.":"Publish once.","Llegá más lejos.":"Reach farther.","Multiplicá oportunidades.":"Multiply opportunities.",
-  "Un solo flujo para llevar tu contenido a todas tus cuentas. Menos tareas repetitivas, más tiempo para crear, vender y hacer crecer tu negocio.":"One flow to distribute your content across all your accounts. Less repetitive work, more time to create, sell and grow.",
-  "CREÁ":"CREATE","DISTRIBUÍ":"DISTRIBUTE","CRECÉ":"GROW","DESCUBRÍ VYRAL":"DISCOVER VYRAL","ACCESO A TU PANEL":"ACCESS YOUR DASHBOARD",
-  "MULTICUENTA":"MULTI-ACCOUNT","UN SOLO FLUJO":"ONE FLOW","DISTRIBUCIÓN":"DISTRIBUTION","AUTOMATIONS":"AUTOMATIONS",
-  "Menos cargas.":"Fewer uploads.","Más tiempo para crecer.":"More time to grow.","SIMULADOR DE DISTRIBUCIÓN":"DISTRIBUTION SAVINGS CALCULATOR",
-  "Gasto mensual en IA":"Monthly AI spend","Gasto mensual en apps / software":"Monthly apps / software spend","Videos que publicás por mes":"Videos published per month","Cuentas promedio por video":"Average accounts per video","Costo por hora de tu equipo":"Team hourly cost",
-  "PLAN RECOMENDADO AUTOMÁTICAMENTE":"AUTOMATICALLY RECOMMENDED PLAN","PUBLICANDO MANUALMENTE":"PUBLISHING MANUALLY","PUBLICANDO CON VYRAL":"PUBLISHING WITH VYRAL","CARGAS REPETITIVAS EVITADAS":"REPETITIVE UPLOADS AVOIDED","TIEMPO RECUPERABLE":"TIME RECOVERED","VALOR DEL TIEMPO RECUPERADO":"VALUE OF TIME RECOVERED","AHORRO POTENCIAL ESTIMADO":"ESTIMATED POTENTIAL SAVINGS","AHORRO POTENCIAL / AÑO":"POTENTIAL SAVINGS / YEAR",
-  "Inicio":"Starter","Crecimiento":"Growth","Escala":"Scale","EJEMPLO":"EXAMPLE","DATOS DE EJEMPLO":"SAMPLE DATA",
-  "VYRAL INTELLIGENCE":"VYRAL INTELLIGENCE","Vista estratégica":"Strategic view","Recomendaciones":"Recommendations","Predicción":"Forecast",
-  "Cambiar a Escala ↗":"Upgrade to Scale ↗","Cambiar plan ↗":"Change plan ↗","Administrar plan ↗":"Manage plan ↗",
-  "Omitir":"Skip","Atrás":"Back","Siguiente":"Next","Empezar":"Start","Bienvenido a VYRAL":"Welcome to VYRAL",
-  "Automatizaciones":"Automations","Conectá":"Connect","Prepará":"Prepare","Distribuí":"Distribute","Medí":"Measure"
-};
-
-const originalText = new WeakMap<Text,string>();
-const originalAttrs = new WeakMap<Element,Record<string,string>>();
-
-function translatedText(value:string){
-  const trimmed=value.trim();
-  if(exact[trimmed]) return value.replace(trimmed,exact[trimmed]);
-  let m=trimmed.match(/^Publicar en (\d+) cuenta(s?) ↗$/);
-  if(m) return value.replace(trimmed,`Publish to ${m[1]} account${Number(m[1])===1?"":"s"} ↗`);
-  m=trimmed.match(/^(\d+) cuentas conectadas$/);
-  if(m) return value.replace(trimmed,`${m[1]} connected accounts`);
-  return value;
-}
-
-function walk(root:Node,lang:"es"|"en"){
-  const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);
-  let node=walker.nextNode() as Text|null;
-  while(node){
-    if(node.parentElement && !["SCRIPT","STYLE"].includes(node.parentElement.tagName)){
-      if(!originalText.has(node)) originalText.set(node,node.nodeValue||"");
-      const source=originalText.get(node)||"";
-      node.nodeValue=lang==="en"?translatedText(source):source;
-    }
-    node=walker.nextNode() as Text|null;
-  }
-  if(root instanceof Element || root instanceof Document){
-    const els=(root instanceof Element?[root,...Array.from(root.querySelectorAll("input,textarea,[aria-label]"))]:Array.from(document.querySelectorAll("input,textarea,[aria-label]"))) as Element[];
-    for(const el of els){
-      if(!originalAttrs.has(el)) originalAttrs.set(el,{placeholder:el.getAttribute("placeholder")||"",aria:el.getAttribute("aria-label")||""});
-      const orig=originalAttrs.get(el)!;
-      if(orig.placeholder) el.setAttribute("placeholder",lang==="en"?translatedText(orig.placeholder):orig.placeholder);
-      if(orig.aria) el.setAttribute("aria-label",lang==="en"?translatedText(orig.aria):orig.aria);
-    }
-  }
-}
-
+type Lang="es"|"en";
+type Country={code:string;flag:string;name:string;lang:Lang;tz:string;zone:string};
+const countries:Country[]=[
+{code:"AR",flag:"🇦🇷",name:"Argentina",lang:"es",tz:"America/Argentina/Buenos_Aires",zone:"GMT-3"},{code:"BR",flag:"🇧🇷",name:"Brasil",lang:"es",tz:"America/Sao_Paulo",zone:"GMT-3"},{code:"CL",flag:"🇨🇱",name:"Chile",lang:"es",tz:"America/Santiago",zone:"GMT-3"},{code:"UY",flag:"🇺🇾",name:"Uruguay",lang:"es",tz:"America/Montevideo",zone:"GMT-3"},{code:"PY",flag:"🇵🇾",name:"Paraguay",lang:"es",tz:"America/Asuncion",zone:"GMT-3"},{code:"BO",flag:"🇧🇴",name:"Bolivia",lang:"es",tz:"America/La_Paz",zone:"GMT-4"},{code:"PE",flag:"🇵🇪",name:"Perú",lang:"es",tz:"America/Lima",zone:"GMT-5"},{code:"CO",flag:"🇨🇴",name:"Colombia",lang:"es",tz:"America/Bogota",zone:"GMT-5"},{code:"EC",flag:"🇪🇨",name:"Ecuador",lang:"es",tz:"America/Guayaquil",zone:"GMT-5"},{code:"VE",flag:"🇻🇪",name:"Venezuela",lang:"es",tz:"America/Caracas",zone:"GMT-4"},{code:"MX",flag:"🇲🇽",name:"México",lang:"es",tz:"America/Mexico_City",zone:"CST"},{code:"US",flag:"🇺🇸",name:"United States",lang:"en",tz:"America/New_York",zone:"ET"},{code:"CA",flag:"🇨🇦",name:"Canada",lang:"en",tz:"America/Toronto",zone:"ET"},{code:"ES",flag:"🇪🇸",name:"España",lang:"es",tz:"Europe/Madrid",zone:"CET"},{code:"GB",flag:"🇬🇧",name:"United Kingdom",lang:"en",tz:"Europe/London",zone:"GMT"},{code:"FR",flag:"🇫🇷",name:"France",lang:"en",tz:"Europe/Paris",zone:"CET"},{code:"DE",flag:"🇩🇪",name:"Germany",lang:"en",tz:"Europe/Berlin",zone:"CET"},{code:"IT",flag:"🇮🇹",name:"Italy",lang:"en",tz:"Europe/Rome",zone:"CET"},{code:"PT",flag:"🇵🇹",name:"Portugal",lang:"en",tz:"Europe/Lisbon",zone:"WET"},{code:"NL",flag:"🇳🇱",name:"Netherlands",lang:"en",tz:"Europe/Amsterdam",zone:"CET"},{code:"CH",flag:"🇨🇭",name:"Switzerland",lang:"en",tz:"Europe/Zurich",zone:"CET"},{code:"AE",flag:"🇦🇪",name:"United Arab Emirates",lang:"en",tz:"Asia/Dubai",zone:"GMT+4"},{code:"JP",flag:"🇯🇵",name:"Japan",lang:"en",tz:"Asia/Tokyo",zone:"GMT+9"},{code:"AU",flag:"🇦🇺",name:"Australia",lang:"en",tz:"Australia/Sydney",zone:"AET"}
+];
+const exact:Record<string,string>={"Dashboard":"Dashboard","Publicar":"Publish","Cuentas":"Accounts","Historial":"History","Planes":"Plans","Preguntas frecuentes":"FAQ","Soporte 24/7":"24/7 Support","Cerrar sesión":"Log out","Nueva publicación":"New post","Descripción":"Caption","Privacidad":"Privacy","Seleccioná cuentas":"Select accounts","Centro de operaciones":"Operations center","Tu contenido. Multiplicado.":"Your content. Multiplied.","Últimos 30 días":"Last 30 days","Vistas":"Views","Seguidores":"Followers","Compartidos":"Shares","Distribución multicuentas":"Multi-account distribution","Ahora":"Now","Programar":"Schedule","Elegir fecha y hora":"Choose date and time","PUBLICACIÓN":"PUBLISHING","¿Cuándo querés publicarlo?":"When do you want to publish?","Publicar inmediatamente":"Publish immediately","Fecha y hora":"Date and time","Presioná para elegir el video que vas a distribuir.":"Click to choose the video you want to distribute."};
+const originalText=new WeakMap<Text,string>();
+function translatedText(v:string){const t=v.trim();return exact[t]?v.replace(t,exact[t]):v}
+function walk(root:Node,lang:Lang){const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);let n=w.nextNode() as Text|null;while(n){if(n.parentElement&&!["SCRIPT","STYLE"].includes(n.parentElement.tagName)){if(!originalText.has(n))originalText.set(n,n.nodeValue||"");const s=originalText.get(n)||"";n.nodeValue=lang==="en"?translatedText(s):s}n=w.nextNode() as Text|null}}
 export default function LocaleController(){
-  const [open,setOpen]=useState(false);
-  const [country,setCountry]=useState<Country>("AR");
-  const observer=useRef<MutationObserver|null>(null);
-
-  function apply(next:Country){
-    const lang=next==="US"?"en":"es";
-    setCountry(next);
-    try{localStorage.setItem("vyral-country",next);localStorage.setItem("vyral-lang",lang)}catch{}
-    document.documentElement.lang=lang;
-    walk(document,lang);
-    window.dispatchEvent(new CustomEvent("vyral:locale",{detail:{country:next,lang}}));
-  }
-
-  useEffect(()=>{
-    let saved:Country="AR";
-    try{saved=(localStorage.getItem("vyral-country") as Country)||"AR"}catch{}
-    apply(saved);
-    observer.current=new MutationObserver(records=>{
-      const lang=(localStorage.getItem("vyral-lang")||"es") as "es"|"en";
-      for(const rec of records) rec.addedNodes.forEach(n=>walk(n,lang));
-    });
-    observer.current.observe(document.body,{childList:true,subtree:true});
-    return()=>observer.current?.disconnect();
-  },[]);
-
-  return <div className="vyralLocaleDock">
-    <button type="button" className="vyralLocaleTrigger" onClick={()=>setOpen(!open)} aria-label="Cambiar país e idioma"><span>{country==="US"?"US":"AR"}</span><b>◎</b></button>
-    {open&&<div className="vyralLocalePanel">
-      <small>PAÍS / LANGUAGE</small><strong>{country==="US"?"United States":"Argentina"}</strong>
-      <p>{country==="US"?"VYRAL is displayed in English.":"VYRAL se muestra en español."}</p>
-      <div><button className={country==="AR"?"active":""} onClick={()=>{apply("AR");setOpen(false)}}><span>AR</span>Argentina<small>Español</small></button><button className={country==="US"?"active":""} onClick={()=>{apply("US");setOpen(false)}}><span>US</span>United States<small>English</small></button></div>
-    </div>}
-  </div>;
+ const [open,setOpen]=useState(false);const [code,setCode]=useState("AR");const [query,setQuery]=useState("");const observer=useRef<MutationObserver|null>(null);const current=countries.find(c=>c.code===code)||countries[0];
+ function apply(next:string){const c=countries.find(x=>x.code===next)||countries[0];setCode(c.code);try{localStorage.setItem("vyral-country",c.code);localStorage.setItem("vyral-lang",c.lang);localStorage.setItem("vyral-timezone",c.tz)}catch{}document.documentElement.lang=c.lang;walk(document,c.lang);window.dispatchEvent(new CustomEvent("vyral:locale",{detail:{country:c.code,lang:c.lang,tz:c.tz,zone:c.zone,flag:c.flag,name:c.name}}))}
+ useEffect(()=>{let saved="AR";try{saved=localStorage.getItem("vyral-country")||"AR"}catch{};apply(saved);observer.current=new MutationObserver(rs=>{let l:Lang="es";try{l=(localStorage.getItem("vyral-lang")||"es") as Lang}catch{};rs.forEach(r=>r.addedNodes.forEach(n=>walk(n,l)))});observer.current.observe(document.body,{childList:true,subtree:true});return()=>observer.current?.disconnect()},[]);
+ const filtered=countries.filter(c=>(c.name+" "+c.code).toLowerCase().includes(query.toLowerCase()));
+ return <div className="vyralLocaleDock"><button type="button" className="vyralLocaleTrigger" onClick={()=>setOpen(!open)}><span className="flag">{current.flag}</span><span>{current.code}</span><b>⌄</b></button>{open&&<div className="vyralLocalePanel"><small>PAÍS · IDIOMA · ZONA HORARIA</small><strong>{current.flag} {current.name}</strong><p>{current.lang==="es"?"VYRAL en español":"VYRAL in English"} · {current.zone}</p><input className="vyralCountrySearch" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Buscar país…"/><div className="vyralCountryGrid">{filtered.map(c=><button key={c.code} className={c.code===code?"active":""} onClick={()=>{apply(c.code);setOpen(false);setQuery("")}}><span className="flag">{c.flag}</span><b>{c.name}</b><small>{c.lang==="es"?"Español":"English"} · {c.zone}</small></button>)}</div></div>}</div>
 }
