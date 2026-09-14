@@ -9,6 +9,7 @@ import TopViralDemo from "./ui/TopViralDemo";
 import DashboardExtrasController from "./ui/DashboardExtrasController";
 import CreditBadge from "./ui/CreditBadge";
 import AnalyticsFilterPanel from "./ui/AnalyticsFilterPanel";
+import PlanFeatureGate from "./ui/PlanFeatureGate";
 import "./ui/dashboard-addons.css";
 
 export const dynamic = "force-dynamic";
@@ -35,11 +36,13 @@ export default async function Home() {
   }
 
   if (!isPlanId(planId)) redirect("/planes");
+  const starter = planId === "inicio";
 
   const accounts = await listAccounts();
-  return <div className="dashboardPageWrap">
+  return <div className={`dashboardPageWrap ${starter ? "starterPlan" : "premiumPlan"}`}>
     <Dashboard initialAccounts={accounts} />
     <DashboardExtrasController />
+    <PlanFeatureGate starter={starter} />
 
     <nav className="dashboardSideExtras" aria-label="Cuenta y soporte">
       <Link href="/mi-plan"><span>◇</span><b>Planes</b></Link>
@@ -50,7 +53,10 @@ export default async function Home() {
     </nav>
 
     <section className="dashboardPostFlow">
-      <div className="dashboardTopContent"><TopViralDemo /></div>
+      <div className={`dashboardTopContent ${starter ? "starterLockedFeature" : ""}`}>
+        <TopViralDemo />
+        {starter && <div className="starterFeatureOverlay"><div className="starterGateIcon">✦</div><small>TOP CONTENT · PREMIUM</small><h2>Descubrí qué contenido está impulsando tu crecimiento.</h2><p>Los 5 videos más virales y sus métricas se desbloquean desde el plan Crecimiento.</p><Link href="/mi-plan#upgrade">Cambiar plan ↗</Link></div>}
+      </div>
       <div className="dashboardPostMetrics">
         <section className="vdCard">
           <div className="vdCardHead"><div><div className="vdLabel">RENDIMIENTO</div><h2>Últimos 30 días</h2></div></div>
@@ -62,6 +68,6 @@ export default async function Home() {
         </section>
       </div>
     </section>
-    <AnalyticsFilterPanel />
+    <div className={starter ? "starterAnalyticsFilterLocked" : ""}><AnalyticsFilterPanel /></div>
   </div>;
 }
