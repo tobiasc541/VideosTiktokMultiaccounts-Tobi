@@ -5,6 +5,7 @@ import CreatorPromoEntry from "./components/CreatorPromoEntry";
 import LocaleController from "./components/LocaleController";
 import LocaleIntegrityGuard from "./components/LocaleIntegrityGuard";
 import LocaleDynamicFinalizer from "./components/LocaleDynamicFinalizer";
+import LocaleFeatureCoverage from "./components/LocaleFeatureCoverage";
 
 const appIcon = "/vyral-mark.svg";
 
@@ -26,6 +27,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <LocaleController />
         <LocaleIntegrityGuard />
         <LocaleDynamicFinalizer />
+        <LocaleFeatureCoverage />
         {children}
         <div className="vyralPersistentSignature" aria-hidden="true"><span>Powered by</span><strong>Tobias Carrizo</strong></div>
       </body>
