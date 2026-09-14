@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { getCustomerSession } from "../../../../../lib/auth";
-import { supabaseAdmin } from "../../../../../lib/supabase-admin";
+import { getCustomerSession } from "../../../../lib/auth";
+import { supabaseAdmin } from "../../../../lib/supabase-admin";
 
 export async function POST(req: Request) {
   const session = await getCustomerSession();
@@ -15,12 +15,7 @@ export async function POST(req: Request) {
   const alreadyRequested = Boolean(metadata.cancel_requested_at);
 
   if (!alreadyRequested) {
-    messages.push({
-      id: crypto.randomUUID(),
-      from: "user",
-      text: "Solicito cancelar mi suscripción de VYRAL al finalizar el período actual.",
-      createdAt: new Date().toISOString()
-    });
+    messages.push({ id: crypto.randomUUID(), from: "user", text: "Solicito cancelar mi suscripción de VYRAL al finalizar el período actual.", createdAt: new Date().toISOString() });
   }
 
   await client.auth.admin.updateUserById(session.userId, {
