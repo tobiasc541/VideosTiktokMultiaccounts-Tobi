@@ -7,12 +7,12 @@ export default function DashboardExtrasController() {
     const sync = () => {
       const active = document.querySelector(".vdNav button.active");
       const root = document.querySelector<HTMLElement>(".dashboardPageWrap");
-      const postFlow = document.querySelector<HTMLElement>(".dashboardPostFlow");
-      if (!root || !postFlow) return;
+      if (!root) return;
       const label = (active?.textContent || "").toLowerCase();
       const dashboard = label.includes("dashboard");
       const analytics = label.includes("analytics");
-      postFlow.style.display = dashboard || analytics ? "block" : "none";
+      root.classList.toggle("show-dashboard-extras", dashboard);
+      root.classList.toggle("show-analytics-extras", analytics);
       root.classList.toggle("isDashboardSection", dashboard);
       root.classList.toggle("isAnalyticsSection", analytics);
     };
