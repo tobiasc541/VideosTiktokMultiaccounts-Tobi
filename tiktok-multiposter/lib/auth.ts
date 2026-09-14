@@ -4,60 +4,74 @@ import { env } from "./env";
 
 const COOKIE = "mp_session";
 const USER_PREFIX = "u";
+const ADMIN_PREFIX = "a";
 
-type CustomerSession = {
+export type CustomerSession = {
   userId: string;
   email: string;
   plan?: string;
   iat: number;
 };
 
+type AdminSession = {
+  email: string;
+  role: "admin";
+  iat: number;
+};
+
 function legacySessionValue() {
-  return crypto
-    .createHmac("sha256", env("APP_PASSWORD"))
-    .update("tiktok-multiposter-session-v1")
-    .digest("hex");
+  return crypto.createHmac("sha256", env("APP_PASSWORD")).update("tiktok-multiposter-session-v1").digest("hex");
 }
 
 function signPayload(payload: string) {
   return crypto.createHmac("sha256", env("APP_PASSWORD")).update(payload).digest("hex");
 }
 
-function encodeCustomerSession(session: CustomerSession) {
-  const payload = Buffer.from(JSON.stringify(session)).toString("base64url");
-  return `${USER_PREFIX}.${payload}.${signPayload(payload)}`;
+function encodeSession(prefix: string, data: unknown) {
+  const payload = Buffer.from(JSON.stringify(data)).toString("base64url");
+  return `${prefix}.${payload}.${signPayload(payload)}`;
 }
 
-function decodeCustomerSession(value: string): CustomerSession | null {
-  const [prefix, payload, signature] = value.split(".");
-  if (prefix !== USER_PREFIX || !payload || !signature) return null;
+function decodeSigned<T>(value: string, prefix: string): T | null {
+  const [actualPrefix, payload, signature] = value.split(".");
+  if (actualPrefix !== prefix || !payload || !signature) return null;
   const expected = signPayload(payload);
   if (signature.length !== expected.length) return null;
   if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) return null;
-  try {
-    const parsed = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as CustomerSession;
-    if (!parsed.userId || !parsed.email || !parsed.iat) return null;
-    return parsed;
-  } catch {
-    return null;
-  }
+  try { return JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as T; } catch { return null; }
+}
+
+function decodeCustomerSession(value: string): CustomerSession | null {
+  const parsed = decodeSigned<CustomerSession>(value, USER_PREFIX);
+  if (!parsed?.userId || !parsed.email || !parsed.iat) return null;
+  return parsed;
+}
+
+function decodeAdminSession(value: string): AdminSession | null {
+  const parsed = decodeSigned<AdminSession>(value, ADMIN_PREFIX);
+  if (!parsed?.email || parsed.role !== "admin" || !parsed.iat) return null;
+  return parsed;
 }
 
 export async function getCustomerSession() {
   const store = await cookies();
   const actual = store.get(COOKIE)?.value;
-  if (!actual) return null;
-  return decodeCustomerSession(actual);
+  return actual ? decodeCustomerSession(actual) : null;
 }
+
+export async function getAdminSession() {
+  const store = await cookies();
+  const actual = store.get(COOKIE)?.value;
+  return actual ? decodeAdminSession(actual) : null;
+}
+
+export async function isAdmin() { return Boolean(await getAdminSession()); }
 
 export async function isLoggedIn() {
   const store = await cookies();
   const actual = store.get(COOKIE)?.value;
   if (!actual) return false;
-
-  const customer = decodeCustomerSession(actual);
-  if (customer) return true;
-
+  if (decodeCustomerSession(actual) || decodeAdminSession(actual)) return true;
   const expected = legacySessionValue();
   if (actual.length !== expected.length) return false;
   return crypto.timingSafeEqual(Buffer.from(actual), Buffer.from(expected));
@@ -65,24 +79,17 @@ export async function isLoggedIn() {
 
 export async function setSession() {
   const store = await cookies();
-  store.set(COOKIE, legacySessionValue(), {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    maxAge: 60 * 60 * 24 * 30
-  });
+  store.set(COOKIE, legacySessionValue(), { httpOnly:true, sameSite:"lax", secure:process.env.NODE_ENV==="production", path:"/", maxAge:60*60*24*30 });
 }
 
 export async function setCustomerSession(userId: string, email: string, plan?: string) {
   const store = await cookies();
-  store.set(COOKIE, encodeCustomerSession({ userId, email, plan, iat: Date.now() }), {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    maxAge: 60 * 60 * 24 * 30
-  });
+  store.set(COOKIE, encodeSession(USER_PREFIX, { userId, email, plan, iat: Date.now() }), { httpOnly:true, sameSite:"lax", secure:process.env.NODE_ENV==="production", path:"/", maxAge:60*60*24*30 });
+}
+
+export async function setAdminSession(email: string) {
+  const store = await cookies();
+  store.set(COOKIE, encodeSession(ADMIN_PREFIX, { email, role:"admin", iat:Date.now() }), { httpOnly:true, sameSite:"lax", secure:process.env.NODE_ENV==="production", path:"/", maxAge:60*60*24*30 });
 }
 
 export async function clearSession() {
