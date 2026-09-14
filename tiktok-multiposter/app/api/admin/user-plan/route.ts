@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { getAdminSession } from "../../../../../lib/auth";
-import { supabaseAdmin } from "../../../../../lib/supabase-admin";
+import { getAdminSession } from "../../../../lib/auth";
+import { supabaseAdmin } from "../../../../lib/supabase-admin";
 
 const allowed = new Set(["", "inicio", "pro", "escala"]);
 
