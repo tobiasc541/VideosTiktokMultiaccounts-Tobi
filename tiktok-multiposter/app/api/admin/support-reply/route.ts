@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { getAdminSession } from "../../../../../lib/auth";
-import { supabaseAdmin } from "../../../../../lib/supabase-admin";
+import { getAdminSession } from "../../../../lib/auth";
+import { supabaseAdmin } from "../../../../lib/supabase-admin";
 
 export async function POST(req: Request) {
   if (!(await getAdminSession())) return NextResponse.redirect(new URL("/login", req.url), 303);
