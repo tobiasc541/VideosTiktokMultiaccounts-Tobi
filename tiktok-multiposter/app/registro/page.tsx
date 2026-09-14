@@ -18,9 +18,9 @@ export default async function RegisterPage({ searchParams }: { searchParams: Pro
           <div className="vyralAuthBrand">V<span>Y</span>RAL</div>
           <div>
             <h1>Creá tu cuenta.<em>Activá tu red.</em></h1>
-            <p>Tu espacio en VYRAL empieza acá. Después verificás tu correo, elegís el plan y entrás al panel.</p>
+            <p>Tu espacio en VYRAL empieza acá. Después verificás tu correo, seleccionás tu plan y entrás al panel.</p>
           </div>
-          <div className="vyralAuthSteps"><span className="active">01 Cuenta</span><span>02 Verificación</span><span>03 Plan</span></div>
+          <div className="vyralAuthSteps"><span className="active">01 Creá tu cuenta</span><span>02 Verificá tu cuenta</span><span>03 Seleccioná tu plan</span><span>04 Disfrutá de la viralidad</span></div>
         </aside>
         <div className="vyralAuthCard">
           <div className="vyralAuthCardHead"><small>NUEVA CUENTA</small><h2>Registrate en VYRAL.</h2><p>Completá tus datos para crear tu acceso.</p></div>
