@@ -3,7 +3,7 @@ import "./brand.css";
 import "./login/auth-login.css";
 import CreatorPromoEntry from "./components/CreatorPromoEntry";
 import LocaleSelector from "./components/LocaleSelector";
-import LocaleRuntime2 from "./components/LocaleRuntime2";
+import LocaleRuntime3 from "./components/LocaleRuntime3";
 
 const appIcon = "/vyral-mark.svg";
 
@@ -23,7 +23,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <CreatorPromoEntry />
         <LocaleSelector />
-        <LocaleRuntime2 />
+        <LocaleRuntime3 />
         {children}
         <div className="vyralPersistentSignature" aria-hidden="true"><span>Powered by</span><strong>Tobias Carrizo</strong></div>
       </body>
