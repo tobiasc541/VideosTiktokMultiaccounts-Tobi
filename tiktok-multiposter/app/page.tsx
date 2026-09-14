@@ -14,6 +14,7 @@ import PremiumAnalyticsPanel from "./ui/PremiumAnalyticsPanel";
 import "./ui/dashboard-addons.css";
 import "./ui/premium-analytics.css";
 import "./ui/plan-gates-extra.css";
+import "./ui/analytics-layout-fix.css";
 
 export const dynamic = "force-dynamic";
 
@@ -30,22 +31,25 @@ export default async function Home() {
   const planId = String(meta.plan || session.plan || "");
   const periodEnd = meta.subscription_current_period_end || meta.current_period_end || null;
 
-  if (periodEnd && new Date(periodEnd).getTime() <= Date.now()) {
+  if (periodEnd && new Date(String(periodEnd)).getTime() <= Date.now()) {
     const next = { ...meta } as Record<string, unknown>;
     delete next.plan;
     next.subscription_status = "expired";
+    next.account_notice = "Tu período terminó. Elegí un plan para volver a activar VYRAL.";
     await client.auth.admin.updateUserById(session.userId, { user_metadata: next });
     redirect("/planes?expired=1");
   }
 
   if (!isPlanId(planId)) redirect("/planes");
   const starter = planId === "inicio";
+  const daysLeft = periodEnd ? Math.max(0, Math.ceil((new Date(String(periodEnd)).getTime() - Date.now()) / 86400000)) : null;
 
   const accounts = await listAccounts();
   return <div className={`dashboardPageWrap plan-${planId} ${starter ? "starterPlan" : "premiumPlan"}`}>
     <Dashboard initialAccounts={accounts} />
     <DashboardExtrasController />
     <PlanFeatureGate starter={starter} />
+    {daysLeft !== null && daysLeft <= 1 && daysLeft > 0 && <div className="subscriptionExpiryBanner"><div><small>RENOVACIÓN</small><strong>Tu plan vence mañana.</strong><span>Renová ahora para mantener el acceso sin interrupciones.</span></div><Link href="/mi-plan#upgrade">Administrar plan ↗</Link></div>}
 
     <nav className="dashboardSideExtras" aria-label="Cuenta y soporte">
       <Link href="/mi-plan"><span>◇</span><b>Planes</b></Link>
