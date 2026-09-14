@@ -3,12 +3,15 @@ import { getAdminSession } from "../../lib/auth";
 import { supabaseAdmin } from "../../lib/supabase-admin";
 import AutoRefresh from "../components/AutoRefresh";
 import Giveaway from "./Giveaway";
+import AdminUserDirectory from "./AdminUserDirectory";
+import AdminAnalyticsPanel from "./AdminAnalyticsPanel";
 import "./admin.css";
 import "./giveaway.css";
 
 export const dynamic = "force-dynamic";
 
 type SupportMessage = { id: string; from: "user" | "admin"; text: string; createdAt: string };
+type ArchiveItem = { id:string; subject:string; messages:SupportMessage[]; closedAt:string };
 
 function planLabel(plan?: string) {
   if (plan === "inicio") return "Inicio";
@@ -35,6 +38,13 @@ export default async function AdminPage() {
   const openTickets = supportTickets.filter((u) => u.user_metadata?.support_status === "open").length;
   const paidUsers = users.filter((u) => Boolean(u.user_metadata?.plan)).length;
   const giveawayUsers = users.filter(u=>u.email).map(u=>({ id:u.id, email:u.email || "", name:u.user_metadata?.full_name || "Usuario VYRAL" }));
+  const directoryUsers = users.map(u=>({id:u.id,name:u.user_metadata?.full_name||"Sin nombre",email:u.email||"",verified:Boolean(u.email_confirmed_at),plan:String(u.user_metadata?.plan||""),lastSignIn:u.last_sign_in_at||"",creatorCode:String(u.user_metadata?.creator_code||"")}));
+
+  const now=new Date(); const thisMonthStart=new Date(now.getFullYear(),now.getMonth(),1); const prevMonthStart=new Date(now.getFullYear(),now.getMonth()-1,1);
+  const thisMonthUsers=users.filter(u=>new Date(u.created_at).getTime()>=thisMonthStart.getTime()).length;
+  const prevMonthUsers=users.filter(u=>{const t=new Date(u.created_at).getTime();return t>=prevMonthStart.getTime()&&t<thisMonthStart.getTime()}).length;
+  const estimatedMrr=users.reduce((sum,u)=>sum+(u.user_metadata?.plan==="inicio"?1.99:u.user_metadata?.plan==="pro"?6.99:u.user_metadata?.plan==="escala"?19.99:0),0);
+  const supportArchive = users.flatMap(u => (Array.isArray(u.user_metadata?.support_archive)?u.user_metadata.support_archive:[]).map((a:ArchiveItem)=>({...a,userId:u.id,email:u.email||"",name:u.user_metadata?.full_name||"Usuario VYRAL"}))).sort((a,b)=>new Date(b.closedAt).getTime()-new Date(a.closedAt).getTime()).slice(0,50);
 
   return (
     <main className="adminPage">
@@ -42,12 +52,12 @@ export default async function AdminPage() {
       <aside className="adminSidebar">
         <div className="adminLogo">V<b>Y</b>RAL</div>
         <div className="adminRole">SUPER ADMIN</div>
-        <nav><a href="#overview">Overview</a><a href="#creators">Creators</a><a href="#cancellations">Cancelaciones</a><a href="#support">Soporte</a><a href="#giveaway">Sorteos</a><a href="#users">Usuarios</a></nav>
+        <nav><a href="#overview">Overview</a><a href="#analytics">Analytics</a><a href="#creators">Creators</a><a href="#cancellations">Cancelaciones</a><a href="#support">Soporte</a><a href="#support-history">Historial soporte</a><a href="#giveaway">Sorteos</a><a href="#users">Usuarios</a></nav>
         <div className="adminSideBottom"><span>{admin.email}</span><form action="/api/logout" method="post"><button>Cerrar sesión</button></form></div>
       </aside>
 
       <section className="adminMain">
-        <header className="adminHeader" id="overview"><div><small>CONTROL CENTER</small><h1>Tu operación, <em>bajo control.</em></h1><p>Usuarios, creators, cancelaciones, soporte y sorteos desde un solo panel privado.</p></div><div className="adminLive"><i/> LIVE · 5S</div></header>
+        <header className="adminHeader" id="overview"><div><small>CONTROL CENTER</small><h1>Tu operación, <em>bajo control.</em></h1><p>Usuarios, crecimiento, creators, soporte y sorteos desde un solo panel privado.</p></div><div className="adminLive"><i/> LIVE · 5S</div></header>
 
         <section className="adminStats">
           <article><span>01</span><small>USUARIOS</small><strong>{users.length}</strong><p>Cuentas registradas</p></article>
@@ -55,6 +65,8 @@ export default async function AdminPage() {
           <article><span>03</span><small>CREATOR SALES</small><strong>{creatorSubscribers}</strong><p>Suscripciones por código</p></article>
           <article><span>04</span><small>CANCELACIONES</small><strong>{pendingCancellations.length}</strong><p>Esperando tu decisión</p></article>
         </section>
+
+        <AdminAnalyticsPanel totalUsers={users.length} paidUsers={paidUsers} thisMonthUsers={thisMonthUsers} prevMonthUsers={prevMonthUsers} estimatedMrr={estimatedMrr}/>
 
         <section className="adminSection" id="creators">
           <div className="adminSectionHead"><div><small>VYRAL CREATOR PROGRAM</small><h2>Códigos promocionales</h2></div><span>{creatorApplications.length} solicitudes pendientes</span></div>
@@ -78,34 +90,31 @@ export default async function AdminPage() {
         </section>
 
         <section className="adminSection" id="support">
-          <div className="adminSectionHead"><div><small>SOPORTE 24/7 · LIVE</small><h2>Bandeja de consultas</h2></div><span>{openTickets} abiertas</span></div>
-          {!supportTickets.length ? <div className="adminEmpty">Todavía no hay consultas de usuarios.</div> : supportTickets.map((user) => {
+          <div className="adminSectionHead"><div><small>SOPORTE 24/7 · LIVE</small><h2>Consultas activas</h2></div><span>{supportTickets.length} conversaciones</span></div>
+          {!supportTickets.length ? <div className="adminEmpty">No hay consultas activas. Las cerradas pasan automáticamente al historial compacto.</div> : supportTickets.map((user) => {
             const messages = (user.user_metadata.support_messages || []) as SupportMessage[];
             const last = messages[messages.length - 1];
             const status = String(user.user_metadata.support_status || "open");
             return <article className="adminTicket" key={user.id}>
-              <div className="adminTicketTop"><div><strong>{user.email}</strong><span>{user.user_metadata?.full_name || "Usuario VYRAL"} · {planLabel(user.user_metadata?.plan)}</span></div><div className={`adminTicketStatus ${status}`}>{status === "open" ? "PENDIENTE" : status === "answered" ? "RESPONDIDO" : "CERRADO"}</div></div>
+              <div className="adminTicketTop"><div><strong>{user.email}</strong><span>{user.user_metadata?.full_name || "Usuario VYRAL"} · {planLabel(user.user_metadata?.plan)}</span></div><div className={`adminTicketStatus ${status}`}>{status === "open" ? "PENDIENTE" : status === "answered" ? "RESPONDIDO" : "ACTIVO"}</div></div>
               <h3>{user.user_metadata?.support_subject || "Consulta de soporte"}</h3>
               <div className="adminConversation">{messages.slice(-10).map((m) => <div className={`adminBubble ${m.from}`} key={m.id}><small>{m.from === "admin" ? "VOS" : user.email}</small><p>{m.text}</p><span>{new Date(m.createdAt).toLocaleString("es-AR")}</span></div>)}</div>
-              <form className="adminReply" action="/api/admin/support-reply" method="post"><input type="hidden" name="userId" value={user.id}/><textarea name="message" placeholder="Escribí tu respuesta al usuario…" maxLength={2000}/><div><button name="action" value="reply">Responder ↗</button><button className="ghost" name="action" value="close" formNoValidate>Cerrar consulta</button></div></form>
+              <form className="adminReply" action="/api/admin/support-reply" method="post"><input type="hidden" name="userId" value={user.id}/><textarea name="message" placeholder="Escribí tu respuesta al usuario…" maxLength={2000}/><div><button name="action" value="reply">Responder ↗</button><button className="ghost" name="action" value="close" formNoValidate>Cerrar y archivar</button></div></form>
               {last && <div className="adminLast">Último mensaje: {new Date(last.createdAt).toLocaleString("es-AR")}</div>}
             </article>;
           })}
         </section>
 
+        <section className="adminSection" id="support-history">
+          <div className="adminSectionHead"><div><small>HISTORIAL DE SOPORTE</small><h2>Últimas solicitudes cerradas</h2></div><span>{supportArchive.length} archivadas</span></div>
+          {!supportArchive.length?<div className="adminEmpty">Todavía no hay conversaciones archivadas.</div>:<div className="adminArchiveList">{supportArchive.map((a)=><details className="adminArchiveItem" key={`${a.userId}-${a.id}`}><summary><div><strong>{a.subject}</strong><span>{a.name} · {a.email}</span></div><time>{new Date(a.closedAt).toLocaleString("es-AR")}</time></summary><div className="adminArchiveBody">{(a.messages||[]).slice(-8).map((m:SupportMessage)=><p key={m.id}><b>{m.from==="admin"?"VOS":"USUARIO"}</b><span>{m.text}</span></p>)}</div></details>)}</div>}
+        </section>
+
         <div id="giveaway"><Giveaway users={giveawayUsers}/></div>
 
         <section className="adminSection" id="users">
-          <div className="adminSectionHead"><div><small>USUARIOS</small><h2>Gestión de cuentas</h2></div><span>Hasta 200 cuentas</span></div>
-          <div className="adminUserTable"><div className="adminUserHead"><span>Usuario</span><span>Estado</span><span>Plan</span><span>Último acceso</span><span>Acciones</span></div>
-            {users.map((u) => <div className="adminUserRow" key={u.id}>
-              <div><strong>{u.user_metadata?.full_name || "Sin nombre"}</strong><small>{u.email}</small></div>
-              <span className={u.email_confirmed_at ? "ok" : "warn"}>{u.email_confirmed_at ? "Verificado" : "Sin verificar"}</span>
-              <strong>{planLabel(u.user_metadata?.plan)}</strong>
-              <small>{u.last_sign_in_at ? new Date(u.last_sign_in_at).toLocaleString("es-AR") : "Nunca"}</small>
-              <div className="adminUserActions"><form action="/api/admin/user-plan" method="post"><input type="hidden" name="userId" value={u.id}/><select name="plan" defaultValue={u.user_metadata?.plan || ""}><option value="">Sin plan</option><option value="inicio">Inicio</option><option value="pro">Crecimiento</option><option value="escala">Escala</option></select><button>Guardar</button></form><form action="/api/admin/send-reset" method="post"><input type="hidden" name="email" value={u.email || ""}/><button className="secondary">Enviar reset</button></form></div>
-            </div>)}
-          </div>
+          <div className="adminSectionHead"><div><small>USUARIOS</small><h2>Gestión de cuentas</h2></div><span>Buscar y administrar</span></div>
+          <AdminUserDirectory users={directoryUsers}/>
         </section>
       </section>
     </main>
