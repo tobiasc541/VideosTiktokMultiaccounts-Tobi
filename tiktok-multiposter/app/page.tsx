@@ -8,6 +8,7 @@ import Dashboard from "./ui/Dashboard";
 import TopViralDemo from "./ui/TopViralDemo";
 import DashboardExtrasController from "./ui/DashboardExtrasController";
 import CreditBadge from "./ui/CreditBadge";
+import AnalyticsFilterPanel from "./ui/AnalyticsFilterPanel";
 import "./ui/dashboard-addons.css";
 
 export const dynamic = "force-dynamic";
@@ -61,5 +62,6 @@ export default async function Home() {
         </section>
       </div>
     </section>
+    <AnalyticsFilterPanel />
   </div>;
 }
