@@ -45,15 +45,15 @@ async function loadUser() {
 function sanitizeRule(input: any, existing?: AutomationRule): AutomationRule {
   const now = new Date().toISOString();
   const allowedPlatforms = new Set(["instagram", "facebook", "tiktok"]);
-  const platforms = Array.isArray(input.platforms)
+  const platforms = (Array.isArray(input.platforms)
     ? input.platforms.filter((x: string) => allowedPlatforms.has(x)).slice(0, 3)
-    : ["instagram", "facebook"];
-  const triggerMode = ["exact", "contains", "ai_intent"].includes(input.triggerMode)
+    : ["instagram", "facebook"]) as AutomationRule["platforms"];
+  const triggerMode = (["exact", "contains", "ai_intent"].includes(input.triggerMode)
     ? input.triggerMode
-    : "contains";
-  const goal = ["link_click", "dm_started", "lead", "none"].includes(input.conversionGoal)
+    : "contains") as AutomationRule["triggerMode"];
+  const goal = (["link_click", "dm_started", "lead", "none"].includes(input.conversionGoal)
     ? input.conversionGoal
-    : "dm_started";
+    : "dm_started") as AutomationRule["conversionGoal"];
   return {
     id: String(input.id || existing?.id || crypto.randomUUID()),
     name: String(input.name || existing?.name || "Nueva automatización").slice(0, 80),
