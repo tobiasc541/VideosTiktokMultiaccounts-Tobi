@@ -42,13 +42,24 @@ export default async function Home() {
 
     <nav className="dashboardSideExtras" aria-label="Cuenta y soporte">
       <Link href="/mi-plan"><span>◇</span><b>Planes</b></Link>
-      <Link href="/ayuda"><span>✦</span><b>Preguntas frecuentes</b></Link>
-      <Link href="/soporte"><span>?</span><b>Soporte 24/7</b></Link>
+      <Link href="/creadores"><span>✦</span><b>Creator Viral</b></Link>
+      <Link href="/ayuda"><span>?</span><b>Preguntas frecuentes</b></Link>
+      <Link href="/soporte"><span>↗</span><b>Soporte 24/7</b></Link>
       <CreditBadge />
     </nav>
 
-    <div className="dashboardTopContent">
-      <TopViralDemo />
-    </div>
+    <section className="dashboardPostFlow">
+      <div className="dashboardTopContent"><TopViralDemo /></div>
+      <div className="dashboardPostMetrics">
+        <section className="vdCard">
+          <div className="vdCardHead"><div><div className="vdLabel">RENDIMIENTO</div><h2>Últimos 30 días</h2></div></div>
+          <div className="vdMiniStats"><div><span>Vistas</span><b>284.750</b></div><div><span>Seguidores</span><b>+4.680</b></div><div><span>Compartidos</span><b>8.210</b></div></div>
+        </section>
+        <section className="vdCard">
+          <div className="vdCardHead"><div><div className="vdLabel">IMPACTO VYRAL</div><h2>Distribución multicuentas</h2></div></div>
+          <div className="vdImpactCompare compact"><div><span>Mejor cuenta individual</span><b>118.400</b></div><div><span>Vistas adicionales</span><b>+166.350</b></div><div><span>Multiplicador</span><b>2,40×</b></div></div>
+        </section>
+      </div>
+    </section>
   </div>;
 }
