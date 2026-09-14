@@ -1,0 +1,22 @@
+/* Locale integrity layer: keep layout LTR/stable while allowing Arabic text direction. */
+body[data-vyral-lang="ar"] :where(h1,h2,h3,h4,p,label,small,strong,span,b,a,button,input,textarea,select,.vdSub,.vdSectionSub,.vdLabel,.vdMetricHead,.vdMetricMeta,.vdOverviewCard,.vdCard,.faqHero,.faqList,.faqAssistant,.myPlanPage,.myAccountSecurity,.vyralPlanCard,.vyralPlansTop,.vaModal,.vaCompact){unicode-bidi:plaintext}
+body[data-vyral-lang="ar"] :where(p,label,input,textarea,select,.vdSub,.vdSectionSub,.faqHero,.faqAssistant,.myPlanPage,.myAccountSecurity,.vyralPlanCard,.vaModal){text-align:right}
+body[data-vyral-lang="ar"] :where(input,textarea,select){direction:rtl}
+body[data-vyral-lang="ar"] .vyralLocaleDock,body[data-vyral-lang="ar"] .vyralLocalePanel{direction:ltr;text-align:left}
+
+/* Permanent safe lane for fixed locale + notification controls. */
+.vyralDash .vdTop{padding-right:180px!important;box-sizing:border-box}
+.vyralDash .vdTop>.vdConnect,.vyralDash .vdTop>a:last-child{margin-right:0!important}
+.vyralPlansPage .vyralPlansWrap>div:first-child{padding-right:120px;box-sizing:border-box}
+.myPlanPage .myPlanTop,.faqPage .faqTop,.supportPage .supportTop{padding-right:120px;box-sizing:border-box}
+.vyralLocaleDock{right:86px!important}
+
+@media(max-width:980px){
+  .vyralDash .vdTop{padding-right:145px!important}
+  .vyralPlansPage .vyralPlansWrap>div:first-child,.myPlanPage .myPlanTop,.faqPage .faqTop,.supportPage .supportTop{padding-right:110px}
+}
+@media(max-width:760px){
+  .vyralDash .vdTop{padding-right:0!important;padding-top:54px!important}
+  .vyralPlansPage .vyralPlansWrap>div:first-child,.myPlanPage .myPlanTop,.faqPage .faqTop,.supportPage .supportTop{padding-right:0;padding-top:54px}
+  .vyralLocaleDock{right:70px!important}
+}
