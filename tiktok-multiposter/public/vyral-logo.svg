@@ -1,0 +1,22 @@
+<svg width="520" height="128" viewBox="0 0 520 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="g" x1="18" y1="14" x2="104" y2="112" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#BFFFFB"/>
+      <stop offset="0.48" stop-color="#63F3ED"/>
+      <stop offset="1" stop-color="#27CFC8"/>
+    </linearGradient>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="5" result="b"/>
+      <feColorMatrix in="b" type="matrix" values="0 0 0 0 0.38 0 0 0 0 0.95 0 0 0 0 0.92 0 0 0 .35 0"/>
+      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <g filter="url(#glow)">
+    <path d="M13 20L43 20L64 60L85 20H115L65 113L13 20Z" fill="url(#g)"/>
+    <path d="M32 20L64 76L96 20H80L64 49L48 20H32Z" fill="#051012" fill-opacity="0.85"/>
+    <path d="M14 20L28 20L64 87L99 20H114L64 113L14 20Z" fill="url(#g)" fill-opacity="0.92"/>
+    <path d="M44 20L64 56L84 20H69L64 30L59 20H44Z" fill="#E9FFFF" fill-opacity="0.82"/>
+  </g>
+  <text x="142" y="83" fill="#F4FAFA" font-family="Inter, Arial, sans-serif" font-size="64" font-weight="800" letter-spacing="8">VYRAL</text>
+  <circle cx="499" cy="27" r="3" fill="#62F3ED"/>
+</svg>
