@@ -10,48 +10,94 @@ function maskEmail(email: string) {
   return `${safe}@${domain}`;
 }
 
+function shortName(user: User) {
+  const base = (user.name || user.email.split("@")[0] || "VYRAL").trim();
+  return base.length > 13 ? `${base.slice(0,12)}…` : base;
+}
+
 export default function Giveaway({ users }: { users: User[] }) {
   const [plan,setPlan] = useState("pro");
   const [winner,setWinner] = useState<User | null>(null);
   const [spinning,setSpinning] = useState(false);
   const [status,setStatus] = useState("");
+  const [rotation,setRotation] = useState(0);
   const eligible = useMemo(()=>users.filter(u=>u.email),[users]);
+  const wheelUsers = eligible.slice(0,12);
   const prizeLabel = plan === "inicio" ? "PLAN INICIO · 1 MES" : plan === "escala" ? "PLAN ESCALA · 1 MES" : "PLAN CRECIMIENTO · 1 MES";
 
   async function draw() {
     if (!eligible.length || spinning) return;
-    setSpinning(true); setStatus("Sorteando entre usuarios activos…"); setWinner(null);
-    await new Promise(r=>setTimeout(r,2200));
-    const picked = eligible[Math.floor(Math.random()*eligible.length)];
+    const index = Math.floor(Math.random()*eligible.length);
+    const picked = eligible[index];
+    setSpinning(true);
+    setStatus("La ruleta está eligiendo un ganador…");
+    setWinner(null);
+    setRotation((old)=>old + 1800 + (Math.floor(Math.random()*8)*45) + 17);
+    await new Promise(r=>setTimeout(r,3300));
     const res = await fetch("/api/admin/giveaway-award", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ userId:picked.id, plan }) });
     if (!res.ok) { setStatus("No se pudo otorgar el premio."); setSpinning(false); return; }
-    setWinner(picked); setStatus("Premio otorgado automáticamente en VYRAL."); setSpinning(false);
+    setWinner(picked);
+    setStatus("Ganador confirmado. El premio ya fue asignado automáticamente.");
+    setSpinning(false);
   }
 
   function downloadCard() {
     if (!winner) return;
     const canvas = document.createElement("canvas"); canvas.width=1080; canvas.height=1350;
     const ctx = canvas.getContext("2d"); if (!ctx) return;
-    const g=ctx.createLinearGradient(0,0,1080,1350); g.addColorStop(0,"#050708"); g.addColorStop(.55,"#071214"); g.addColorStop(1,"#020304"); ctx.fillStyle=g; ctx.fillRect(0,0,1080,1350);
-    ctx.strokeStyle="rgba(98,247,240,.35)"; ctx.lineWidth=2; ctx.strokeRect(55,55,970,1240);
-    ctx.fillStyle="#78f4ef"; ctx.font="900 42px Arial"; ctx.fillText("VYRAL",80,125);
-    ctx.fillStyle="#697782"; ctx.font="700 22px Arial"; ctx.fillText("GIVEAWAY · GANADOR OFICIAL",80,185);
-    ctx.fillStyle="#ffffff"; ctx.font="900 88px Arial"; ctx.fillText("TENEMOS",80,360); ctx.fillText("GANADOR.",80,455);
-    ctx.fillStyle="#78f4ef"; ctx.font="700 28px Arial"; ctx.fillText("PREMIO",80,560);
-    ctx.fillStyle="#ffffff"; ctx.font="800 42px Arial"; ctx.fillText(prizeLabel,80,620);
-    ctx.fillStyle="#697782"; ctx.font="700 26px Arial"; ctx.fillText("GANADOR",80,760);
-    ctx.fillStyle="#ffffff"; ctx.font="800 54px Arial"; ctx.fillText(winner.name || "Usuario VYRAL",80,830);
-    ctx.fillStyle="#98a4ad"; ctx.font="600 30px Arial"; ctx.fillText(maskEmail(winner.email),80,885);
-    ctx.fillStyle="rgba(120,244,239,.08)"; ctx.fillRect(80,985,920,1);
-    ctx.fillStyle="#78f4ef"; ctx.font="700 24px Arial"; ctx.fillText("CREÁ · DISTRIBUÍ · CRECÉ",80,1080);
-    ctx.fillStyle="#697782"; ctx.font="500 24px Arial"; ctx.fillText("Premio asignado automáticamente a su cuenta.",80,1140);
-    ctx.fillStyle="#ffffff"; ctx.font="italic 34px Georgia"; ctx.fillText("Hacerse viral nunca fue tan fácil.",80,1235);
+
+    const bg=ctx.createLinearGradient(0,0,1080,1350); bg.addColorStop(0,"#020809"); bg.addColorStop(.42,"#061416"); bg.addColorStop(1,"#020304"); ctx.fillStyle=bg; ctx.fillRect(0,0,1080,1350);
+    const glow=ctx.createRadialGradient(790,220,30,790,220,520); glow.addColorStop(0,"rgba(86,255,246,.24)"); glow.addColorStop(.45,"rgba(58,205,201,.08)"); glow.addColorStop(1,"rgba(0,0,0,0)"); ctx.fillStyle=glow; ctx.fillRect(0,0,1080,800);
+    const glow2=ctx.createRadialGradient(170,1110,20,170,1110,420); glow2.addColorStop(0,"rgba(105,83,255,.15)"); glow2.addColorStop(1,"rgba(0,0,0,0)"); ctx.fillStyle=glow2; ctx.fillRect(0,650,700,700);
+
+    ctx.strokeStyle="rgba(112,248,241,.42)"; ctx.lineWidth=2; ctx.strokeRect(48,48,984,1254);
+    ctx.strokeStyle="rgba(255,255,255,.08)"; ctx.lineWidth=1; ctx.strokeRect(72,72,936,1206);
+
+    for(let i=0;i<38;i++){
+      const x=(i*151)%1080, y=(i*89)%1350;
+      ctx.fillStyle=i%3===0?"rgba(120,246,240,.55)":"rgba(255,255,255,.18)";
+      ctx.save(); ctx.translate(x,y); ctx.rotate((i*.47)%3); ctx.fillRect(-2,-9,4,18); ctx.restore();
+    }
+
+    ctx.fillStyle="#7bf7f1"; ctx.font="900 54px Arial"; ctx.fillText("VYRAL",82,145);
+    ctx.fillStyle="#77858f"; ctx.font="700 21px Arial"; ctx.fillText("GIVEAWAY · RESULTADO OFICIAL",82,192);
+    ctx.fillStyle="#ffffff"; ctx.font="900 94px Arial"; ctx.fillText("TENEMOS",82,340); ctx.fillText("GANADOR",82,440);
+    ctx.fillStyle="#7bf7f1"; ctx.font="900 22px Arial"; ctx.fillText("✦ SORTEO VYRAL",82,494);
+
+    ctx.fillStyle="rgba(255,255,255,.035)"; ctx.fillRect(82,555,916,186);
+    ctx.strokeStyle="rgba(123,247,241,.2)"; ctx.strokeRect(82,555,916,186);
+    ctx.fillStyle="#7bf7f1"; ctx.font="800 21px Arial"; ctx.fillText("PREMIO DESBLOQUEADO",112,607);
+    ctx.fillStyle="#ffffff"; ctx.font="900 43px Arial"; ctx.fillText(prizeLabel,112,678);
+    ctx.fillStyle="#74818b"; ctx.font="600 22px Arial"; ctx.fillText("Asignado automáticamente a la cuenta ganadora",112,714);
+
+    ctx.fillStyle="#7b8992"; ctx.font="800 20px Arial"; ctx.fillText("GANADOR",82,832);
+    ctx.fillStyle="#ffffff"; ctx.font="900 68px Arial"; ctx.fillText((winner.name || "Usuario VYRAL").toUpperCase(),82,914);
+    ctx.fillStyle="#9aa7af"; ctx.font="700 31px Arial"; ctx.fillText(maskEmail(winner.email),82,965);
+
+    ctx.fillStyle="rgba(123,247,241,.08)"; ctx.fillRect(82,1043,916,2);
+    ctx.fillStyle="#7bf7f1"; ctx.font="800 24px Arial"; ctx.fillText("CREÁ · DISTRIBUÍ · CRECÉ",82,1120);
+    ctx.fillStyle="#71808a"; ctx.font="500 23px Arial"; ctx.fillText("Tu próxima oportunidad puede ser la siguiente.",82,1166);
+    ctx.fillStyle="#ffffff"; ctx.font="italic 39px Georgia"; ctx.fillText("Hacerse viral nunca fue tan fácil.",82,1248);
+
     const a=document.createElement("a"); a.href=canvas.toDataURL("image/png"); a.download=`vyral-ganador-${Date.now()}.png`; a.click();
   }
 
   return <section className="adminGiveaway">
     <div className="adminSectionHead"><div><small>VYRAL GIVEAWAY</small><h2>Ruleta de sorteos</h2></div><span>{eligible.length} participantes</span></div>
-    <div className="giveawayGrid"><div className={`giveawayWheel ${spinning?"spinning":""}`}><div className="wheelRing">{spinning?"VYRAL":"✦"}</div><p>{spinning?"Buscando ganador…":"Todos los usuarios entran automáticamente"}</p></div><div className="giveawayControl"><label>Premio</label><select value={plan} onChange={e=>setPlan(e.target.value)}><option value="inicio">1 mes · Inicio</option><option value="pro">1 mes · Crecimiento</option><option value="escala">1 mes · Escala</option></select><button onClick={draw} disabled={spinning||!eligible.length}>{spinning?"Sorteando…":"Sortear ahora ✦"}</button><small>{status}</small></div></div>
-    {winner && <div className="giveawayWinner"><div><small>GANADOR</small><strong>{winner.name}</strong><span>{maskEmail(winner.email)}</span></div><div><b>{prizeLabel}</b><button onClick={downloadCard}>Descargar imagen Instagram ↓</button></div></div>}
+    <div className="giveawayGrid">
+      <div className="giveawayWheelPanel">
+        <div className="wheelPointer">▼</div>
+        <div className="giveawayWheel" style={{transform:`rotate(${rotation}deg)`}}>
+          <div className="wheelHub"><b>VYRAL</b><span>GIVEAWAY</span></div>
+          {wheelUsers.map((u,i)=>{
+            const angle=(360/Math.max(1,wheelUsers.length))*i;
+            return <span className="wheelName" key={u.id} style={{transform:`rotate(${angle}deg) translateY(-132px) rotate(${-angle}deg)`}}>{shortName(u)}</span>;
+          })}
+        </div>
+        <p>{eligible.length>12?`${eligible.length} usuarios participan · se muestran 12 nombres en la rueda`:`${eligible.length} usuarios participan en esta rueda`}</p>
+      </div>
+      <div className="giveawayControl"><div className="giveawayControlEyebrow">CONFIGURAR PREMIO</div><h3>Hacé girar la rueda.</h3><p>VYRAL elige al ganador, asigna el plan y te deja lista una pieza vertical para Instagram.</p><label>Premio</label><select value={plan} onChange={e=>setPlan(e.target.value)}><option value="inicio">1 mes · Inicio</option><option value="pro">1 mes · Crecimiento</option><option value="escala">1 mes · Escala</option></select><button onClick={draw} disabled={spinning||!eligible.length}>{spinning?"Girando ruleta…":"Girar ruleta ✦"}</button><small>{status}</small></div>
+    </div>
+    {winner && <div className="giveawayWinner"><div><small>GANADOR CONFIRMADO</small><strong>{winner.name}</strong><span>{maskEmail(winner.email)}</span></div><div><b>{prizeLabel}</b><button onClick={downloadCard}>Generar imagen premium ↓</button></div></div>}
   </section>;
 }
