@@ -38,7 +38,7 @@ export default async function MyPlanPage({ searchParams }: { searchParams: Promi
       <div className="myPlanGlow" />
       <section className="myPlanShell">
         <header className="myPlanTop">
-          <div><div className="myPlanBrand">V<span>Y</span>RAL</div><small>MI CUENTA</small></div>
+          <div><div className="myPlanBrand">V<span>Y</span>RAL</div></div>
           <Link href="/" className="myPlanBack">← Volver al panel</Link>
         </header>
 
