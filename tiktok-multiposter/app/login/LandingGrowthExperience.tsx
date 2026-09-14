@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import VyralCore3D from "./VyralCore3D";
 import "./landing-growth.css";
 
 const rows = [
@@ -67,8 +68,8 @@ export default function LandingGrowthExperience() {
   return <>
     <section className="vyralImpactSection" aria-label="Impacto VYRAL">
       <div className="vyralImpactGlow one"/><div className="vyralImpactGlow two"/>
-      <div className="vyralValueOrbit" aria-hidden="true">
-        <div className="vyralValueCore"><span>V</span><small>CORE</small></div>
+      <div className="vyralValueOrbit" aria-label="Sistema conectado VYRAL">
+        <VyralCore3D size="small" className="vyralValue3D" label={false}/>
         <div className="vyralValueSatellite satOne"><i>01</i><div><b>DISTRIBUCIÓN</b><small>1 contenido → múltiples cuentas</small></div></div>
         <div className="vyralValueSatellite satTwo"><i>02</i><div><b>AUTOMATIONS</b><small>Comentario → DM → oportunidad</small></div></div>
         <div className="vyralValueSatellite satThree"><i>03</i><div><b>INTELLIGENCE</b><small>Datos → próxima acción</small></div></div>
