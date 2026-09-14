@@ -3,7 +3,9 @@ import { redirect } from "next/navigation";
 import { getCustomerSession } from "../../lib/auth";
 import { supabaseAdmin } from "../../lib/supabase-admin";
 import { PLAN_CONFIG, currentUsageMonth, isPlanId } from "../../lib/plans";
+import UpgradeCalculator from "./UpgradeCalculator";
 import "./plan.css";
+import "./upgrade.css";
 
 export const dynamic = "force-dynamic";
 
@@ -50,9 +52,11 @@ export default async function MyPlanPage({ searchParams }: { searchParams: Promi
           <section className="myPlanCard"><small>SOPORTE</small><strong>24/7</strong><p>Consultas y seguimiento directo desde tu cuenta VYRAL.</p><Link href="/soporte">Abrir soporte ↗</Link></section>
         </div>
 
-        {plan && <section className="myPlanDetails"><div><small>INCLUYE</small><h2>{plan.name}</h2></div><div className="myPlanFeatures"><span>✓ Hasta {plan.accounts} cuentas</span><span>✓ {plan.monthlyVideos} videos por mes</span><span>✓ Publicación multicuentas</span><span>✓ Historial</span><span>✓ Soporte 24/7</span>{plan.analytics && <span>✓ Analytics</span>}{plan.ai && <span>✓ VYRAL AI</span>}</div></section>}
+        {plan && <section className="myPlanDetails"><div><small>INCLUYE</small><h2>{plan.name}</h2></div><div className="myPlanFeatures"><span>✓ Hasta {plan.accounts} cuentas</span><span>✓ {plan.monthlyVideos} videos por mes</span><span>✓ Publicación multicuentas</span><span>✓ Historial</span><span>✓ Soporte 24/7</span>{plan.analytics && <span>✓ Analytics</span>}{plan.advancedAnalytics && <span>✓ VYRAL Intelligence avanzado</span>}{plan.ai && <span>✓ VYRAL AI</span>}</div></section>}
 
-        <section className="myPlanActions"><div><small>CAMBIAR PLAN</small><h2>¿Necesitás más capacidad?</h2><p>Podés revisar los otros planes cuando quieras.</p></div><div className="myPlanButtons"><Link href="/planes" className="upgrade">Ver planes ↗</Link>{plan && !cancelRequested && <form action="/api/account/request-cancel" method="post"><button type="submit">Solicitar cancelación</button></form>}</div></section>
+        <section className="myPlanActions"><div><small>CAMBIAR PLAN</small><h2>¿Necesitás más capacidad?</h2><p>Podés subir de plan en cualquier momento. VYRAL te muestra cuánto valor te queda en el ciclo actual antes de decidir.</p></div><div className="myPlanButtons"><Link href="/planes" className="upgrade">Cambiar plan ↗</Link>{plan && !cancelRequested && <form action="/api/account/request-cancel" method="post"><button type="submit">Solicitar cancelación</button></form>}</div></section>
+
+        {plan && isPlanId(planId) && <UpgradeCalculator current={planId} periodEnd={periodEnd ? String(periodEnd) : null} />}
 
         <div className="myPlanFine">Cuando una cancelación es aprobada, mantenés acceso hasta el final del período. Después VYRAL te lleva nuevamente a selección de plan para reactivar el servicio.</div>
       </section>
