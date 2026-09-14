@@ -6,10 +6,15 @@ export default function DashboardExtrasController() {
   useEffect(() => {
     const sync = () => {
       const active = document.querySelector(".vdNav button.active");
-      const top = document.querySelector<HTMLElement>(".dashboardTopContent");
-      if (!top) return;
+      const root = document.querySelector<HTMLElement>(".dashboardPageWrap");
+      const postFlow = document.querySelector<HTMLElement>(".dashboardPostFlow");
+      if (!root || !postFlow) return;
       const label = (active?.textContent || "").toLowerCase();
-      top.style.display = label.includes("dashboard") ? "block" : "none";
+      const dashboard = label.includes("dashboard");
+      const analytics = label.includes("analytics");
+      postFlow.style.display = dashboard || analytics ? "block" : "none";
+      root.classList.toggle("isDashboardSection", dashboard);
+      root.classList.toggle("isAnalyticsSection", analytics);
     };
 
     sync();
