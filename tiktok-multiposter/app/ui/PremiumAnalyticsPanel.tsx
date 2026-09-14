@@ -5,7 +5,6 @@ import { useEffect, useMemo, useState } from "react";
 
 type Props = { planId: "inicio" | "pro" | "escala" };
 type FilterState = { network:string; period:string; from?:string; to?:string };
-
 type Insight = {k:string;title:string;text:string;why:string;action:string;watch:string};
 
 const insightSets:Record<string,Insight[]> = {
@@ -36,11 +35,22 @@ const insightSets:Record<string,Insight[]> = {
   ]
 };
 
+const forecast = [
+  {day:"Día 1",growth:18,views:11200},
+  {day:"Día 2",growth:20,views:11850},
+  {day:"Día 3",growth:22,views:12450},
+  {day:"Día 4",growth:24,views:13100},
+  {day:"Día 5",growth:26,views:13850},
+  {day:"Día 6",growth:29,views:14750},
+  {day:"Día 7",growth:31,views:15550}
+];
+
 export default function PremiumAnalyticsPanel({ planId }: Props) {
   const [visible,setVisible]=useState(false);
   const [mode,setMode]=useState<"overview"|"recommendations"|"content"|"forecast">("overview");
   const [filters,setFilters]=useState<FilterState>({network:"all",period:"30d"});
   const [expanded,setExpanded]=useState<Insight|null>(null);
+  const [forecastPoint,setForecastPoint]=useState<number|null>(null);
   useEffect(()=>{
     const sync=()=>{const a=document.querySelector(".vdNav button.active");setVisible((a?.textContent||"").toLowerCase().includes("analytics"));};
     sync(); const nav=document.querySelector(".vdNav"); const obs=new MutationObserver(sync); if(nav)obs.observe(nav,{attributes:true,subtree:true,attributeFilter:["class"]}); document.addEventListener("click",sync,true);
@@ -64,7 +74,7 @@ export default function PremiumAnalyticsPanel({ planId }: Props) {
         {mode==="overview"&&<div className="paGrid"><article><small>VELOCIDAD DE CRECIMIENTO</small><strong>+24,8%</strong><p>Tu contenido acelera por encima de tu media reciente.</p></article><article><small>MEJOR SEÑAL</small><strong>Compartidos</strong><p>Es la interacción que más está empujando alcance adicional.</p></article><article><small>OPORTUNIDAD</small><strong>Repetir formato</strong><p>Hay un patrón ganador listo para convertirse en serie.</p></article></div>}
         {mode==="recommendations"&&<div className="paInsights">{insights.map((x,i)=><article key={x.k}><span>0{i+1}</span><div><small>{x.k}</small><h3>{x.title}</h3><p>{x.text}</p></div><button onClick={()=>setExpanded(x)}>Ver análisis ↗</button></article>)}</div>}
         {mode==="content"&&<div className="paContentGrid"><article><small>DESCRIPCIÓN GANADORA</small><h3>Pregunta corta + curiosidad</h3><div className="paMeter"><i style={{width:"84%"}}/></div><b>84% score relativo</b><p>VYRAL compara captions, interacción y alcance para identificar qué estilo conviene repetir.</p></article><article><small>FORMATO CON MAYOR POTENCIAL</small><h3>Hook visual + demostración</h3><div className="paMeter"><i style={{width:"91%"}}/></div><b>91% score relativo</b><p>Detecta qué estructura de tus últimos videos está superando la media.</p></article></div>}
-        {mode==="forecast"&&<div className="paForecast"><div><small>PROYECCIÓN 7 DÍAS</small><strong>+18% — +31%</strong><p>Rango estimado si mantenés frecuencia y formato actual.</p></div><div className="paForecastBars">{[32,46,41,58,64,73,86].map((h,i)=><i key={i} style={{height:`${h}%`}}/>)}</div></div>}
+        {mode==="forecast"&&<div className="paForecast"><div><small>PROYECCIÓN DE VISTAS · PRÓXIMOS 7 DÍAS</small><strong>+18% — +31%</strong><p>Incremento estimado de vistas si mantenés la frecuencia y el formato actual.</p>{forecastPoint!==null&&<div className="paForecastDetail"><span>{forecast[forecastPoint].day}</span><b>+{forecast[forecastPoint].growth}% vistas</b><i>≈ {forecast[forecastPoint].views.toLocaleString("es-AR")} vistas estimadas</i></div>}</div><div className="paForecastBars">{forecast.map((point,i)=><button type="button" aria-label={`${point.day}: +${point.growth}% vistas`} className={forecastPoint===i?"active":""} key={point.day} onClick={()=>setForecastPoint(i)} style={{height:`${32+i*9}%`}}><span>{point.growth}%</span></button>)}</div></div>}
       </div>
       {!scale&&<div className="paLock"><div>✦</div><small>ANALYTICS AVANZADAS</small><h3>Desbloqueá VYRAL Intelligence.</h3><p>Recomendaciones, patrones de captions, Viral Momentum, predicción, detección de formatos ganadores y próximas acciones están incluidos en Escala.</p><Link href="/mi-plan#upgrade">Cambiar a Escala ↗</Link></div>}
     </div>
