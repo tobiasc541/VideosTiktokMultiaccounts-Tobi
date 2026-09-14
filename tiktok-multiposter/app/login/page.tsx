@@ -4,7 +4,7 @@ import { isLoggedIn } from "../../lib/auth";
 import "./landing.css";
 import "./landing-polish.css";
 
-export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string; admin?: string; verified?: string }> }) {
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string; admin?: string; verified?: string; reset?: string }> }) {
   if (await isLoggedIn()) redirect("/");
   const q = await searchParams;
   const adminMode = q.admin === "1";
@@ -25,6 +25,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         </section>
         <section className="loginAccess"><div className="loginAccessInner"><div className="loginMobileBrand">VYRAL</div><div className="loginCardHeading"><span className="loginMiniLabel">{adminMode ? "ACCESO INTERNO" : "TU CUENTA VYRAL"}</span><h2>{adminMode ? "Acceso interno." : "Bienvenido."}</h2><p>{adminMode ? "Ingresá con la clave administrativa." : "Ingresá para continuar con tu operación."}</p></div>
           {q.verified === "1" && !adminMode && <div className="loginSuccessBox">Correo verificado. Ya podés ingresar a tu cuenta.</div>}
+          {q.reset === "1" && !adminMode && <div className="loginSuccessBox">Contraseña actualizada. Ya podés ingresar con tu nueva contraseña.</div>}
           {adminMode ? (
             <form className="loginForm" action="/api/login" method="post">{q.error && <div className="errorBox">La contraseña ingresada es incorrecta.</div>}<div><label className="loginLabel" htmlFor="password">Contraseña</label><div className="loginFieldWrap"><input id="password" className="loginField" type="password" name="password" placeholder="Ingresá tu contraseña" autoComplete="current-password" autoFocus required/><span className="loginFieldIcon">→</span></div></div><button className="loginButton" type="submit"><span>Ingresar al dashboard</span><span className="loginButtonArrow">↗</span></button></form>
           ) : (
@@ -32,11 +33,11 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
               {q.error === "account" && <div className="errorBox">El correo o la contraseña no son correctos.</div>}
               {q.error === "unverified" && <div className="errorBox">Primero tenés que verificar tu correo.</div>}
               <div><label className="loginLabel" htmlFor="email">Correo electrónico</label><div className="loginFieldWrap"><input id="email" className="loginField" type="email" name="email" placeholder="vos@empresa.com" autoComplete="email" required/><span className="loginFieldIcon">@</span></div></div>
-              <div><label className="loginLabel" htmlFor="password">Contraseña</label><div className="loginFieldWrap"><input id="password" className="loginField" type="password" name="password" placeholder="Ingresá tu contraseña" autoComplete="current-password" required/><span className="loginFieldIcon">→</span></div></div>
+              <div><label className="loginLabel" htmlFor="password">Contraseña</label><div className="loginFieldWrap"><input id="password" className="loginField" type="password" name="password" placeholder="Ingresá tu contraseña" autoComplete="current-password" required/><span className="loginFieldIcon">→</span></div><div className="loginPasswordHelp"><Link href="/olvide-contrasena">¿Olvidaste tu contraseña?</Link></div></div>
               <button className="loginButton" type="submit"><span>Ingresar a VYRAL</span><span className="loginButtonArrow">↗</span></button>
             </form>
           )}
-          {!adminMode && <div className="loginSignup"><span>¿Todavía no tenés cuenta?</span><Link href="/registro">Registrate en VYRAL →</Link><div><i>01</i><b>Creá tu cuenta</b><i>02</i><b>Verificá tu cuenta</b><i>03</i><b>Seleccioná tu plan</b><i>04</i><b>Disfrutá de la viralidad</b></div></div>}
+          {!adminMode && <div className="loginSignup"><span>¿Todavía no tenés cuenta?</span><Link href="/registro">Registrate en VYRAL →</Link><div className="loginJourney"><div><i>01</i><b>Creá tu cuenta</b></div><div><i>02</i><b>Verificá tu cuenta</b></div><div><i>03</i><b>Seleccioná tu plan</b></div><div><i>04</i><b>Disfrutá de la viralidad</b></div></div></div>}
           <div className="loginSecurity"><span className="loginSecurityIcon">◆</span><div><strong>Acceso protegido</strong><p>Tu panel y tus cuentas permanecen en un entorno privado.</p></div></div>
           <div className="loginLegal">{adminMode ? <Link href="/login">Volver</Link> : <Link href="/login?admin=1">Acceso interno</Link>}<span>·</span><Link href="/terms">Términos</Link><span>·</span><Link href="/privacy">Privacidad</Link></div>
         </div></section>
