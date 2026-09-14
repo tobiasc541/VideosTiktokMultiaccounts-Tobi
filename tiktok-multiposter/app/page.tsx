@@ -10,6 +10,7 @@ import DashboardExtrasController from "./ui/DashboardExtrasController";
 import CreditBadge from "./ui/CreditBadge";
 import AnalyticsFilterPanel from "./ui/AnalyticsFilterPanel";
 import PlanFeatureGate from "./ui/PlanFeatureGate";
+import PremiumAnalyticsPanel from "./ui/PremiumAnalyticsPanel";
 import "./ui/dashboard-addons.css";
 
 export const dynamic = "force-dynamic";
@@ -39,7 +40,7 @@ export default async function Home() {
   const starter = planId === "inicio";
 
   const accounts = await listAccounts();
-  return <div className={`dashboardPageWrap ${starter ? "starterPlan" : "premiumPlan"}`}>
+  return <div className={`dashboardPageWrap plan-${planId} ${starter ? "starterPlan" : "premiumPlan"}`}>
     <Dashboard initialAccounts={accounts} />
     <DashboardExtrasController />
     <PlanFeatureGate starter={starter} />
@@ -68,6 +69,8 @@ export default async function Home() {
         </section>
       </div>
     </section>
+
     <div className={starter ? "starterAnalyticsFilterLocked" : ""}><AnalyticsFilterPanel /></div>
+    <PremiumAnalyticsPanel planId={planId} />
   </div>;
 }
