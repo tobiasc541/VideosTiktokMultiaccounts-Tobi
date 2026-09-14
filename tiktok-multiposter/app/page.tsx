@@ -19,6 +19,7 @@ import "./ui/dashboard-addons.css";
 import "./ui/premium-analytics.css";
 import "./ui/plan-gates-extra.css";
 import "./ui/analytics-layout-fix.css";
+import "./ui/dashboard-motion.css";
 
 export const dynamic = "force-dynamic";
 
