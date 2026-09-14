@@ -1,0 +1,12 @@
+.vyralPlansTop{margin-bottom:28px}
+.vyralSocialOrbit{display:none!important}
+.vyralSocialCluster{display:flex;align-items:center;justify-content:center;gap:10px;margin:22px auto 0;width:min(330px,82%);position:relative}
+.vyralSocialLine{height:1px;flex:1;background:linear-gradient(90deg,transparent,rgba(105,242,235,.24))}
+.vyralSocialLine:last-child{background:linear-gradient(90deg,rgba(105,242,235,.24),transparent)}
+.vyralSocialNode{width:42px;height:42px;border-radius:14px;display:grid;place-items:center;position:relative;border:1px solid rgba(108,246,239,.12);background:linear-gradient(145deg,rgba(19,30,34,.78),rgba(7,10,14,.92));box-shadow:0 12px 35px rgba(0,0,0,.34),inset 0 0 20px rgba(88,241,233,.025);animation:vyralSocialPulse 5s ease-in-out infinite}
+.vyralSocialNode:nth-of-type(3){animation-delay:-1.6s}.vyralSocialNode:nth-of-type(4){animation-delay:-3.2s}
+.vyralSocialNode:after{content:"";position:absolute;width:4px;height:4px;border-radius:50%;background:#79f5ef;bottom:-3px;box-shadow:0 0 10px rgba(121,245,239,.7);opacity:.55}
+.vyralSocialNode img{width:23px;height:23px;object-fit:contain;filter:drop-shadow(0 5px 12px rgba(0,0,0,.38));opacity:.9}
+@keyframes vyralSocialPulse{0%,100%{transform:translateY(0);border-color:rgba(108,246,239,.11)}50%{transform:translateY(-3px);border-color:rgba(108,246,239,.25)}}
+.vyralPlansTrust{margin-top:22px;display:flex;flex-direction:column;align-items:center}.vyralTrustLinks{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:2px}.vyralPlansPowered{display:flex;align-items:center;gap:8px;margin-top:18px;padding-top:15px;border-top:1px solid rgba(255,255,255,.055);min-width:220px;justify-content:center}.vyralPlansPowered span{font-size:8px;text-transform:uppercase;letter-spacing:.14em;color:#46535e}.vyralPlansPowered strong{font-size:9px;text-transform:uppercase;letter-spacing:.12em;color:#9baab3;font-weight:800}
+@media(max-width:840px){.vyralSocialCluster{margin-top:18px;width:min(280px,90%)}.vyralSocialNode{width:38px;height:38px;border-radius:12px}.vyralSocialNode img{width:21px;height:21px}}
