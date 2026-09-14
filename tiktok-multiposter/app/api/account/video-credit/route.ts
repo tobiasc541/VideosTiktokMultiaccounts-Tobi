@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { getCustomerSession } from "../../../../../lib/auth";
-import { supabaseAdmin } from "../../../../../lib/supabase-admin";
-import { PLAN_CONFIG, currentUsageMonth, isPlanId } from "../../../../../lib/plans";
+import { getCustomerSession } from "../../../../lib/auth";
+import { supabaseAdmin } from "../../../../lib/supabase-admin";
+import { PLAN_CONFIG, currentUsageMonth, isPlanId } from "../../../../lib/plans";
 
 export async function POST(req: Request) {
   const session = await getCustomerSession();
