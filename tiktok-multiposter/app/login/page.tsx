@@ -36,7 +36,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
               <button className="loginButton" type="submit"><span>Ingresar a VYRAL</span><span className="loginButtonArrow">↗</span></button>
             </form>
           )}
-          {!adminMode && <div className="loginSignup"><span>¿Todavía no tenés cuenta?</span><Link href="/registro">Registrate en VYRAL →</Link><div><i>01</i><b>Cuenta</b><i>02</i><b>Verificación</b><i>03</i><b>Plan</b></div></div>}
+          {!adminMode && <div className="loginSignup"><span>¿Todavía no tenés cuenta?</span><Link href="/registro">Registrate en VYRAL →</Link><div><i>01</i><b>Creá tu cuenta</b><i>02</i><b>Verificá tu cuenta</b><i>03</i><b>Seleccioná tu plan</b><i>04</i><b>Disfrutá de la viralidad</b></div></div>}
           <div className="loginSecurity"><span className="loginSecurityIcon">◆</span><div><strong>Acceso protegido</strong><p>Tu panel y tus cuentas permanecen en un entorno privado.</p></div></div>
           <div className="loginLegal">{adminMode ? <Link href="/login">Volver</Link> : <Link href="/login?admin=1">Acceso interno</Link>}<span>·</span><Link href="/terms">Términos</Link><span>·</span><Link href="/privacy">Privacidad</Link></div>
         </div></section>
