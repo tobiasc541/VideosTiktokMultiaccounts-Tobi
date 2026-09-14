@@ -4,6 +4,7 @@ import { getCustomerSession } from "../../lib/auth";
 import { supabaseAdmin } from "../../lib/supabase-admin";
 import { PLAN_CONFIG, currentUsageMonth, isPlanId } from "../../lib/plans";
 import UpgradeCalculator from "./UpgradeCalculator";
+import AccountSecurityForm from "./AccountSecurityForm";
 import "./plan.css";
 import "./upgrade.css";
 
@@ -17,6 +18,7 @@ export default async function MyPlanPage({ searchParams }: { searchParams: Promi
   const client = supabaseAdmin();
   const { data } = await client.auth.admin.getUserById(session.userId);
   const meta = data.user?.user_metadata || {};
+  const email = data.user?.email || session.email;
   const planId = String(meta.plan || session.plan || "");
   const plan = isPlanId(planId) ? PLAN_CONFIG[planId] : null;
   const periodEnd = meta.subscription_current_period_end || meta.current_period_end || null;
@@ -36,9 +38,16 @@ export default async function MyPlanPage({ searchParams }: { searchParams: Promi
       <div className="myPlanGlow" />
       <section className="myPlanShell">
         <header className="myPlanTop">
-          <div><div className="myPlanBrand">V<span>Y</span>RAL</div><small>MI SUSCRIPCIÓN</small></div>
+          <div><div className="myPlanBrand">V<span>Y</span>RAL</div><small>MI CUENTA</small></div>
           <Link href="/" className="myPlanBack">← Volver al panel</Link>
         </header>
+
+        <div className="myAccountHero">
+          <div><span className="myPlanBadge">TU CUENTA VYRAL</span><h1>Cuenta, seguridad y plan.</h1><p>Todo lo esencial de tu acceso, tu suscripción y tu capacidad en un mismo lugar.</p></div>
+          <div className="myAccountHeroEmail"><span>SESIÓN ACTIVA</span><strong>{email}</strong></div>
+        </div>
+
+        <AccountSecurityForm email={email} />
 
         <div className="myPlanHero">
           <div><span className="myPlanBadge">PLAN ACTUAL</span><h1>{plan ? plan.name : "Sin plan activo"}</h1><p>{plan ? `${plan.price} / mes · Hasta ${plan.accounts} cuentas` : "Elegí un plan para activar VYRAL."}</p></div>
