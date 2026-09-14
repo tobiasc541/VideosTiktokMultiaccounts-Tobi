@@ -14,6 +14,7 @@ import PremiumAnalyticsPanel from "./ui/PremiumAnalyticsPanel";
 import UploadPhonePreview from "./ui/UploadPhonePreview";
 import NotificationCenter from "./ui/NotificationCenter";
 import AutomationStudio from "./ui/AutomationStudio";
+import ProductTour from "./ui/ProductTour";
 import "./ui/dashboard-addons.css";
 import "./ui/premium-analytics.css";
 import "./ui/plan-gates-extra.css";
@@ -44,6 +45,7 @@ export default async function Home() {
     <UploadPhonePreview />
     <NotificationCenter daysLeft={daysLeft} planId={planId} accountCount={accounts.length} />
     <AutomationStudio />
+    <ProductTour />
     <DashboardExtrasController />
     <PlanFeatureGate starter={starter} />
     {daysLeft !== null && daysLeft <= 1 && daysLeft > 0 && <div className="subscriptionExpiryBanner"><div><small>RENOVACIÓN</small><strong>Tu plan vence mañana.</strong><span>Renová ahora para mantener el acceso sin interrupciones.</span></div><Link href="/mi-plan#upgrade">Administrar plan ↗</Link></div>}
