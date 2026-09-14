@@ -1,8 +1,9 @@
 import "./globals.css";
+import "./brand.css";
 import "./login/auth-login.css";
 import CreatorPromoEntry from "./components/CreatorPromoEntry";
 
-const appIcon = "/ChatGPT%20Image%2013%20sept%202026%2C%2014_44_04%20(1).png";
+const appIcon = "/vyral-mark.svg";
 
 export const metadata = {
   title: "VYRAL — Publicá una vez. Multiplicá tu alcance.",
