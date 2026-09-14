@@ -45,11 +45,6 @@ export default async function PlansPage({ searchParams }: { searchParams: Promis
 
   return (
     <main className="vyralPlansPage">
-      <div className="vyralSocialOrbit" aria-hidden="true">
-        <img className="socialTikTok" src="/tiktok.png" alt="" />
-        <img className="socialInstagram" src="/instagram.png" alt="" />
-        <img className="socialFacebook" src="/facebook.png" alt="" />
-      </div>
       <div className="vyralPlansWrap">
         <header className="vyralPlansTop">
           <div className="vyralAuthBrand">V<span>Y</span>RAL</div>
@@ -57,6 +52,13 @@ export default async function PlansPage({ searchParams }: { searchParams: Promis
           <h1>Elegí cuántas cuentas querés activar.</h1>
           <p>A más cuentas conectadas, más puntos de distribución para cada video. Podés empezar simple y escalar cuando lo necesites.</p>
           <div className="vyralPlansClaim">Hacerse viral nunca fue tan fácil.</div>
+          <div className="vyralSocialCluster" aria-label="Redes compatibles">
+            <span className="vyralSocialLine" />
+            <div className="vyralSocialNode"><img src="/tiktok.png" alt="TikTok" /></div>
+            <div className="vyralSocialNode"><img src="/instagram.png" alt="Instagram" /></div>
+            <div className="vyralSocialNode"><img src="/facebook.png" alt="Facebook" /></div>
+            <span className="vyralSocialLine" />
+          </div>
         </header>
         {q.error && <div className="vyralAuthError" style={{maxWidth:600,margin:"0 auto 18px",textAlign:"center"}}>No pudimos iniciar el pago. Probá nuevamente.</div>}
         <section className="vyralPlanGrid">
@@ -76,11 +78,14 @@ export default async function PlansPage({ searchParams }: { searchParams: Promis
           ))}
         </section>
         <footer className="vyralPlansTrust">
-          <span className="vyralSecure">⌁ Pago seguro</span>
-          <a href="/terms">Términos y condiciones</a>
-          <span>·</span>
-          <a href="/privacy">Política de privacidad</a>
+          <div className="vyralTrustLinks">
+            <span className="vyralSecure">⌁ Pago seguro</span>
+            <a href="/terms">Términos y condiciones</a>
+            <span>·</span>
+            <a href="/privacy">Política de privacidad</a>
+          </div>
           <p>Facturación mensual. Tu plan se activa después de confirmar el pago.</p>
+          <div className="vyralPlansPowered"><span>Powered by</span><strong>Tobias Carrizo</strong></div>
         </footer>
       </div>
     </main>
