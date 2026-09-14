@@ -1,0 +1,16 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="40" y1="28" x2="472" y2="488" gradientUnits="userSpaceOnUse"><stop stop-color="#0A171B"/><stop offset="1" stop-color="#020405"/></linearGradient>
+    <linearGradient id="g" x1="112" y1="100" x2="402" y2="412" gradientUnits="userSpaceOnUse"><stop stop-color="#C9FFFC"/><stop offset="0.45" stop-color="#63F3ED"/><stop offset="1" stop-color="#1DC8C1"/></linearGradient>
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="10" result="b"/><feColorMatrix in="b" type="matrix" values="0 0 0 0 0.35 0 0 0 0 0.95 0 0 0 0 0.92 0 0 0 .38 0"/><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <rect x="12" y="12" width="488" height="488" rx="108" fill="url(#bg)"/>
+  <rect x="12.5" y="12.5" width="487" height="487" rx="107.5" stroke="#77F4EF" stroke-opacity="0.12"/>
+  <g filter="url(#glow)">
+    <path d="M92 119H180L256 259L332 119H420L256 420L92 119Z" fill="url(#g)"/>
+    <path d="M151 119L256 312L361 119H312L256 221L200 119H151Z" fill="#061013" fill-opacity="0.92"/>
+    <path d="M93 119H139L256 334L373 119H419L256 420L93 119Z" fill="url(#g)" fill-opacity="0.94"/>
+    <path d="M191 119L256 238L321 119H272L256 149L240 119H191Z" fill="#F0FFFF" fill-opacity="0.88"/>
+  </g>
+  <circle cx="432" cy="81" r="7" fill="#63F3ED" fill-opacity="0.9"/>
+</svg>
