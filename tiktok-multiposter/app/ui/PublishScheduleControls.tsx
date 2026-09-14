@@ -1,52 +1,10 @@
 "use client";
-
-import { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
-import "./publish-schedule.css";
-
-type Mode = "now" | "schedule";
-
-type LocaleDetail = { country:"AR"|"US"; lang:"es"|"en" };
-
-export default function PublishScheduleControls(){
-  const [mount,setMount]=useState<HTMLElement|null>(null);
-  const [mode,setMode]=useState<Mode>("now");
-  const [dateTime,setDateTime]=useState("");
-  const [country,setCountry]=useState<"AR"|"US">("AR");
-
-  useEffect(()=>{
-    try{
-      const savedMode=(localStorage.getItem("vyral-publish-mode") as Mode)||"now";
-      const savedDate=localStorage.getItem("vyral-scheduled-at")||"";
-      const savedCountry=(localStorage.getItem("vyral-country") as "AR"|"US")||"AR";
-      setMode(savedMode);setDateTime(savedDate);setCountry(savedCountry);
-    }catch{}
-    const timer=window.setInterval(()=>{
-      const btn=document.querySelector(".vdPublishBtn") as HTMLElement|null;
-      const card=btn?.closest(".vdCard") as HTMLElement|null;
-      if(btn&&card){
-        let slot=card.querySelector(".vyralScheduleMount") as HTMLElement|null;
-        if(!slot){slot=document.createElement("div");slot.className="vyralScheduleMount";card.insertBefore(slot,btn);}
-        if(slot!==mount)setMount(slot);
-      }
-    },450);
-    const onLocale=(e:Event)=>setCountry((e as CustomEvent<LocaleDetail>).detail.country);
-    window.addEventListener("vyral:locale",onLocale as EventListener);
-    return()=>{window.clearInterval(timer);window.removeEventListener("vyral:locale",onLocale as EventListener)};
-  },[mount]);
-
-  function save(nextMode:Mode,nextDate=dateTime){
-    setMode(nextMode);setDateTime(nextDate);
-    try{localStorage.setItem("vyral-publish-mode",nextMode);localStorage.setItem("vyral-scheduled-at",nextDate)}catch{}
-  }
-
-  if(!mount)return null;
-  const tz=country==="US"?"America/New_York":"America/Argentina/Buenos_Aires";
-  const min=new Date(Date.now()+5*60*1000); min.setMinutes(min.getMinutes()-min.getTimezoneOffset());
-
-  return createPortal(<section className="vyralSchedulePanel">
-    <div className="vyralScheduleHead"><div><small>PUBLICACIÓN</small><strong>¿Cuándo querés publicarlo?</strong></div><span>{country==="US"?"US · ET":"AR · GMT-3"}</span></div>
-    <div className="vyralScheduleModes"><button type="button" className={mode==="now"?"active":""} onClick={()=>save("now","")}><b>Ahora</b><small>Publicar inmediatamente</small></button><button type="button" className={mode==="schedule"?"active":""} onClick={()=>save("schedule")}><b>Programar</b><small>Elegir fecha y hora</small></button></div>
-    {mode==="schedule"&&<div className="vyralScheduleDate"><label>Fecha y hora</label><input type="datetime-local" min={min.toISOString().slice(0,16)} value={dateTime} onChange={e=>save("schedule",e.target.value)}/><p>Zona horaria: <b>{tz}</b>. La interfaz ya guarda tu programación; el envío diferido real se activará cuando conectemos almacenamiento + APIs.</p></div>}
-  </section>,mount);
-}
+import {useEffect,useMemo,useState} from "react";import{createPortal}from"react-dom";import"./publish-schedule.css";
+type Mode="now"|"schedule";type LocaleDetail={country:string;lang:"es"|"en";tz:string;zone:string;flag:string;name:string};
+const months=["ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO","JULIO","AGOSTO","SEPTIEMBRE","OCTUBRE","NOVIEMBRE","DICIEMBRE"];
+function partsInTZ(tz:string){const p=new Intl.DateTimeFormat("en-CA",{timeZone:tz,year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).formatToParts(new Date());const g=(x:string)=>Number(p.find(a=>a.type===x)?.value||0);return{y:g("year"),m:g("month")-1,d:g("day"),h:g("hour"),min:g("minute")}}
+export default function PublishScheduleControls(){const[mount,setMount]=useState<HTMLElement|null>(null);const[mode,setMode]=useState<Mode>("now");const[loc,setLoc]=useState<LocaleDetail>({country:"AR",lang:"es",tz:"America/Argentina/Buenos_Aires",zone:"GMT-3",flag:"🇦🇷",name:"Argentina"});const now=partsInTZ(loc.tz);const[view,setView]=useState({y:now.y,m:now.m});const[day,setDay]=useState(now.d);const[hour,setHour]=useState(now.h);const[minute,setMinute]=useState(Math.ceil(now.min/5)*5%60);
+useEffect(()=>{const timer=window.setInterval(()=>{const btn=document.querySelector(".vdPublishBtn") as HTMLElement|null;const card=btn?.closest(".vdCard") as HTMLElement|null;if(btn&&card){let slot=card.querySelector(".vyralScheduleMount") as HTMLElement|null;if(!slot){slot=document.createElement("div");slot.className="vyralScheduleMount";card.insertBefore(slot,btn)}if(slot!==mount)setMount(slot)}},400);const onLocale=(e:Event)=>{const d=(e as CustomEvent<LocaleDetail>).detail;setLoc(d);const n=partsInTZ(d.tz);setView({y:n.y,m:n.m});setDay(n.d);setHour(n.h);setMinute(Math.ceil(n.min/5)*5%60)};window.addEventListener("vyral:locale",onLocale as EventListener);return()=>{clearInterval(timer);window.removeEventListener("vyral:locale",onLocale as EventListener)}},[mount]);
+const days=useMemo(()=>{const first=(new Date(view.y,view.m,1).getDay()+6)%7;const total=new Date(view.y,view.m+1,0).getDate();return[...Array(first).fill(0),...Array.from({length:total},(_,i)=>i+1)]},[view]);
+const selected=`${view.y}-${String(view.m+1).padStart(2,"0")}-${String(day).padStart(2,"0")}T${String(hour).padStart(2,"0")}:${String(minute).padStart(2,"0")}`;useEffect(()=>{try{localStorage.setItem("vyral-publish-mode",mode);localStorage.setItem("vyral-scheduled-at",selected)}catch{}},[mode,selected]);if(!mount)return null;
+return createPortal(<section className="vyralSchedulePanel"><div className="vyralScheduleHead"><div><small>PUBLICACIÓN</small><strong>¿Cuándo querés publicarlo?</strong></div><span>{loc.flag} {loc.country} · {loc.zone}</span></div><div className="vyralScheduleModes"><button type="button" className={mode==="now"?"active":""} onClick={()=>setMode("now")}><b>Ahora</b><small>Publicar inmediatamente</small></button><button type="button" className={mode==="schedule"?"active":""} onClick={()=>setMode("schedule")}><b>Programar</b><small>Elegir fecha y hora</small></button></div>{mode==="schedule"&&<div className="vyralChronos"><div className="vyralChronosTop"><div><small>VYRAL CHRONOS</small><b>{loc.flag} {loc.name}</b><span>Ahora allí: {String(now.h).padStart(2,"0")}:{String(now.min).padStart(2,"0")} · {loc.zone}</span></div><div className="vyralChronosSignal"><i/>LIVE TIME</div></div><div className="vyralChronosBody"><div className="vyralCalendar"><header><button onClick={()=>setView(v=>v.m===0?{y:v.y-1,m:11}:{y:v.y,m:v.m-1})}>←</button><strong>{months[view.m]} <em>{view.y}</em></strong><button onClick={()=>setView(v=>v.m===11?{y:v.y+1,m:0}:{y:v.y,m:v.m+1})}>→</button></header><div className="vyralWeek">{["L","M","X","J","V","S","D"].map(x=><span key={x}>{x}</span>)}</div><div className="vyralDays">{days.map((d,i)=>d?<button key={i} className={d===day?"selected":""} onClick={()=>setDay(d)}>{d}<i/></button>:<span key={i}/>)}</div></div><div className="vyralTimeDeck"><small>HORA DE PUBLICACIÓN</small><div className="vyralClock"><button onClick={()=>setHour((hour+23)%24)}>⌃</button><b>{String(hour).padStart(2,"0")}</b><span>:</span><b>{String(minute).padStart(2,"0")}</b><button onClick={()=>setMinute((minute+5)%60)}>⌃</button></div><div className="vyralClockDown"><button onClick={()=>setHour((hour+1)%24)}>⌄</button><span/><span/><button onClick={()=>setMinute((minute+55)%60)}>⌄</button></div><div className="vyralScheduleSummary"><span>PROGRAMADO</span><strong>{String(day).padStart(2,"0")}/{String(view.m+1).padStart(2,"0")} · {String(hour).padStart(2,"0")}:{String(minute).padStart(2,"0")}</strong><small>{loc.tz}</small></div></div></div><p className="vyralScheduleDisclaimer">La fecha se interpreta siempre en la zona horaria del país elegido. El envío diferido real se activará al conectar almacenamiento + APIs.</p></div>}</section>,mount)}
