@@ -1,0 +1,7 @@
+import {NextResponse} from "next/server";
+import {getCustomerSession} from "../../../../lib/auth";
+import {supabaseAdmin} from "../../../../lib/supabase-admin";
+const fields=["name","industry","offer","audience","location","differentiator","tone","objective","cta","notes"] as const;
+function clean(v:any){return String(v||"").trim().slice(0,2000)}
+export async function GET(){const session=await getCustomerSession();if(!session)return NextResponse.json({error:"No autorizado"},{status:401});const {data}=await supabaseAdmin().auth.admin.getUserById(session.userId);return NextResponse.json({profile:data.user?.user_metadata?.vyral_business||null})}
+export async function POST(req:Request){const session=await getCustomerSession();if(!session)return NextResponse.json({error:"No autorizado"},{status:401});const body=await req.json().catch(()=>({}));const profile=Object.fromEntries(fields.map(k=>[k,clean(body[k])]));if(!profile.name&&!profile.offer)return NextResponse.json({error:"Completá al menos el nombre o qué vendés/ofrecés."},{status:400});const admin=supabaseAdmin();const {data}=await admin.auth.admin.getUserById(session.userId);const meta=data.user?.user_metadata||{};const {error}=await admin.auth.admin.updateUserById(session.userId,{user_metadata:{...meta,vyral_business:profile}});if(error)return NextResponse.json({error:"No se pudo guardar Mi negocio."},{status:500});return NextResponse.json({ok:true,profile})}
