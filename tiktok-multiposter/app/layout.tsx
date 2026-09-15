@@ -7,7 +7,6 @@ import LocaleRuntime3 from "./components/LocaleRuntime3";
 import LocaleCoverageFinal from "./components/LocaleCoverageFinal";
 import LocaleResidualFix from "./components/LocaleResidualFix";
 import LocaleCompletenessGuard from "./components/LocaleCompletenessGuard";
-import UniversalLocaleTranslator from "./components/UniversalLocaleTranslator";
 
 const appIcon = "/vyral-mark.svg";
 
@@ -23,7 +22,7 @@ export const metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es" dir="ltr" suppressHydrationWarning>
+    <html lang="es" dir="ltr">
       <body>
         <CreatorPromoEntry />
         <LocaleSelector />
@@ -32,7 +31,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <LocaleResidualFix />
         <LocaleCompletenessGuard />
         {children}
-        <UniversalLocaleTranslator />
         <div className="vyralPersistentSignature" aria-hidden="true"><span>Powered by</span><strong>Tobias Carrizo</strong></div>
       </body>
     </html>
