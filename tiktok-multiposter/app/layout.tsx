@@ -6,6 +6,7 @@ import LocaleSelector from "./components/LocaleSelector";
 import LocaleRuntime3 from "./components/LocaleRuntime3";
 import LocaleCoverageFinal from "./components/LocaleCoverageFinal";
 import LocaleResidualFix from "./components/LocaleResidualFix";
+import LocaleCompletenessGuard from "./components/LocaleCompletenessGuard";
 
 const appIcon = "/vyral-mark.svg";
 
@@ -28,6 +29,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <LocaleRuntime3 />
         <LocaleCoverageFinal />
         <LocaleResidualFix />
+        <LocaleCompletenessGuard />
         {children}
         <div className="vyralPersistentSignature" aria-hidden="true"><span>Powered by</span><strong>Tobias Carrizo</strong></div>
       </body>
