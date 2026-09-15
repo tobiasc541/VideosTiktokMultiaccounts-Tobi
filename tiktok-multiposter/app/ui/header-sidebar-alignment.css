@@ -1,0 +1,6 @@
+/* Final alignment pass for desktop dashboard controls and sidebar groups. */
+@media (min-width:761px){
+  .dashboardPageWrap .vdNav button:nth-child(6){margin-top:-3px}
+  .dashboardPageWrap .dashboardSideExtras{top:382px}
+  .dashboardPageWrap .vyralNotifyRoot{top:14px!important}
+}
