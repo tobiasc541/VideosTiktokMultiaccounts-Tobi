@@ -11,6 +11,8 @@ export function pushVyralNotification(detail:SystemNoticeDetail){
   if(typeof window!=="undefined") window.dispatchEvent(new CustomEvent("vyral:notify",{detail}));
 }
 
+function BellIcon(){return <svg className="vyralBellSvg" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg>}
+
 export default function NotificationCenter({ daysLeft, planId, accountCount=0 }: { daysLeft:number|null; planId:string; accountCount?:number }) {
   const [open,setOpen]=useState(false);
   const [seen,setSeen]=useState(false);
@@ -31,7 +33,7 @@ export default function NotificationCenter({ daysLeft, planId, accountCount=0 }:
   const unread=seen?0:notices.length;
   function toggle(){ const next=!open; setOpen(next); if(next){setSeen(true);try{localStorage.setItem("vyral-notifications-seen","1")}catch{}} }
   return <div className="vyralNotifyRoot">
-    <button className="vyralNotifyBell" onClick={toggle} aria-label="Notificaciones" aria-expanded={open}><span>♢</span>{unread>0&&<b>{unread}</b>}</button>
+    <button className="vyralNotifyBell" onClick={toggle} aria-label="Notificaciones" aria-expanded={open}><BellIcon/>{unread>0&&<b>{unread}</b>}</button>
     {open&&<><button className="vyralNotifyBackdrop" onClick={()=>setOpen(false)} aria-label="Cerrar"/><aside className="vyralNotifyPanel">
       <header><div><small>CENTRO VYRAL</small><h2>Notificaciones</h2></div><button onClick={()=>setOpen(false)}>×</button></header>
       <div className="vyralNotifyLive"><i/> TODO EN ORDEN <span>{notices.length} actualizaciones</span></div>
