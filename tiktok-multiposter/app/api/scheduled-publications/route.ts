@@ -1,50 +1,83 @@
+import crypto from "crypto";
 import { NextResponse } from "next/server";
 import { getCustomerSession } from "../../../lib/auth";
 import { supabaseAdmin } from "../../../lib/supabase-admin";
 
 const BUCKET = "scheduled-media";
 const ALLOWED = new Set(["video/mp4", "video/quicktime", "video/webm"]);
+const MAX_FILE_SIZE = 4 * 1024 * 1024 * 1024;
+
+type Target = { platform: "tiktok" | "instagram" | "facebook"; accountId: string; name?: string };
+
+function safeExt(fileName: string) {
+  return (fileName.split(".").pop() || "mp4").replace(/[^a-z0-9]/gi, "").toLowerCase() || "mp4";
+}
+
+function validateTargets(value: unknown): value is Target[] {
+  if (!Array.isArray(value) || value.length === 0) return false;
+  return value.every((target) => target && typeof target === "object" &&
+    ["tiktok", "instagram", "facebook"].includes(String((target as Target).platform)) &&
+    typeof (target as Target).accountId === "string" && Boolean((target as Target).accountId));
+}
+
+async function ownsTikTokTargets(userId: string, targets: Target[]) {
+  const ids = targets.filter((target) => target.platform === "tiktok").map((target) => target.accountId);
+  if (!ids.length) return true;
+  const client = supabaseAdmin();
+  const query = await client.from("tiktok_accounts").select("id").eq("user_id", userId).in("id", ids);
+  if (query.error) throw new Error(query.error.message);
+  return new Set((query.data || []).map((row) => row.id)).size === new Set(ids).size;
+}
 
 export async function POST(req: Request) {
   const session = await getCustomerSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   try {
-    const form = await req.formData();
-    const file = form.get("file");
-    const scheduledAt = String(form.get("scheduledAt") || "");
-    const timezone = String(form.get("timezone") || "UTC");
-    const caption = String(form.get("caption") || "").trim();
-    const privacyLevel = String(form.get("privacyLevel") || "");
-    const targetsRaw = String(form.get("targets") || "[]");
-    const platformsRaw = String(form.get("platforms") || "[\"tiktok\"]");
-
-    if (!(file instanceof File) || !scheduledAt || !caption) {
-      return NextResponse.json({ error: "Faltan el video, la descripción o la fecha programada." }, { status: 400 });
-    }
-    if (!ALLOWED.has(file.type)) return NextResponse.json({ error: "Usá MP4, MOV/QuickTime o WebM." }, { status: 400 });
-
-    const when = new Date(scheduledAt);
-    if (!Number.isFinite(when.getTime()) || when.getTime() <= Date.now() + 30_000) {
-      return NextResponse.json({ error: "Elegí una fecha al menos 30 segundos en el futuro." }, { status: 400 });
-    }
-
-    const targets = JSON.parse(targetsRaw);
-    const platforms = JSON.parse(platformsRaw);
-    if (!Array.isArray(targets) || !targets.length) return NextResponse.json({ error: "Seleccioná al menos una cuenta." }, { status: 400 });
-    if (!Array.isArray(platforms) || !platforms.length) return NextResponse.json({ error: "Seleccioná al menos una plataforma." }, { status: 400 });
-
+    const body = await req.json();
+    const action = String(body.action || "create");
     const client = supabaseAdmin();
-    const ext = (file.name.split(".").pop() || "mp4").replace(/[^a-z0-9]/gi, "").toLowerCase() || "mp4";
-    const id = crypto.randomUUID();
-    const storagePath = `${session.userId}/${id}/video.${ext}`;
-    const bytes = new Uint8Array(await file.arrayBuffer());
 
-    const upload = await client.storage.from(BUCKET).upload(storagePath, bytes, {
-      contentType: file.type || "video/mp4",
-      upsert: false
-    });
-    if (upload.error) throw new Error(`No se pudo guardar el video: ${upload.error.message}`);
+    if (action === "prepare-upload") {
+      const fileName = String(body.fileName || "video.mp4");
+      const mimeType = String(body.mimeType || "video/mp4");
+      const fileSize = Number(body.fileSize || 0);
+      if (!ALLOWED.has(mimeType)) return NextResponse.json({ error: "Usá MP4, MOV/QuickTime o WebM." }, { status: 400 });
+      if (!Number.isFinite(fileSize) || fileSize <= 0 || fileSize > MAX_FILE_SIZE) {
+        return NextResponse.json({ error: "El video tiene un tamaño inválido o supera 4 GB." }, { status: 400 });
+      }
+      const id = crypto.randomUUID();
+      const storagePath = `${session.userId}/${id}/video.${safeExt(fileName)}`;
+      const signed = await client.storage.from(BUCKET).createSignedUploadUrl(storagePath);
+      if (signed.error || !signed.data) throw new Error(`No se pudo preparar el almacenamiento: ${signed.error?.message || "error desconocido"}`);
+      return NextResponse.json({ ok: true, id, bucket: BUCKET, path: storagePath, token: signed.data.token, signedUrl: signed.data.signedUrl });
+    }
+
+    const id = String(body.id || "");
+    const storagePath = String(body.storagePath || "");
+    const scheduledAt = String(body.scheduledAt || "");
+    const timezone = String(body.timezone || "UTC");
+    const caption = String(body.caption || "").trim();
+    const privacyLevel = String(body.privacyLevel || "");
+    const mimeType = String(body.mimeType || "video/mp4");
+    const fileName = String(body.fileName || "video.mp4");
+    const fileSize = Number(body.fileSize || 0);
+    const targets = body.targets as unknown;
+    const platforms = body.platforms as unknown;
+
+    if (!id || !storagePath || !scheduledAt || !caption) return NextResponse.json({ error: "Faltan datos para crear la programación." }, { status: 400 });
+    if (!storagePath.startsWith(`${session.userId}/${id}/`)) return NextResponse.json({ error: "Ruta de almacenamiento inválida." }, { status: 403 });
+    if (!ALLOWED.has(mimeType) || !Number.isFinite(fileSize) || fileSize <= 0 || fileSize > MAX_FILE_SIZE) return NextResponse.json({ error: "Datos de video inválidos." }, { status: 400 });
+    const when = new Date(scheduledAt);
+    if (!Number.isFinite(when.getTime()) || when.getTime() <= Date.now() + 30_000) return NextResponse.json({ error: "Elegí una fecha al menos 30 segundos en el futuro." }, { status: 400 });
+    if (!validateTargets(targets)) return NextResponse.json({ error: "Seleccioná al menos una cuenta válida." }, { status: 400 });
+    if (!Array.isArray(platforms) || !platforms.length) return NextResponse.json({ error: "Seleccioná al menos una plataforma." }, { status: 400 });
+    if (!(await ownsTikTokTargets(session.userId, targets))) return NextResponse.json({ error: "Una de las cuentas seleccionadas no pertenece a tu usuario." }, { status: 403 });
+
+    const exists = await client.storage.from(BUCKET).list(`${session.userId}/${id}`, { search: `video.${safeExt(fileName)}` });
+    if (exists.error || !(exists.data || []).some((item) => item.name === `video.${safeExt(fileName)}`)) {
+      return NextResponse.json({ error: "El video todavía no terminó de guardarse. Intentá nuevamente." }, { status: 409 });
+    }
 
     const insert = await client.from("scheduled_publications").insert({
       id,
@@ -57,9 +90,9 @@ export async function POST(req: Request) {
       targets,
       storage_bucket: BUCKET,
       storage_path: storagePath,
-      mime_type: file.type || null,
-      file_name: file.name,
-      file_size: file.size,
+      mime_type: mimeType,
+      file_name: fileName,
+      file_size: fileSize,
       status: "scheduled"
     }).select("id, scheduled_at, status").single();
 
@@ -67,7 +100,6 @@ export async function POST(req: Request) {
       await client.storage.from(BUCKET).remove([storagePath]);
       throw new Error(`No se pudo crear la programación: ${insert.error.message}`);
     }
-
     return NextResponse.json({ ok: true, publication: insert.data });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || "No se pudo programar la publicación." }, { status: 500 });
