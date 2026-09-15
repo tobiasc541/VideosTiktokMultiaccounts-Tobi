@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { getAdminSession, getCustomerSession, isLoggedIn } from "../lib/auth";
 import { supabaseAdmin } from "../lib/supabase-admin";
 import { isPlanId } from "../lib/plans";
-import { listAccounts } from "../lib/tiktok";
+import { listOwnedTikTokAccounts } from "../lib/tiktok-ownership";
 import Dashboard from "./ui/Dashboard";
 import TopViralDemo from "./ui/TopViralDemo";
 import DashboardExtrasController from "./ui/DashboardExtrasController";
@@ -14,6 +14,7 @@ import PremiumAnalyticsPanel from "./ui/PremiumAnalyticsPanel";
 import UploadPhonePreview from "./ui/UploadPhonePreview";
 import PublishScheduleControls from "./ui/PublishScheduleControls";
 import NotificationCenter from "./ui/NotificationCenter";
+import DashboardNoticeBridge from "./ui/DashboardNoticeBridge";
 import AutomationStudio from "./ui/AutomationStudio";
 import ProductTour from "./ui/ProductTour";
 import "./ui/dashboard-addons.css";
@@ -41,12 +42,13 @@ export default async function Home() {
   if (!isPlanId(planId)) redirect("/planes");
   const starter = planId === "inicio";
   const daysLeft = periodEnd ? Math.max(0, Math.ceil((new Date(String(periodEnd)).getTime() - Date.now()) / 86400000)) : null;
-  const accounts = await listAccounts();
+  const accounts = await listOwnedTikTokAccounts(session.userId);
   return <div className={`dashboardPageWrap plan-${planId} ${starter ? "starterPlan" : "premiumPlan"}`}>
     <Dashboard initialAccounts={accounts} />
     <UploadPhonePreview />
     <PublishScheduleControls />
     <NotificationCenter daysLeft={daysLeft} planId={planId} accountCount={accounts.length} />
+    <DashboardNoticeBridge />
     <AutomationStudio />
     <ProductTour />
     <DashboardExtrasController />
