@@ -1,0 +1,5 @@
+.nextCreatorStats article.benefit{overflow:visible}
+.nextBenefitNumber{overflow:visible!important;padding:14px 18px 18px 10px!important;margin-left:-10px!important;min-height:128px;align-items:center!important}
+.nextBenefitNumber>strong{display:block!important;font-size:108px!important;line-height:1!important;letter-spacing:-.055em!important;padding:0 .08em .12em .04em!important;margin:0!important;overflow:visible!important}
+.nextBenefitNumber>div{align-self:center!important;margin-top:-4px}
+@media(max-width:600px){.nextBenefitNumber{min-height:98px}.nextBenefitNumber>strong{font-size:78px!important}}
