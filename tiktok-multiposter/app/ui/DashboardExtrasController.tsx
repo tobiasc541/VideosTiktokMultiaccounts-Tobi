@@ -4,13 +4,30 @@ import { useEffect } from "react";
 
 export default function DashboardExtrasController() {
   useEffect(() => {
+    const removeApiReadinessLabels = () => {
+      const phrases = [
+        "instagram listo para api",
+        "facebook listo para api",
+        "instagram ready for api",
+        "facebook ready for api",
+        "instagram pronto para api",
+        "facebook pronto para api"
+      ];
+
+      document.querySelectorAll<HTMLElement>(".vdMain span, .vdMain small, .vdMain p, .vdMain div, .dashboardPostFlow span, .dashboardPostFlow small, .dashboardPostFlow p, .dashboardPostFlow div").forEach((el) => {
+        if (el.children.length) return;
+        const text = (el.textContent || "").replace(/\s+/g, " ").trim().toLowerCase();
+        if (phrases.some((phrase) => text === phrase || text.includes(phrase))) {
+          el.style.display = "none";
+        }
+      });
+    };
+
     const sync = () => {
       const active = document.querySelector(".vdNav button.active");
       const root = document.querySelector<HTMLElement>(".dashboardPageWrap");
       if (!root) return;
 
-      // Do not infer the section from translated button text. The dashboard button
-      // is always the first navigation item, so this remains stable in every locale.
       const buttons = Array.from(document.querySelectorAll(".vdNav button"));
       const activeIndex = active ? buttons.indexOf(active as HTMLButtonElement) : 0;
       const dashboard = activeIndex <= 0;
@@ -20,16 +37,23 @@ export default function DashboardExtrasController() {
       root.classList.toggle("show-analytics-extras", analytics);
       root.classList.toggle("isDashboardSection", dashboard);
       root.classList.toggle("isAnalyticsSection", analytics);
+      removeApiReadinessLabels();
     };
 
     sync();
     const nav = document.querySelector(".vdNav");
     const observer = new MutationObserver(sync);
     if (nav) observer.observe(nav, { attributes: true, subtree: true, attributeFilter: ["class"] });
-    document.addEventListener("click", sync, true);
+
+    const onClick = () => {
+      sync();
+      window.setTimeout(removeApiReadinessLabels, 0);
+      window.setTimeout(removeApiReadinessLabels, 150);
+    };
+    document.addEventListener("click", onClick, true);
     return () => {
       observer.disconnect();
-      document.removeEventListener("click", sync, true);
+      document.removeEventListener("click", onClick, true);
     };
   }, []);
 
