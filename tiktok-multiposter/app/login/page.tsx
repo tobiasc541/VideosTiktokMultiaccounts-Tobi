@@ -5,6 +5,7 @@ import LandingGrowthExperience from "./LandingGrowthExperience";
 import "./landing.css";
 import "./landing-polish.css";
 import "./landing-network-premium.css";
+import "./benefit-number-fix.css";
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string; verified?: string; reset?: string }> }) {
   if (await isLoggedIn()) redirect("/");
