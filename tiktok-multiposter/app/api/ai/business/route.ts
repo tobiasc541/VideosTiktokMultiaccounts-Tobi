@@ -1,0 +1,6 @@
+import {NextResponse} from "next/server";
+import {getCustomerSession} from "../../../../lib/auth";
+import {supabaseAdmin} from "../../../../lib/supabase-admin";
+const fields=["business_name","industry","offer","audience","tone","goals","cta","country","extra_context"] as const;
+export async function GET(){const s=await getCustomerSession();if(!s)return NextResponse.json({error:"No autorizado"},{status:401});const {data,error}=await supabaseAdmin().from("vyral_business_profiles").select("*").eq("user_id",s.userId).maybeSingle();if(error)return NextResponse.json({error:error.message},{status:500});return NextResponse.json({profile:data||null})}
+export async function POST(req:Request){const s=await getCustomerSession();if(!s)return NextResponse.json({error:"No autorizado"},{status:401});if(String(s.plan||"")!=="escala")return NextResponse.json({error:"Disponible en Escala."},{status:403});const body=await req.json();const row:any={user_id:s.userId,updated_at:new Date().toISOString()};for(const f of fields)row[f]=String(body[f]||"").trim().slice(0,f==="extra_context"?4000:1000);const {data,error}=await supabaseAdmin().from("vyral_business_profiles").upsert(row,{onConflict:"user_id"}).select("*").single();if(error)return NextResponse.json({error:error.message},{status:500});return NextResponse.json({ok:true,profile:data})}
