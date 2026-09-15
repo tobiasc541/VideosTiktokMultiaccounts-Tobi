@@ -23,6 +23,25 @@ export default function DashboardExtrasController() {
       });
     };
 
+    const setPublishCardTitle = (activeIndex: number) => {
+      if (activeIndex !== 1) return;
+      const title = document.querySelector<HTMLElement>(".vdMain .vdGrid .vdCard:first-child .vdCardHead h2");
+      if (!title) return;
+      const lang = localStorage.getItem("vyral-lang") || "es";
+      const labels: Record<string, string> = {
+        es: "Prepará tu contenido",
+        en: "Prepare your content",
+        pt: "Prepare seu conteúdo",
+        ar: "جهّز محتواك",
+        fr: "Préparez votre contenu",
+        de: "Bereite deinen Inhalt vor",
+        it: "Prepara i tuoi contenuti",
+        nl: "Bereid je content voor",
+        ja: "コンテンツを準備"
+      };
+      title.textContent = labels[lang] || labels.es;
+    };
+
     const sync = () => {
       const active = document.querySelector(".vdNav button.active");
       const root = document.querySelector<HTMLElement>(".dashboardPageWrap");
@@ -38,6 +57,7 @@ export default function DashboardExtrasController() {
       root.classList.toggle("isDashboardSection", dashboard);
       root.classList.toggle("isAnalyticsSection", analytics);
       removeApiReadinessLabels();
+      setPublishCardTitle(activeIndex);
     };
 
     sync();
@@ -47,8 +67,8 @@ export default function DashboardExtrasController() {
 
     const onClick = () => {
       sync();
-      window.setTimeout(removeApiReadinessLabels, 0);
-      window.setTimeout(removeApiReadinessLabels, 150);
+      window.setTimeout(sync, 0);
+      window.setTimeout(sync, 150);
     };
     document.addEventListener("click", onClick, true);
     return () => {
