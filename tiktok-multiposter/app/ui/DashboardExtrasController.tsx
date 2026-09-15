@@ -8,9 +8,14 @@ export default function DashboardExtrasController() {
       const active = document.querySelector(".vdNav button.active");
       const root = document.querySelector<HTMLElement>(".dashboardPageWrap");
       if (!root) return;
-      const label = (active?.textContent || "").toLowerCase();
-      const dashboard = label.includes("dashboard");
-      const analytics = label.includes("analytics");
+
+      // Do not infer the section from translated button text. The dashboard button
+      // is always the first navigation item, so this remains stable in every locale.
+      const buttons = Array.from(document.querySelectorAll(".vdNav button"));
+      const activeIndex = active ? buttons.indexOf(active as HTMLButtonElement) : 0;
+      const dashboard = activeIndex <= 0;
+      const analytics = activeIndex === 4;
+
       root.classList.toggle("show-dashboard-extras", dashboard);
       root.classList.toggle("show-analytics-extras", analytics);
       root.classList.toggle("isDashboardSection", dashboard);
