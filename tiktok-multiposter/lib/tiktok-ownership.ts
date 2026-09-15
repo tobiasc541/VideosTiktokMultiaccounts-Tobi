@@ -13,13 +13,40 @@ export async function assertTikTokAccountOwner(userId: string, accountId: string
 }
 
 export async function listOwnedTikTokAccounts(userId: string) {
-  const { data, error } = await supabaseAdmin()
+  const client = supabaseAdmin();
+  let owned = await client
     .from("tiktok_accounts")
     .select("id, open_id, display_name, avatar_url, access_expires_at, scope, created_at")
     .eq("user_id", userId)
     .order("created_at", { ascending: true });
+  if (owned.error) throw owned.error;
+
+  // One-time compatibility for accounts connected before VYRAL became multi-user.
+  // Only a user with no owned accounts can adopt legacy rows that have no owner.
+  if ((owned.data || []).length === 0) {
+    const legacy = await client.from("tiktok_accounts").select("id").is("user_id", null).limit(50);
+    if (legacy.error) throw legacy.error;
+    const ids = (legacy.data || []).map((row) => row.id);
+    if (ids.length) {
+      const claim = await client.from("tiktok_accounts").update({ user_id: userId }).in("id", ids).is("user_id", null);
+      if (claim.error) throw claim.error;
+      owned = await client
+        .from("tiktok_accounts")
+        .select("id, open_id, display_name, avatar_url, access_expires_at, scope, created_at")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: true });
+      if (owned.error) throw owned.error;
+    }
+  }
+  return owned.data ?? [];
+}
+
+export async function assignTikTokAccountOwner(userId: string, openId: string) {
+  const { error } = await supabaseAdmin()
+    .from("tiktok_accounts")
+    .update({ user_id: userId })
+    .eq("open_id", openId);
   if (error) throw error;
-  return data ?? [];
 }
 
 export async function deleteOwnedTikTokAccount(userId: string, accountId: string) {
