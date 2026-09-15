@@ -152,10 +152,7 @@ export default function AutomationStudio() {
       <div><span className="vaPulse"/><small>VYRAL AUTOMATIONS</small><strong>Convertí comentarios en conversaciones.</strong><p>Palabras clave, DM, links, IA, seguimiento y protección anti-spam por publicación.</p></div>
       <button type="button" className="vaOpen" onClick={() => setOpen(true)}>{draft.id ? "Editar automatización" : "+ Crear automatización"}</button>
     </div>
-    <div className="vaQuickRow">
-      <span><b>Instagram</b> listo para API</span><span><b>Facebook</b> listo para API</span><span className="muted"><b>TikTok</b> próximamente</span>
-      {saved.length > 0 && <span className="vaSavedCount">{saved.length} guardada{saved.length === 1 ? "" : "s"}</span>}
-    </div>
+    {saved.length > 0 && <div className="vaQuickRow"><span className="vaSavedCount">{saved.length} guardada{saved.length === 1 ? "" : "s"}</span></div>}
   </div>;
 
   const modal = open ? <div className="vaOverlay" onMouseDown={(e) => { if (e.target === e.currentTarget) setOpen(false); }}>
