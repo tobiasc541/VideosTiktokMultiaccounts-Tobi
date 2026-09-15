@@ -18,14 +18,14 @@ export default function NetworkFlowEnhancer(){
     const onClick=(event:MouseEvent)=>{
       const target=event.target as HTMLElement|null;
       const link=target?.closest?.('a[href="/registro"]') as HTMLAnchorElement|null;
-      if(!link||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;
+      if(!link||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey||leaving)return;
       event.preventDefault();
       setLeaving(true);
-      window.setTimeout(()=>router.push("/registro"),760);
+      window.setTimeout(()=>router.push("/registro"),1800);
     };
     document.addEventListener("click",onClick);
     return()=>document.removeEventListener("click",onClick);
-  },[router]);
+  },[router,leaving]);
 
   const flow=mount?createPortal(<div className="vnFlow" onPointerMove={(e)=>{const r=e.currentTarget.getBoundingClientRect();setTilt({x:((e.clientX-r.left)/r.width-.5)*8,y:((e.clientY-r.top)/r.height-.5)*6})}} onPointerLeave={()=>setTilt({x:0,y:0})} style={{"--mx":`${tilt.x}px`,"--my":`${tilt.y}px`} as React.CSSProperties}>
     <div className="vnAura"/>
