@@ -1,0 +1,26 @@
+import { NextResponse } from "next/server";
+import { getCustomerSession } from "../../../../lib/auth";
+
+export const maxDuration = 60;
+const MAX_IMAGE = 2_800_000;
+
+function extractText(data:any){
+  if(typeof data?.output_text==="string") return data.output_text;
+  for(const item of data?.output||[]) for(const c of item?.content||[]) if(c?.type==="output_text"&&c?.text) return c.text;
+  return "";
+}
+function cleanJson(text:string){const a=text.indexOf("{");const b=text.lastIndexOf("}");if(a<0||b<a)throw new Error("La IA devolvió una respuesta inválida.");return JSON.parse(text.slice(a,b+1));}
+
+export async function POST(req:Request){
+ const session=await getCustomerSession(); if(!session)return NextResponse.json({error:"No autorizado"},{status:401});
+ const key=process.env.OPENAI_API_KEY; if(!key)return NextResponse.json({error:"VYRAL AI todavía no tiene configurada su clave de inteligencia artificial."},{status:503});
+ try{
+  const body=await req.json(); const caption=String(body.caption||"").slice(0,2200); const image=typeof body.image==="string"?body.image:""; const language=String(body.language||"es").slice(0,8);
+  if(image&&(!image.startsWith("data:image/jpeg;base64,")||image.length>MAX_IMAGE))return NextResponse.json({error:"La vista previa del video es demasiado grande."},{status:400});
+  const content:any[]=[{type:"input_text",text:`Actuás como VYRAL AI, estratega experto en contenido vertical. Analizá el fotograma y el texto del usuario. Idioma de salida: ${language}. Caption actual: ${caption||"(vacío)"}. Devolvé SOLO JSON válido con: caption (máx 900 caracteres, natural y listo para publicar), hashtags (array de 5 a 10 sin #), viralScore (entero 0-100), hook (frase corta para los primeros segundos), cta (CTA corto), strengths (array de 2-4), improvements (array de 2-4), platformTips con tiktok, instagram y facebook. No prometas viralidad ni inventes hechos que no se vean.`}];
+  if(image)content.push({type:"input_image",image_url:image});
+  const r=await fetch("https://api.openai.com/v1/responses",{method:"POST",headers:{Authorization:`Bearer ${key}`,"Content-Type":"application/json"},body:JSON.stringify({model:"gpt-5.6-luna",input:[{role:"user",content}],max_output_tokens:1800})});
+  const data=await r.json(); if(!r.ok)throw new Error(data?.error?.message||"No se pudo ejecutar VYRAL AI."); const result=cleanJson(extractText(data));
+  return NextResponse.json({ok:true,result});
+ }catch(e:any){return NextResponse.json({error:e?.message||"No se pudo analizar el contenido."},{status:500})}
+}
