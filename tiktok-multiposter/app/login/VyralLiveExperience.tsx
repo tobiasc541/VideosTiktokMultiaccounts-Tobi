@@ -1,37 +1,39 @@
 "use client";
-import {useEffect,useMemo,useState} from "react";
+import {ChangeEvent,useEffect,useRef,useState} from "react";
 import "./vyral-live-experience.css";
 
 const stages=["CREAR","OPTIMIZAR","DISTRIBUIR","AUTOMATIZAR","MEDIR","CRECER"];
 const networks=["TikTok","Instagram","Facebook","YouTube"];
-const demos:{[k:string]:{hook:string;caption:string;tags:string[]}}={
- zapatillas:{hook:"El detalle que cambia todo en tu próximo look.",caption:"Comodidad que entra por los ojos. Mostralas en movimiento y cerrá con una pregunta simple.",tags:["#zapatillas","#estilo","#parati"]},
- ecommerce:{hook:"Si vendés online, esto te ahorra trabajo desde hoy.",caption:"Una pieza, múltiples destinos y una operación mucho más simple.",tags:["#ecommerce","#ventas","#contenido"]},
- default:{hook:"No empieces explicando: empezá mostrando el resultado.",caption:"Convertí una idea en una pieza clara, directa y lista para distribuir.",tags:["#contenido","#creadores","#vyral"]}
-};
+const aiExamples=[
+ {k:"HOOK",v:"El primer segundo tarda en mostrar el producto. Probá abrir directamente con el resultado."},
+ {k:"RETENCIÓN",v:"Buen cambio visual a mitad del video. Sumá texto en pantalla para reforzar la idea principal."},
+ {k:"CTA",v:"El cierre puede convertir mejor con una pregunta concreta: “¿Cuál elegirías?”"},
+ {k:"CAPTION",v:"Mostrá el beneficio primero y dejá la explicación para la segunda línea."}
+];
 
 export default function VyralLiveExperience(){
- const[mode,setMode]=useState<"manual"|"vyral">("vyral");
- const[run,setRun]=useState(0); const[topic,setTopic]=useState("ecommerce"); const[scoreOpen,setScoreOpen]=useState(false); const[stage,setStage]=useState(0);
- useEffect(()=>{const on=()=>{const max=Math.max(1,document.documentElement.scrollHeight-innerHeight);setStage(Math.min(5,Math.floor((scrollY/max)*6)))};on();addEventListener("scroll",on,{passive:true});return()=>removeEventListener("scroll",on)},[]);
- const result=useMemo(()=>demos[topic.toLowerCase().trim()]||demos.default,[topic]);
- return <section className="vlx" aria-label="Probá VYRAL">
-  <div className="vlxHead"><div><small>VYRAL LIVE EXPERIENCE / INTERACTIVO</small><h2>No te lo contamos.<br/><em>Probalo.</em></h2><p>Una demostración del recorrido que hace una pieza cuando crear, optimizar, distribuir y medir viven en el mismo sistema.</p></div><div className="vlxLive"><i/> DEMO LIVE</div></div>
+ const input=useRef<HTMLInputElement>(null); const timer=useRef<ReturnType<typeof setInterval>|null>(null);
+ const[file,setFile]=useState<File|null>(null); const[preview,setPreview]=useState(""); const[progress,setProgress]=useState(0); const[phase,setPhase]=useState<"empty"|"ready"|"sending"|"done">("empty"); const[ai,setAi]=useState<"idle"|"working"|"done">("idle"); const[scoreOpen,setScoreOpen]=useState(false); const[mode,setMode]=useState<"manual"|"vyral">("vyral");
+ useEffect(()=>()=>{if(preview)URL.revokeObjectURL(preview);if(timer.current)clearInterval(timer.current)},[preview]);
+ const choose=(e:ChangeEvent<HTMLInputElement>)=>{const f=e.target.files?.[0];if(!f)return;if(preview)URL.revokeObjectURL(preview);setFile(f);setPreview(URL.createObjectURL(f));setPhase("ready");setProgress(0);setAi("idle")};
+ const distribute=()=>{if(!file){input.current?.click();return}setPhase("sending");setProgress(0);let p=0;if(timer.current)clearInterval(timer.current);timer.current=setInterval(()=>{p++;setProgress(p);if(p>=4){if(timer.current)clearInterval(timer.current);setTimeout(()=>setPhase("done"),250)}},650)};
+ const analyze=()=>{if(!file){input.current?.click();return}setAi("working");setTimeout(()=>setAi("done"),1450)};
+ const reset=()=>{if(preview)URL.revokeObjectURL(preview);setPreview("");setFile(null);setPhase("empty");setProgress(0);setAi("idle");if(input.current)input.current.value=""};
+ const step=file?ai==="done"?phase==="done"?5:2:1:0;
+ return <section className="vlx" aria-label="Experiencia interactiva VYRAL">
+  <div className="vlxHead"><div><small>EXPERIENCIA INTERACTIVA</small><h2>No te lo contamos.<br/><em>Probalo.</em></h2><p>Cargá un video desde tu dispositivo y recorré el flujo. El archivo se usa sólo en tu navegador para esta experiencia: no se envía ni se guarda.</p></div></div>
   <div className="vlxConsole">
-   <div className="vlxNav"><b>VYRAL / CONTROL</b><span>PRODUCT SANDBOX</span><i>● ONLINE</i></div>
+   <div className="vlxNav"><b>VYRAL / FLUJO DE PRODUCTO</b><span>EXPERIENCIA GUIADA</span></div>
    <div className="vlxWorkspace">
-    <div className="vlxUpload"><small>01 / CONTENIDO</small><div className="vlxVideo"><span>▶</span><b>VIDEO_01.MP4</b><i>READY</i></div><p>Una sola pieza entra al sistema.</p></div>
-    <div className="vlxDestinations"><small>02 / DESTINOS</small>{networks.map((n,i)=><div key={n} className={run?"pulse":""} style={{animationDelay:`${i*.16}s`}}><span>{n[0]}</span><b>{n}</b><i>{run?"PUBLICADO":"LISTO"}</i></div>)}<button onClick={()=>{setRun(0);requestAnimationFrame(()=>setRun(Date.now()))}}>DISTRIBUIR AHORA ↗</button></div>
-    <div className="vlxStatus"><small>03 / EJECUCIÓN</small><strong>{run?"4/4":"0/4"}</strong><span>{run?"DESTINOS PUBLICADOS":"ESPERANDO ACCIÓN"}</span><div className={run?"vlxRing active":"vlxRing"}><i/></div></div>
+    <div className="vlxUpload"><small>01 / CARGÁ UNA VEZ</small><input ref={input} className="vlxFile" type="file" accept="video/*" onChange={choose}/>{preview?<div className="vlxVideo hasVideo"><video src={preview} controls playsInline/><button onClick={reset}>CAMBIAR VIDEO</button><b>{file?.name}</b></div>:<button className="vlxDrop" onClick={()=>input.current?.click()}><span>＋</span><b>SUBIR UN VIDEO</b><i>MP4 · MOV · WEBM</i></button>}<p>{file?"Listo. Este único archivo alimenta todo el recorrido de ejemplo.":"Elegí cualquier video. La vista previa queda local en este navegador."}</p>{file&&<button className="vlxAnalyze" onClick={analyze} disabled={ai==="working"}>✦ {ai==="working"?"ANALIZANDO EJEMPLO…":ai==="done"?"VOLVER A ANALIZAR CON IA":"ANALIZAR VIDEO CON IA"}</button>}</div>
+    <div className="vlxDestinations"><small>02 / ELEGÍ DESTINOS</small><p className="vlxHint">La misma carga se prepara para cada canal. No necesitás volver a seleccionar el archivo.</p>{networks.map((n,i)=>{const done=progress>i;const active=phase==="sending"&&progress===i;return <div key={n} className={done?"sent":active?"sending":""}><span>{n[0]}</span><b>{n}</b><i>{done?"COMPLETADO":active?"ENVIANDO…":file?"PREPARADO":"ESPERANDO VIDEO"}</i></div>})}<button disabled={!file||phase==="sending"} onClick={distribute}>{phase==="sending"?`DISTRIBUYENDO ${progress}/4…`:phase==="done"?"REPETIR RECORRIDO ↗":"VER CÓMO SE DISTRIBUYE ↗"}</button></div>
+    <div className="vlxStatus"><small>03 / PROGRESO</small><strong>{progress}/4</strong><span>{phase==="empty"?"PRIMERO CARGÁ UN VIDEO":phase==="ready"?"LISTO PARA DISTRIBUIR":phase==="sending"?"DISTRIBUYENDO PASO A PASO":phase==="done"?"RECORRIDO COMPLETADO":""}</span><div className={phase==="sending"?"vlxRing active":"vlxRing"}><i/></div><p className="vlxStatusExplain">{phase==="done"?"Una sola carga → cuatro destinos. Esta animación representa el flujo; no publica nada realmente.":"Vas a ver avanzar cada destino por separado."}</p></div>
    </div>
   </div>
-  <div className="vlxSplit">
-   <article className="vlxCompare"><div className="vlxArticleTop"><small>ANTES / DESPUÉS</small><div><button className={mode==="manual"?"active":""} onClick={()=>setMode("manual")}>SIN VYRAL</button><button className={mode==="vyral"?"active":""} onClick={()=>setMode("vyral")}>CON VYRAL</button></div></div><h3>{mode==="manual"?"El mismo trabajo, repetido.":"Una carga. Tu red se activa."}</h3><div className="vlxLoadBars">{Array.from({length:mode==="manual"?12:1}).map((_,i)=><i key={i}/>)}</div><strong>{mode==="manual"?"12 cargas manuales":"1 carga central"}</strong><p>{mode==="manual"?"Abrir cuentas, repetir campos, volver a subir.":"VYRAL organiza los destinos desde un único flujo."}</p></article>
-   <article className="vlxAi"><small>VYRAL INTELLIGENCE / LAB</small><h3>Decile qué vendés.</h3><div className="vlxPrompt"><input value={topic} onChange={e=>setTopic(e.target.value)} placeholder="Ej: zapatillas"/><span>✦</span></div><div className="vlxAiResult"><label>HOOK</label><b>{result.hook}</b><label>CAPTION</label><p>{result.caption}</p><div>{result.tags.map(t=><span key={t}>{t}</span>)}</div></div></article>
-  </div>
-  <div className="vlxBottom">
-   <article className="vlxScore" onClick={()=>setScoreOpen(!scoreOpen)}><small>CONTENT SIGNAL / TOCÁ PARA EXPLORAR</small><div><strong>87<span>/100</span></strong><b>Potencial alto</b></div>{scoreOpen?<div className="vlxScoreParts"><span>HOOK <b>92</b></span><span>CLARIDAD <b>84</b></span><span>CTA <b>71</b></span><span>POTENCIAL <b>88</b></span></div>:<p>Hook claro · propuesta visible · CTA mejorable <i>＋</i></p>}</article>
-   <article className="vlxJourney"><small>RECORRIDO VYRAL</small><div className="vlxJourneyRail">{stages.map((s,i)=><span key={s} className={i<=stage?"active":""}><i>{String(i+1).padStart(2,"0")}</i><b>{s}</b></span>)}</div><p><i/> El contenido avanza con vos mientras recorrés VYRAL.</p></article>
-  </div>
+
+  {file&&<div className={`vlxAiPanel ${ai==="done"?"done":""}`}><div className="vlxAiPanelHead"><div><small>✦ ANÁLISIS DE VIDEO / EJEMPLO</small><h3>{ai==="working"?"Leyendo estructura, hook y cierre…":ai==="done"?"Esto es lo que la IA puede detectar.":"Tu video ya está listo para analizar."}</h3><p>En el plan Escala, el análisis del producto puede evaluar el contenido cargado y devolverte recomendaciones antes de publicar. Acá mostramos una vista ilustrativa del tipo de devolución.</p></div><button onClick={analyze} disabled={ai==="working"}>{ai==="working"?"ANALIZANDO…":"✦ ANALIZAR VIDEO"}</button></div>{ai==="working"&&<div className="vlxAiScan"><i/><span>Analizando primeros segundos</span><span>Evaluando claridad del mensaje</span><span>Buscando oportunidades de CTA</span></div>}{ai==="done"&&<div className="vlxAiFindings"><div className="vlxAiScore"><strong>87</strong><span>/100</span><b>BUEN POTENCIAL</b></div>{aiExamples.map((x,i)=><article key={x.k}><i>{String(i+1).padStart(2,"0")}</i><div><small>{x.k}</small><p>{x.v}</p></div></article>)}</div>}</div>}
+
+  <div className="vlxSplit"><article className="vlxCompare"><div className="vlxArticleTop"><small>ENTENDÉ LA DIFERENCIA</small><div><button className={mode==="manual"?"active":""} onClick={()=>setMode("manual")}>SIN VYRAL</button><button className={mode==="vyral"?"active":""} onClick={()=>setMode("vyral")}>CON VYRAL</button></div></div><h3>{mode==="manual"?"El mismo archivo, una y otra vez.":"Un archivo entra. El flujo continúa."}</h3><div className="vlxLoadBars">{Array.from({length:mode==="manual"?12:1}).map((_,i)=><i key={i}/>)}</div><strong>{mode==="manual"?"12 cargas manuales":"1 carga central"}</strong><p>{mode==="manual"?"Elegir archivo → completar datos → publicar → cambiar cuenta → repetir.":"Elegís el video una vez y desde ahí preparás análisis, destinos y seguimiento."}</p></article><article className="vlxExplain"><small>QUÉ ESTÁS PROBANDO</small><h3>El archivo es el punto de partida.</h3><div><span><i>01</i><b>CARGÁ</b><p>Seleccionás una pieza una sola vez.</p></span><span><i>02</i><b>ANALIZÁ</b><p>La IA puede sugerir mejoras antes de publicar.</p></span><span><i>03</i><b>DISTRIBUÍ</b><p>El mismo contenido continúa hacia tus destinos.</p></span></div></article></div>
+  <div className="vlxBottom"><article className="vlxScore" onClick={()=>setScoreOpen(!scoreOpen)}><small>SEÑALES DE CONTENIDO / TOCÁ PARA EXPLORAR</small><div><strong>{ai==="done"?"87":"--"}<span>/100</span></strong><b>{ai==="done"?"Ejemplo de análisis":"Cargá y analizá un video"}</b></div>{scoreOpen&&ai==="done"?<div className="vlxScoreParts"><span>HOOK <b>92</b></span><span>CLARIDAD <b>84</b></span><span>CTA <b>71</b></span><span>POTENCIAL <b>88</b></span></div>:<p>{ai==="done"?"Hook · claridad · CTA · potencial de retención":"El puntaje aparece después del análisis de ejemplo."}</p>}</article><article className="vlxJourney"><small>RECORRIDO DEL CONTENIDO</small><div className="vlxJourneyRail">{stages.map((s,i)=><span key={s} className={i<=step?"active":""}><i>{String(i+1).padStart(2,"0")}</i><b>{s}</b></span>)}</div><p><i/> Cada interacción desbloquea el siguiente paso del recorrido.</p></article></div>
  </section>
 }
