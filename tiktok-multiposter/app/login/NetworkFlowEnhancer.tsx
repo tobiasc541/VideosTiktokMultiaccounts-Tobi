@@ -21,7 +21,7 @@ export default function NetworkFlowEnhancer(){
       if(!link||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey||leaving)return;
       event.preventDefault();
       setLeaving(true);
-      window.setTimeout(()=>router.push("/registro"),1800);
+      window.setTimeout(()=>router.push("/registro"),2800);
     };
     document.addEventListener("click",onClick);
     return()=>document.removeEventListener("click",onClick);
