@@ -5,12 +5,21 @@ import Link from "next/link";
 import "./notification-center.css";
 
 type Notice = { id:string; icon:string; title:string; text:string; time:string; href?:string; action?:string; tone?:"good"|"info"|"warn" };
+type SystemNoticeDetail = { title:string; text:string; tone?:"good"|"info"|"warn"; icon?:string; open?:boolean };
+
+export function pushVyralNotification(detail:SystemNoticeDetail){
+  if(typeof window!=="undefined") window.dispatchEvent(new CustomEvent("vyral:notify",{detail}));
+}
 
 export default function NotificationCenter({ daysLeft, planId, accountCount=0 }: { daysLeft:number|null; planId:string; accountCount?:number }) {
   const [open,setOpen]=useState(false);
   const [seen,setSeen]=useState(false);
-  useEffect(()=>{ try { setSeen(localStorage.getItem("vyral-notifications-seen")==="1"); } catch {} },[]);
-  const notices=useMemo<Notice[]>(()=>{
+  const [runtime,setRuntime]=useState<Notice[]>([]);
+  useEffect(()=>{ try { setSeen(localStorage.getItem("vyral-notifications-seen")==="1"); } catch {}
+    const onNotice=(event:Event)=>{const detail=(event as CustomEvent<SystemNoticeDetail>).detail;if(!detail?.title)return;const notice:Notice={id:`system-${Date.now()}-${Math.random()}`,icon:detail.icon||(detail.tone==="warn"?"!":"✓"),title:detail.title,text:detail.text||"",time:"Ahora",tone:detail.tone||"info"};setRuntime(current=>[notice,...current].slice(0,12));setSeen(false);if(detail.open!==false)setOpen(true)};
+    window.addEventListener("vyral:notify",onNotice as EventListener);return()=>window.removeEventListener("vyral:notify",onNotice as EventListener);
+  },[]);
+  const baseNotices=useMemo<Notice[]>(()=>{
     const list:Notice[]=[];
     if(daysLeft!==null && daysLeft<=3) list.push({id:"renew",icon:"◷",title:daysLeft<=1?"Tu plan vence mañana":"Tu plan vence pronto",text:`Quedan ${daysLeft} día${daysLeft===1?"":"s"} de acceso. Administrá tu suscripción para evitar interrupciones.`,time:"Cuenta",href:"/mi-plan",action:"Administrar plan",tone:"warn"});
     list.push({id:"ready",icon:"✓",title:"Tu espacio VYRAL está listo",text:accountCount?`${accountCount} cuenta${accountCount===1?"":"s"} conectada${accountCount===1?"":"s"}. Ya podés distribuir tu próximo contenido.`:"Conectá tu primera cuenta y prepará tu próxima publicación.",time:"Ahora",href:accountCount?"/#publicar":"/api/tiktok/connect",action:accountCount?"Nueva publicación":"Conectar cuenta",tone:"good"});
@@ -18,6 +27,7 @@ export default function NotificationCenter({ daysLeft, planId, accountCount=0 }:
     if(planId!=="inicio") list.push({id:"analytics",icon:"↗",title:"Analytics preparado",text:"Cuando entren datos reales de tus redes, VYRAL va a concentrar el rendimiento de tus cuentas en una sola visión.",time:"VYRAL",tone:"info"});
     return list;
   },[daysLeft,planId,accountCount]);
+  const notices=[...runtime,...baseNotices];
   const unread=seen?0:notices.length;
   function toggle(){ const next=!open; setOpen(next); if(next){setSeen(true);try{localStorage.setItem("vyral-notifications-seen","1")}catch{}} }
   return <div className="vyralNotifyRoot">
