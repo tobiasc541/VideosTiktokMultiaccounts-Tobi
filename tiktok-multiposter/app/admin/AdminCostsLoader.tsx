@@ -1,0 +1,3 @@
+import {supabaseAdmin} from "../../lib/supabase-admin";
+import AdminCostsPanel from "./AdminCostsPanel";
+export default async function AdminCostsLoader({aiCost,mrr}:{aiCost:number;mrr:number}){const now=new Date();const start=new Date(now.getFullYear(),now.getMonth(),1).toISOString().slice(0,10);const end=new Date(now.getFullYear(),now.getMonth()+1,1).toISOString().slice(0,10);const {data}=await supabaseAdmin().from("business_expenses").select("id,category,description,amount_usd,expense_date,recurring").gte("expense_date",start).lt("expense_date",end).order("expense_date",{ascending:false});return <AdminCostsPanel expenses={(data||[]) as any} aiCost={aiCost} mrr={mrr}/>}
