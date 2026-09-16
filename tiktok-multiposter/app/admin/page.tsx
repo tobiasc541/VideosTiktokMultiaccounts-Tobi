@@ -8,6 +8,7 @@ import AdminAnalyticsPanel from "./AdminAnalyticsPanel";
 import AdminAiCosts from "./AdminAiCosts";
 import AdminCostsLoader from "./AdminCostsLoader";
 import "./admin.css";
+import "./admin-costs.css";
 import "./giveaway.css";
 export const dynamic="force-dynamic";
 type SupportMessage={id:string;from:"user"|"admin";text:string;createdAt:string};
