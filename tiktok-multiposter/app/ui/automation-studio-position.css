@@ -1,0 +1,21 @@
+/* Desktop viewport positioning override.
+   Keep the studio in the left working area so account selection stays visible,
+   but deliberately bias it much lower in the viewport as requested. */
+@media (min-width: 901px) {
+  .vaOverlay {
+    align-items: flex-start !important;
+    padding-top: clamp(180px, 24vh, 310px) !important;
+    padding-bottom: 24px !important;
+  }
+
+  .vaModal {
+    margin-top: 0 !important;
+    max-height: calc(100dvh - clamp(204px, 24vh + 24px, 334px)) !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .vaOverlay {
+    align-items: center !important;
+  }
+}
