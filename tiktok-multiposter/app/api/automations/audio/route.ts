@@ -1,27 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCustomerSession } from "../../../../lib/auth";
 import { supabaseAdmin } from "../../../../lib/supabase-admin";
-
-export const maxDuration = 60;
-const MAX_AUDIO_BYTES = 4 * 1024 * 1024;
-
-export async function POST(req: Request) {
-  const session = await getCustomerSession();
-  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  try {
-    const form = await req.formData();
-    const file = form.get("audio");
-    if (!(file instanceof File)) return NextResponse.json({ error: "No se recibió el audio." }, { status: 400 });
-    if (file.size > MAX_AUDIO_BYTES) return NextResponse.json({ error: "El audio es demasiado largo. Grabá un mensaje más corto." }, { status: 413 });
-    const ext = file.type.includes("mp4") ? "m4a" : file.type.includes("ogg") ? "ogg" : "webm";
-    const path = `automation-audio/${session.userId}/${crypto.randomUUID()}.${ext}`;
-    const client = supabaseAdmin();
-    const bytes = new Uint8Array(await file.arrayBuffer());
-    const { error } = await client.storage.from("scheduled-media").upload(path, bytes, { contentType: file.type || "audio/webm", upsert: false });
-    if (error) throw error;
-    return NextResponse.json({ ok: true, path, name: `Audio VYRAL.${ext}` });
-  } catch (e: any) {
-    console.error("[VYRAL Voice][admin] upload failure", e?.message || e);
-    return NextResponse.json({ error: "No pudimos guardar el audio en este momento. Intentá nuevamente." }, { status: 500 });
-  }
-}
+export const maxDuration=60;const MAX=4*1024*1024;
+function owned(path:string,userId:string){return path.startsWith(`automation-audio/${userId}/`)}
+export async function GET(req:Request){const s=await getCustomerSession();if(!s)return NextResponse.json({error:"No autorizado"},{status:401});const path=new URL(req.url).searchParams.get("path")||"";if(!owned(path,s.userId))return NextResponse.json({error:"Audio inválido"},{status:400});const{data,error}=await supabaseAdmin().storage.from("scheduled-media").createSignedUrl(path,3600);if(error||!data?.signedUrl)return NextResponse.json({error:"No pudimos abrir el audio."},{status:500});return NextResponse.json({ok:true,url:data.signedUrl})}
+export async function POST(req:Request){const s=await getCustomerSession();if(!s)return NextResponse.json({error:"No autorizado"},{status:401});try{const f=await req.formData(),file=f.get("audio");if(!(file instanceof File))return NextResponse.json({error:"No se recibió el audio."},{status:400});if(file.size>MAX)return NextResponse.json({error:"El audio es demasiado largo. Grabá un mensaje más corto."},{status:413});const ext=file.type.includes("mp4")?"m4a":file.type.includes("ogg")?"ogg":"webm",path=`automation-audio/${s.userId}/${crypto.randomUUID()}.${ext}`,client=supabaseAdmin(),bytes=new Uint8Array(await file.arrayBuffer());const{error}=await client.storage.from("scheduled-media").upload(path,bytes,{contentType:file.type||"audio/webm",upsert:false});if(error)throw error;const{data}=await client.storage.from("scheduled-media").createSignedUrl(path,3600);return NextResponse.json({ok:true,path,url:data?.signedUrl||"",name:`Audio VYRAL.${ext}`})}catch(e:any){console.error("[VYRAL Voice][admin] upload failure",e?.message||e);return NextResponse.json({error:"No pudimos guardar el audio en este momento. Intentá nuevamente."},{status:500})}}
