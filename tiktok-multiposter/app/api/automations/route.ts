@@ -10,7 +10,11 @@ type AutomationRule = {
   publicReplyEnabled: boolean; publicReply: string; dmEnabled: boolean; dmMessage: string; dmLink?: string;
   resourceName?: string; resourceUrl?: string; aiEnabled: boolean; aiTone?: string; aiInstructions?: string; aiConfidence?: number;
   humanHandoff?: boolean; collectLead?: boolean; leadTag?: string; cooldownMinutes?: number; maxRepliesPerUser?: number;
-  smartGuard?: boolean; conversionGoal?: "link_click" | "dm_started" | "lead" | "none"; createdAt: string; updatedAt: string;
+  smartGuard?: boolean; conversionGoal?: "link_click" | "dm_started" | "lead" | "none";
+  conversationGoal?: "sell" | "whatsapp" | "book" | "lead" | "support" | "resource";
+  autonomy?: "guided" | "balanced" | "high"; personalizeName?: boolean; continueConversation?: boolean; qualifyLead?: boolean;
+  whatsappTarget?: string; ctaText?: string; voiceEnabled?: boolean; voiceAssetName?: string; voiceAssetUrl?: string; voiceWhen?: "never" | "hot" | "manual";
+  createdAt: string; updatedAt: string;
 };
 
 async function loadUser() {
@@ -21,11 +25,13 @@ async function loadUser() {
 
 function sanitizeRule(input: any, existing?: AutomationRule): AutomationRule {
   const now = new Date().toISOString();
-  // TikTok automation is intentionally not enabled until the product has the required messaging/comment API support.
   const allowedPlatforms = new Set(["instagram", "facebook"]);
   const platforms = (Array.isArray(input.platforms) ? input.platforms.filter((x: string) => allowedPlatforms.has(x)).slice(0, 2) : ["instagram", "facebook"]) as AutomationRule["platforms"];
   const triggerMode = (["exact", "contains", "ai_intent"].includes(input.triggerMode) ? input.triggerMode : "contains") as AutomationRule["triggerMode"];
   const goal = (["link_click", "dm_started", "lead", "none"].includes(input.conversionGoal) ? input.conversionGoal : "dm_started") as AutomationRule["conversionGoal"];
+  const conversationGoal = (["sell", "whatsapp", "book", "lead", "support", "resource"].includes(input.conversationGoal) ? input.conversationGoal : "lead") as AutomationRule["conversationGoal"];
+  const autonomy = (["guided", "balanced", "high"].includes(input.autonomy) ? input.autonomy : "balanced") as AutomationRule["autonomy"];
+  const voiceWhen = (["never", "hot", "manual"].includes(input.voiceWhen) ? input.voiceWhen : "never") as AutomationRule["voiceWhen"];
   return {
     id: String(input.id || existing?.id || crypto.randomUUID()), name: String(input.name || existing?.name || "Nueva automatización").slice(0, 80),
     enabled: Boolean(input.enabled ?? existing?.enabled ?? true), platforms, contentLabel: String(input.contentLabel || "").slice(0, 160), triggerMode,
@@ -34,10 +40,13 @@ function sanitizeRule(input: any, existing?: AutomationRule): AutomationRule {
     publicReplyEnabled: Boolean(input.publicReplyEnabled), publicReply: String(input.publicReply || "").slice(0, 500), dmEnabled: Boolean(input.dmEnabled ?? true),
     dmMessage: String(input.dmMessage || "").slice(0, 2000), dmLink: String(input.dmLink || "").slice(0, 1000),
     resourceName: String(input.resourceName || "").slice(0, 180), resourceUrl: String(input.resourceUrl || "").slice(0, 1200),
-    aiEnabled: Boolean(input.aiEnabled), aiTone: String(input.aiTone || "Profesional y cercano").slice(0, 100), aiInstructions: String(input.aiInstructions || "").slice(0, 1500),
+    aiEnabled: Boolean(input.aiEnabled), aiTone: String(input.aiTone || "Profesional y cercano").slice(0, 100), aiInstructions: String(input.aiInstructions || "").slice(0, 3000),
     aiConfidence: Math.max(0.5, Math.min(0.99, Number(input.aiConfidence || 0.78))), humanHandoff: Boolean(input.humanHandoff ?? true), collectLead: Boolean(input.collectLead),
     leadTag: String(input.leadTag || "").slice(0, 80), cooldownMinutes: Math.max(0, Math.min(10080, Number(input.cooldownMinutes || 60))),
-    maxRepliesPerUser: Math.max(1, Math.min(10, Number(input.maxRepliesPerUser || 1))), smartGuard: Boolean(input.smartGuard ?? true), conversionGoal: goal,
+    maxRepliesPerUser: Math.max(1, Math.min(50, Number(input.maxRepliesPerUser || 8))), smartGuard: Boolean(input.smartGuard ?? true), conversionGoal: goal,
+    conversationGoal, autonomy, personalizeName: Boolean(input.personalizeName ?? true), continueConversation: Boolean(input.continueConversation ?? true), qualifyLead: Boolean(input.qualifyLead ?? true),
+    whatsappTarget: String(input.whatsappTarget || "").slice(0, 80), ctaText: String(input.ctaText || "").slice(0, 300),
+    voiceEnabled: Boolean(input.voiceEnabled), voiceAssetName: String(input.voiceAssetName || "").slice(0, 180), voiceAssetUrl: String(input.voiceAssetUrl || "").slice(0, 1200), voiceWhen,
     createdAt: existing?.createdAt || now, updatedAt: now
   };
 }
