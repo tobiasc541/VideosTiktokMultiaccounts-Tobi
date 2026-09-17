@@ -17,7 +17,20 @@ function ChipInput({value,onChange,placeholder}:{value:string[];onChange:(v:stri
 export default function AutomationStudio(){
  const[mount,setMount]=useState<HTMLElement|null>(null),[open,setOpen]=useState(false),[advanced,setAdvanced]=useState(false),[draft,setDraft]=useState<Automation>(blankAutomation()),[saved,setSaved]=useState<Automation[]>([]),[loading,setLoading]=useState(true),[saving,setSaving]=useState(false),[notice,setNotice]=useState(""),[testComment,setTestComment]=useState("Hola, quiero la guía"),[filename,setFilename]=useState(""),[captionPreview,setCaptionPreview]=useState("");
  useEffect(()=>{const sync=()=>{const btn=document.querySelector(".vdPublishBtn");const card=btn?.closest(".vdCard") as HTMLElement|null;if(card&&card!==mount)setMount(card);else if(!card&&mount&&!mount.isConnected)setMount(null);const input=card?.querySelector('input[type="file"]') as HTMLInputElement|null;const area=card?.querySelector("textarea") as HTMLTextAreaElement|null;if(input?.files?.[0]?.name)setFilename(input.files[0].name);if(area?.value!==undefined)setCaptionPreview(area.value)};sync();const timer=window.setInterval(sync,250);return()=>window.clearInterval(timer)},[mount]);
- useEffect(()=>{fetch("/api/automations").then(r=>r.json()).then(j=>setSaved((j.automations||[]).map((x:Automation)=>({...blankAutomation(),...x}))).catch(()=>{}).finally(()=>setLoading(false))},[]);
+ useEffect(() => {
+  fetch("/api/automations")
+    .then(r => r.json())
+    .then(j =>
+      setSaved(
+        (j.automations || []).map((x: Automation) => ({
+          ...blankAutomation(),
+          ...x
+        }))
+      )
+    )
+    .catch(() => {})
+    .finally(() => setLoading(false));
+}, []);
  useEffect(()=>{if(filename&&!draft.contentLabel)setDraft(d=>({...d,contentLabel:filename.replace(/\.[^.]+$/,"")}))},[filename,draft.contentLabel]);
  const simulation=useMemo(()=>{const c=testComment.trim().toLowerCase(),excluded=draft.excludeKeywords.some(k=>c.includes(k)),matched=draft.triggerMode==="ai_intent"?c.length>3:draft.triggerMode==="exact"?draft.keywords.some(k=>c===k):draft.keywords.some(k=>c.includes(k));return{excluded,matched:matched&&!excluded}},[testComment,draft]);
  function set<K extends keyof Automation>(key:K,value:Automation[K]){setDraft(d=>({...d,[key]:value}))}function togglePlatform(p:Platform){if(p==="tiktok")return;set("platforms",draft.platforms.includes(p)?draft.platforms.filter(x=>x!==p):[...draft.platforms,p])}
