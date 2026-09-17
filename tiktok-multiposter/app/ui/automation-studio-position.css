@@ -1,21 +1,21 @@
 /* Desktop viewport positioning override.
-   Keep the studio in the left working area so account selection stays visible,
-   but deliberately bias it much lower in the viewport as requested. */
+   The overlay itself stays full-screen. Move the actual modal so the offset
+   cannot be neutralized by the overlay flex layout or other centering rules. */
 @media (min-width: 901px) {
-  .vaOverlay {
-    align-items: flex-start !important;
-    padding-top: clamp(180px, 24vh, 310px) !important;
-    padding-bottom: 24px !important;
+  body > .vaOverlay {
+    align-items: center !important;
+    padding: 24px !important;
   }
 
-  .vaModal {
-    margin-top: 0 !important;
-    max-height: calc(100dvh - clamp(204px, 24vh + 24px, 334px)) !important;
+  body > .vaOverlay .vaModal {
+    /* Deliberately exaggerated downward placement requested for desktop. */
+    translate: 0 clamp(190px, 20vh, 280px) !important;
+    max-height: calc(100dvh - clamp(230px, 24vh, 330px)) !important;
   }
 }
 
 @media (max-width: 900px) {
-  .vaOverlay {
-    align-items: center !important;
+  body > .vaOverlay .vaModal {
+    translate: none !important;
   }
 }
