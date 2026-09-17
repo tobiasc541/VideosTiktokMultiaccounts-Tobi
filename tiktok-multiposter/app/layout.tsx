@@ -32,6 +32,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <LocaleCompletenessGuard />
         {children}
         <div className="vyralPersistentSignature" aria-hidden="true"><span>Powered by</span><strong>Tobias Carrizo</strong></div>
+        <style>{`
+          /* Automation Studio lives in document.body. The publish workspace uses a
+             visually offset desktop canvas, so compensate only on wide screens to
+             center the dialog in the user's visible workspace. */
+          @media (min-width: 1000px) {
+            body > .vaOverlay .vaModal {
+              transform: translate(13vw, 4vh) !important;
+            }
+          }
+        `}</style>
       </body>
     </html>
   );
