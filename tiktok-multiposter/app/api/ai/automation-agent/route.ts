@@ -11,18 +11,23 @@ function extractText(data: any) {
   for (const item of data?.output || []) for (const c of item?.content || []) if (c?.type === "output_text" && c?.text) return c.text;
   return "";
 }
-
 function cleanJson(text: string) {
   const a = text.indexOf("{"); const b = text.lastIndexOf("}");
-  if (a < 0 || b < a) throw new Error("VYRAL Agent devolvió una respuesta inválida.");
+  if (a < 0 || b < a) throw new Error("invalid_agent_response");
   return JSON.parse(text.slice(a, b + 1));
+}
+function publicAiError(status = 503) {
+  return NextResponse.json({ error: "VYRAL Intelligence no está disponible en este momento. Intentá nuevamente en unos minutos.", code: "VYRAL_AI_UNAVAILABLE" }, { status });
 }
 
 export async function POST(req: Request) {
   const session = await getCustomerSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   const key = process.env.OPENAI_API_KEY;
-  if (!key) return NextResponse.json({ error: "OPENAI_API_KEY no está configurada." }, { status: 503 });
+  if (!key) {
+    console.error("[VYRAL Intelligence][admin] OPENAI_API_KEY missing");
+    return publicAiError();
+  }
 
   try {
     const body = await req.json();
@@ -32,7 +37,7 @@ export async function POST(req: Request) {
     const username = String(body.username || "").slice(0, 100);
     const incoming = String(body.incoming || "").slice(0, 2500);
     const history: Message[] = Array.isArray(body.history) ? body.history.slice(-20).map((m: any) => ({ role: m.role === "assistant" ? "assistant" : "user", text: String(m.text || "").slice(0, 2500) })) : [];
-    if (!incoming) return NextResponse.json({ error: "Falta el mensaje entrante." }, { status: 400 });
+    if (!incoming) return NextResponse.json({ error: "Escribí un mensaje para probar VYRAL Intelligence." }, { status: 400 });
 
     const goal = String(automation.conversationGoal || automation.conversionGoal || "lead");
     const tone = String(automation.aiTone || "Profesional y cercano");
@@ -41,11 +46,15 @@ export async function POST(req: Request) {
     const prompt = `Sos VYRAL Sales Agent, asistente automatizado de una marca. Tu trabajo es conversar de forma natural, útil y breve sin fingir ser una persona.\nOBJETIVO: ${goal}.\nTONO: ${tone}.\nUSUARIO DISPONIBLE: ${username || "desconocido"}. Usá su nombre/usuario solo si aporta naturalidad y nunca inventes identidad.\nCONTEXTO DEL NEGOCIO: ${businessContext || "No provisto"}.\nCONTEXTO DE LA PUBLICACIÓN: ${publicationContext || "No provisto"}.\nINSTRUCCIONES: ${instructions || "Ayudá, calificá intención y avanzá hacia el objetivo sin presionar."}\nHISTORIAL: ${JSON.stringify(history)}\nMENSAJE NUEVO: ${incoming}\n\nClasificá intención e interés y elegí el siguiente mejor paso. Si faltan datos, preguntá una sola cosa por vez. Si hay intención alta, acercá el CTA configurado. Si el usuario está molesto, pide humano, hay una negociación especial o no tenés certeza factual, marcá handoff=true. No inventes precios, stock, políticas ni datos. No digas que sos humano.\nDevolvé SOLO JSON válido: {"reply":"texto listo para enviar","leadStage":"new|curious|qualified|hot|converted|support","intent":"string breve","confidence":0.0,"handoff":false,"goalReached":false,"suggestedAction":"reply|send_link|send_resource|request_whatsapp|handoff|close","usePersonalization":true,"reason":"explicación interna breve"}.`;
 
     const r = await fetch("https://api.openai.com/v1/responses", { method: "POST", headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" }, body: JSON.stringify({ model, input: [{ role: "user", content: [{ type: "input_text", text: prompt }] }], max_output_tokens: 900 }) });
-    const data = await r.json();
-    if (!r.ok) throw new Error(data?.error?.message || "No se pudo ejecutar VYRAL Sales Agent.");
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      console.error("[VYRAL Intelligence][admin] provider error", { status: r.status, code: data?.error?.code, type: data?.error?.type, message: data?.error?.message });
+      return publicAiError(r.status === 429 ? 503 : 502);
+    }
     await recordAiUsage(session.userId, "automation-agent", model, data.usage || {});
     return NextResponse.json({ ok: true, result: cleanJson(extractText(data)) });
   } catch (e: any) {
-    return NextResponse.json({ error: e?.message || "No se pudo ejecutar el agente." }, { status: 500 });
+    console.error("[VYRAL Intelligence][admin] agent failure", e?.message || e);
+    return publicAiError(500);
   }
 }
