@@ -1,6 +1,7 @@
 import "./globals.css";
 import "./brand.css";
 import "./login/auth-login.css";
+import "./ui/automation-studio-position.css";
 import CreatorPromoEntry from "./components/CreatorPromoEntry";
 import LocaleSelector from "./components/LocaleSelector";
 import LocaleRuntime3 from "./components/LocaleRuntime3";
@@ -33,12 +34,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {children}
         <div className="vyralPersistentSignature" aria-hidden="true"><span>Powered by</span><strong>Tobias Carrizo</strong></div>
         <style>{`
-          /* Automation Studio lives in document.body. The publish workspace uses a
-             visually offset desktop canvas, so compensate only on wide screens to
-             center the dialog in the user's visible workspace. */
+          /* Keep the modal horizontally inside the working canvas while leaving
+             the account selector visible. Vertical placement is handled by the
+             dedicated positioning stylesheet. */
           @media (min-width: 1000px) {
             body > .vaOverlay .vaModal {
-              transform: translate(13vw, 4vh) !important;
+              transform: translateX(13vw) !important;
             }
           }
         `}</style>
