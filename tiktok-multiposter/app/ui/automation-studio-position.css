@@ -1,16 +1,15 @@
-/* Desktop viewport positioning override.
-   Keep the overlay full-screen and position the modal itself.
-   The modal sits slightly below center while keeping the account selector visible. */
+/* Center Automation Studio modal in the viewport */
 
 @media (min-width: 901px) {
   body > .vaOverlay {
     align-items: center !important;
+    justify-content: center !important;
     padding: 24px !important;
   }
 
   body > .vaOverlay .vaModal {
-    translate: 0 120px !important;
-    max-height: calc(100dvh - 190px) !important;
+    translate: 0 0 !important;
+    max-height: calc(100dvh - 48px) !important;
   }
 }
 
