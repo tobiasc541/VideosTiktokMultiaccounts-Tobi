@@ -1,16 +1,17 @@
 /* Desktop viewport positioning override.
    Keep the overlay full-screen and position the modal itself.
-   This intentionally sits below true center, but not as low as the previous mockup. */
+   The modal sits slightly below center while keeping the account selector visible. */
+
 @media (min-width: 901px) {
   body > .vaOverlay {
     align-items: center !important;
     padding: 24px !important;
   }
 
-body > .vaOverlay .vaModal {
-  translate: 0 300px !important;
-  max-height: calc(100dvh - 350px) !important;
-}
+  body > .vaOverlay .vaModal {
+    translate: 0 120px !important;
+    max-height: calc(100dvh - 190px) !important;
+  }
 }
 
 @media (max-width: 900px) {
