@@ -34,12 +34,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {children}
         <div className="vyralPersistentSignature" aria-hidden="true"><span>Powered by</span><strong>Tobias Carrizo</strong></div>
         <style>{`
-          /* Keep the modal horizontally inside the working canvas while leaving
-             the account selector visible. Vertical placement is handled by the
-             dedicated positioning stylesheet. */
+          /* Center the Automation Studio horizontally in the viewport.
+             Vertical placement remains controlled by automation-studio-position.css. */
           @media (min-width: 1000px) {
             body > .vaOverlay .vaModal {
-              transform: translateX(13vw) !important;
+              transform: translateX(0) !important;
             }
           }
         `}</style>
