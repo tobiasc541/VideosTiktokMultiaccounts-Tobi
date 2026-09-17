@@ -7,10 +7,10 @@
     padding: 24px !important;
   }
 
-  body > .vaOverlay .vaModal {
-    translate: 0 clamp(105px, 12vh, 155px) !important;
-    max-height: calc(100dvh - clamp(155px, 17vh, 215px)) !important;
-  }
+body > .vaOverlay .vaModal {
+  translate: 0 300px !important;
+  max-height: calc(100dvh - 350px) !important;
+}
 }
 
 @media (max-width: 900px) {
