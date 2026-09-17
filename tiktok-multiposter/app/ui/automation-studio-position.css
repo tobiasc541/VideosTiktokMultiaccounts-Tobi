@@ -1,6 +1,6 @@
 /* Desktop viewport positioning override.
-   The overlay itself stays full-screen. Move the actual modal so the offset
-   cannot be neutralized by the overlay flex layout or other centering rules. */
+   Keep the overlay full-screen and position the modal itself.
+   This intentionally sits below true center, but not as low as the previous mockup. */
 @media (min-width: 901px) {
   body > .vaOverlay {
     align-items: center !important;
@@ -8,9 +8,8 @@
   }
 
   body > .vaOverlay .vaModal {
-    /* Deliberately exaggerated downward placement requested for desktop. */
-    translate: 0 clamp(190px, 20vh, 280px) !important;
-    max-height: calc(100dvh - clamp(230px, 24vh, 330px)) !important;
+    translate: 0 clamp(105px, 12vh, 155px) !important;
+    max-height: calc(100dvh - clamp(155px, 17vh, 215px)) !important;
   }
 }
 
