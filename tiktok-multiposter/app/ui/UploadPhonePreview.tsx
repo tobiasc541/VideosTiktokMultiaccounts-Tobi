@@ -10,23 +10,22 @@ export default function UploadPhonePreview() {
     let processingListener: ((ev: Event) => void) | null = null;
 
     const applyRememberedVideo = (root: HTMLElement) => {
-      if (!currentUrl) return;
       const phone = root.querySelector<HTMLElement>(".vyralUploadPhone");
       const video = root.querySelector<HTMLVideoElement>("video");
       const metaTitle = root.querySelector<HTMLElement>(".vyralUploadPhoneMeta b");
-      const status = root.querySelector<HTMLElement>(".vyralMediaStatus");
       if (!processingListener) {
         processingListener = ((ev: Event) => {
           const detail = (ev as CustomEvent).detail || {};
           document.querySelectorAll<HTMLElement>(".vyralMediaStatus").forEach(el => {
             el.style.display = "block";
+            el.dataset.stage = String(detail.stage || "processing");
             const span = el.querySelector("span");
             if (span) span.textContent = String(detail.text || "Procesando video…");
           });
         });
         window.addEventListener("vyral:video-processing", processingListener);
       }
-      if (!phone || !video) return;
+      if (!currentUrl || !phone || !video) return;
       video.src = currentUrl;
       video.muted = true;
       video.loop = true;
