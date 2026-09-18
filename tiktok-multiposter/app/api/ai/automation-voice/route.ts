@@ -25,6 +25,20 @@ export async function POST(req:Request){const session=await getCustomerSession()
       if(signed.error||!signed.data)return NextResponse.json({error:signed.error?.message||"No se pudo preparar la carga.",stage:"storage-prepare"},{status:500});
       return NextResponse.json({ok:true,path,signedUrl:signed.data.signedUrl,token:signed.data.token});
     }
+    if(mode==="deepgram-transcribe-stored"){
+      const path=String(body.path||""),deepgramKey=process.env.DEEPGRAM_API_KEY;
+      if(!path.startsWith(`${session.userId}/ai/`))return NextResponse.json({error:"Ruta inválida.",stage:"input"},{status:403});
+      if(!deepgramKey)return NextResponse.json({error:"DEEPGRAM_API_KEY no está configurada en este deployment.",stage:"config"},{status:503});
+      const client=supabaseAdmin(),signed=await client.storage.from(MEDIA_BUCKET).createSignedUrl(path,600);
+      if(signed.error||!signed.data?.signedUrl)return NextResponse.json({error:signed.error?.message||"No se pudo abrir el video temporal.",stage:"storage-read"},{status:500});
+      const dg=await fetch("https://api.deepgram.com/v1/listen?model=nova-3&language=multi&smart_format=true&mip_opt_out=true",{method:"POST",headers:{Authorization:`Token ${deepgramKey}`,"Content-Type":"application/json"},body:JSON.stringify({url:signed.data.signedUrl})});
+      const dj=await dg.json().catch(()=>({}));
+      await client.storage.from(MEDIA_BUCKET).remove([path]);
+      if(!dg.ok)return NextResponse.json({error:String(dj?.err_msg||dj?.error||dj?.message||`Deepgram HTTP ${dg.status}`),stage:"deepgram",providerStatus:dg.status},{status:502});
+      const transcript=String(dj?.results?.channels?.[0]?.alternatives?.[0]?.transcript||"").trim();
+      if(!transcript)return NextResponse.json({error:"Deepgram no detectó voz en este video.",stage:"no-speech"},{status:422});
+      return NextResponse.json({ok:true,transcript,provider:"deepgram",requestId:dj?.metadata?.request_id||null});
+    }
     if(mode==="assembly-transcribe-stored"){
       const path=String(body.path||""),assemblyKey=process.env.ASSEMBLYAI_API_KEY;
       if(!path.startsWith(`${session.userId}/ai/`))return NextResponse.json({error:"Ruta inválida.",stage:"input"},{status:403});
