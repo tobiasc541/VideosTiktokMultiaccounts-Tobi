@@ -5,11 +5,14 @@ async function frame(file:File){return new Promise<string>((resolve,reject)=>{co
 
 async function transcript(file:File){
   try{
-    window.dispatchEvent(new CustomEvent("vyral:video-processing",{detail:{stage:"uploading",text:"1/4 · Enviando video a VYRAL…"}}));
-    const fd=new FormData();fd.append("mode","assembly-video");fd.append("video",file,file.name);
+    window.dispatchEvent(new CustomEvent("vyral:video-processing",{detail:{stage:"uploading",text:"1/4 · Subiendo video de forma segura…"}}));
+    const prep=await fetch("/api/ai/automation-voice",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({mode:"assembly-prepare",fileName:file.name,fileSize:file.size,mimeType:file.type})}),pj=await prep.json().catch(()=>({}));
+    if(!prep.ok||!pj.signedUrl)throw Error(pj.error||`No se pudo preparar la carga (HTTP ${prep.status}).`);
+    const up=await fetch(pj.signedUrl,{method:"PUT",headers:{"Content-Type":file.type||"application/octet-stream"},body:file});
+    if(!up.ok)throw Error(`La carga directa del video falló (HTTP ${up.status}).`);
     window.dispatchEvent(new CustomEvent("vyral:video-processing",{detail:{stage:"transcribing",text:"2/4 · AssemblyAI está escuchando el video…"}}));
-    const r=await fetch("/api/ai/automation-voice",{method:"POST",body:fd}),j=await r.json().catch(()=>({}));
-    if(!r.ok)throw Error(j.error||"No se pudo transcribir el video.");
+    const r=await fetch("/api/ai/automation-voice",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({mode:"assembly-transcribe-stored",path:pj.path})}),j=await r.json().catch(()=>({}));
+    if(!r.ok)throw Error((j.stage?j.stage+" · ":"")+(j.error||`HTTP ${r.status}`));
     const t=String(j.transcript||"").trim();if(!t)throw Error("AssemblyAI no detectó voz en este video.");
     window.dispatchEvent(new CustomEvent("vyral:video-processing",{detail:{stage:"transcript-ready",text:"3/4 · Audio transcripto · "+t.slice(0,110)+(t.length>110?"…":"")}}));
     return t;
