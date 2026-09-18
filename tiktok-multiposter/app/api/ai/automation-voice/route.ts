@@ -25,6 +25,31 @@ export async function POST(req:Request){const session=await getCustomerSession()
       if(signed.error||!signed.data)return NextResponse.json({error:signed.error?.message||"No se pudo preparar la carga.",stage:"storage-prepare"},{status:500});
       return NextResponse.json({ok:true,path,signedUrl:signed.data.signedUrl,token:signed.data.token});
     }
+    if(mode==="openai-transcribe-stored"){
+      const path=String(body.path||"");
+      if(!path.startsWith(`${session.userId}/ai/`))return NextResponse.json({error:"Ruta inválida.",stage:"input"},{status:403});
+      const client=supabaseAdmin(),signed=await client.storage.from(MEDIA_BUCKET).createSignedUrl(path,600);
+      if(signed.error||!signed.data?.signedUrl)return NextResponse.json({error:signed.error?.message||"No se pudo abrir el video temporal.",stage:"storage-read"},{status:500});
+      try{
+        const media=await fetch(signed.data.signedUrl);
+        if(!media.ok)return NextResponse.json({error:`No se pudo descargar el video temporal (HTTP ${media.status}).`,stage:"storage-download"},{status:502});
+        const blob=await media.blob();
+        if(blob.size>24*1024*1024)return NextResponse.json({error:"El video supera 24 MB para transcripción directa. Comprimilo o usá un clip más corto.",stage:"media-too-large",bytes:blob.size},{status:413});
+        const fd=new FormData();
+        const original=path.split("/").pop()||"video.mp4",ext=(original.split(".").pop()||"mp4").toLowerCase();
+        const safeName=["mp3","mp4","mpeg","mpga","m4a","wav","webm"].includes(ext)?original:"vyral-video.mp4";
+        fd.append("file",new File([blob],safeName,{type:blob.type||"video/mp4"}));
+        fd.append("model","gpt-4o-mini-transcribe");
+        fd.append("response_format","json");
+        const tr=await fetch("https://api.openai.com/v1/audio/transcriptions",{method:"POST",headers:{Authorization:`Bearer ${key}`},body:fd});
+        const tj=await tr.json().catch(()=>({}));
+        if(!tr.ok)return NextResponse.json({error:String(tj?.error?.message||tj?.error||`OpenAI transcription HTTP ${tr.status}`),stage:"openai-transcription",providerStatus:tr.status},{status:502});
+        const transcript=String(tj?.text||"").trim();
+        if(!transcript)return NextResponse.json({error:"OpenAI no detectó voz en este video.",stage:"no-speech"},{status:422});
+        await client.storage.from(MEDIA_BUCKET).remove([path]);
+        return NextResponse.json({ok:true,transcript,provider:"openai"});
+      }catch(e:any){return NextResponse.json({error:String(e?.message||e),stage:"openai-pipeline"},{status:500})}
+    }
     if(mode==="deepgram-transcribe-stored"){
       const path=String(body.path||""),deepgramKey=process.env.DEEPGRAM_API_KEY;
       if(!path.startsWith(`${session.userId}/ai/`))return NextResponse.json({error:"Ruta inválida.",stage:"input"},{status:403});
