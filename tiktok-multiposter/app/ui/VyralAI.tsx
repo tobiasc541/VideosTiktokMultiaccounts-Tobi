@@ -12,7 +12,7 @@ async function transcript(file:File){
     if(!up.ok)throw Error(`La carga directa del video falló (HTTP ${up.status}).`);
     window.dispatchEvent(new CustomEvent("vyral:video-processing",{detail:{stage:"transcribing",text:"2/4 · AssemblyAI está escuchando el video…"}}));
     const r=await fetch("/api/ai/automation-voice",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({mode:"assembly-transcribe-stored",path:pj.path})}),j=await r.json().catch(()=>({}));
-    if(!r.ok)throw Error((j.stage?j.stage+" · ":"")+(j.error||`HTTP ${r.status}`));
+    if(!r.ok){const d=j.diagnostic;const suffix=d?` · build=${d.build} · key=${d.assemblyKeyPresent?"SI":"NO"} · env=${d.vercelEnv} · sha=${String(d.gitSha||"").slice(0,8)}`:"";throw Error((j.stage?j.stage+" · ":"")+(j.error||`HTTP ${r.status}`)+suffix)}
     const t=String(j.transcript||"").trim();if(!t)throw Error("AssemblyAI no detectó voz en este video.");
     window.dispatchEvent(new CustomEvent("vyral:video-processing",{detail:{stage:"transcript-ready",text:"3/4 · Audio transcripto · "+t.slice(0,110)+(t.length>110?"…":"")}}));
     return t;
