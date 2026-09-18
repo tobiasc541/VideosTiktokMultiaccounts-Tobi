@@ -7,6 +7,7 @@ export default function UploadPhonePreview() {
   useEffect(() => {
     let currentUrl = "";
     let currentName = "";
+    let processingListener: ((ev: Event) => void) | null = null;
 
     const applyRememberedVideo = (root: HTMLElement) => {
       if (!currentUrl) return;
@@ -14,8 +15,17 @@ export default function UploadPhonePreview() {
       const video = root.querySelector<HTMLVideoElement>("video");
       const metaTitle = root.querySelector<HTMLElement>(".vyralUploadPhoneMeta b");
       const status = root.querySelector<HTMLElement>(".vyralMediaStatus");
-      const onProcessing=(ev:any)=>{if(!status)return;status.style.display="block";const span=status.querySelector("span");if(span)span.textContent=String(ev?.detail?.text||"Procesando video…")};
-      window.addEventListener("vyral:video-processing",onProcessing);
+      if (!processingListener) {
+        processingListener = ((ev: Event) => {
+          const detail = (ev as CustomEvent).detail || {};
+          document.querySelectorAll<HTMLElement>(".vyralMediaStatus").forEach(el => {
+            el.style.display = "block";
+            const span = el.querySelector("span");
+            if (span) span.textContent = String(detail.text || "Procesando video…");
+          });
+        });
+        window.addEventListener("vyral:video-processing", processingListener);
+      }
       if (!phone || !video) return;
       video.src = currentUrl;
       video.muted = true;
@@ -58,6 +68,7 @@ export default function UploadPhonePreview() {
           return;
         }
         currentName = f.name;
+        window.dispatchEvent(new CustomEvent("vyral:video-selected", { detail: { file: f } }));
         currentUrl = URL.createObjectURL(f);
         video.src = currentUrl;
         video.muted = true;
@@ -79,6 +90,7 @@ export default function UploadPhonePreview() {
     return () => {
       observer.disconnect();
       if (currentUrl) URL.revokeObjectURL(currentUrl);
+      if (processingListener) window.removeEventListener("vyral:video-processing", processingListener);
     };
   }, []);
 
