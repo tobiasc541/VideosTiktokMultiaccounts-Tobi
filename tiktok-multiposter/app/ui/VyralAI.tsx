@@ -10,13 +10,13 @@ async function transcript(file:File){
     if(!prep.ok||!pj.signedUrl)throw Error(pj.error||`No se pudo preparar la carga (HTTP ${prep.status}).`);
     const up=await fetch(pj.signedUrl,{method:"PUT",headers:{"Content-Type":file.type||"application/octet-stream"},body:file});
     if(!up.ok)throw Error(`La carga directa del video falló (HTTP ${up.status}).`);
-    window.dispatchEvent(new CustomEvent("vyral:video-processing",{detail:{stage:"transcribing",text:"2/4 · Deepgram está escuchando el video…"}}));
-    const r=await fetch("/api/ai/automation-voice",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({mode:"deepgram-transcribe-stored",path:pj.path})}),j=await r.json().catch(()=>({}));
+    window.dispatchEvent(new CustomEvent("vyral:video-processing",{detail:{stage:"transcribing",text:"2/4 · VYRAL está extrayendo y entendiendo la voz…"}}));
+    const r=await fetch("/api/ai/automation-voice",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({mode:"openai-transcribe-stored",path:pj.path})}),j=await r.json().catch(()=>({}));
     if(!r.ok){const d=j.diagnostic;const suffix=d?` · build=${d.build} · key=${d.assemblyKeyPresent?"SI":"NO"} · env=${d.vercelEnv} · sha=${String(d.gitSha||"").slice(0,8)}`:"";throw Error((j.stage?j.stage+" · ":"")+(j.error||`HTTP ${r.status}`)+suffix)}
-    const t=String(j.transcript||"").trim();if(!t)throw Error("Deepgram no detectó voz en este video.");
+    const t=String(j.transcript||"").trim();if(!t)throw Error("VYRAL no detectó voz en este video.");
     window.dispatchEvent(new CustomEvent("vyral:video-processing",{detail:{stage:"transcript-ready",text:"3/4 · Audio transcripto · "+t.slice(0,110)+(t.length>110?"…":"")}}));
     return t;
-  }catch(e:any){console.error("[VYRAL Deepgram]",e);window.dispatchEvent(new CustomEvent("vyral:video-processing",{detail:{stage:"error",text:"Error de transcripción · "+(e?.message||"sin detalle")}}));return ""}
+  }catch(e:any){console.error("[VYRAL Transcription]",e);window.dispatchEvent(new CustomEvent("vyral:video-processing",{detail:{stage:"error",text:"Error de transcripción · "+(e?.message||"sin detalle")}}));return ""}
 }
 function pushTranscript(file:File,spoken:string){if(!spoken)return;sessionStorage.setItem("vyral-video-transcript",JSON.stringify({name:file.name,size:file.size,transcript:spoken}));window.dispatchEvent(new CustomEvent("vyral:video-transcript",{detail:{filename:file.name,transcript:spoken}}));window.dispatchEvent(new CustomEvent("vyral:video-processing",{detail:{stage:"transcript-ready",text:"3/4 · Audio transcripto · "+spoken.slice(0,110)+(spoken.length>110?"…":"")}}))}
 async function understand(spoken:string){if(!spoken)return"";const fd=new FormData();fd.append("mode","understand-video");fd.append("transcript",spoken);const r=await fetch("/api/ai/automation-voice",{method:"POST",body:fd}),j=await r.json().catch(()=>({}));return r.ok?String(j.context||"").trim():""}
