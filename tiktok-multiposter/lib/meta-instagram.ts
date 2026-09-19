@@ -1,0 +1,33 @@
+import crypto from "crypto";
+import { env } from "./env";
+import { supabaseAdmin } from "./supabase-admin";
+
+export const META_IG_SCOPES = [
+  "instagram_business_basic",
+  "instagram_business_content_publish",
+  "instagram_business_manage_comments",
+  "instagram_business_manage_messages",
+  "instagram_business_manage_insights"
+];
+
+export function metaState(userId:string){
+  const nonce=crypto.randomBytes(18).toString("base64url");
+  const payload=Buffer.from(JSON.stringify({userId,nonce,iat:Date.now()})).toString("base64url");
+  const sig=crypto.createHmac("sha256",env("APP_PASSWORD")).update(payload).digest("base64url");
+  return `${payload}.${sig}`;
+}
+export function readMetaState(state:string){
+  const [payload,sig]=state.split(".");
+  if(!payload||!sig)return null;
+  const expected=crypto.createHmac("sha256",env("APP_PASSWORD")).update(payload).digest("base64url");
+  if(sig.length!==expected.length||!crypto.timingSafeEqual(Buffer.from(sig),Buffer.from(expected)))return null;
+  try{const v=JSON.parse(Buffer.from(payload,"base64url").toString("utf8"));if(!v.userId||Date.now()-v.iat>10*60*1000)return null;return v as {userId:string;nonce:string;iat:number};}catch{return null;}
+}
+export function redirectUri(){return process.env.META_INSTAGRAM_REDIRECT_URI||"https://www.libreriadelemprendedor.com/api/meta/instagram/callback";}
+export async function saveInstagramAccount(userId:string, token:string){
+  const profileRes=await fetch(`https://graph.instagram.com/me?fields=id,username,name,account_type&access_token=${encodeURIComponent(token)}`,{cache:"no-store"});
+  const profile=await profileRes.json(); if(!profileRes.ok||!profile.id)throw new Error(profile.error?.message||"No se pudo leer la cuenta de Instagram.");
+  const db=supabaseAdmin();
+  const q=await db.from("meta_instagram_accounts").upsert({user_id:userId,instagram_user_id:String(profile.id),username:profile.username||null,display_name:profile.name||null,account_type:profile.account_type||null,access_token:token,updated_at:new Date().toISOString()},{onConflict:"user_id,instagram_user_id"}).select("id,instagram_user_id,username").single();
+  if(q.error)throw new Error(q.error.message); return q.data;
+}
