@@ -1,0 +1,5 @@
+import {NextResponse} from "next/server";
+import {getCustomerSession} from "../../../../lib/auth";
+import {supabaseAdmin} from "../../../../lib/supabase-admin";
+const BUCKET="scheduled-media";
+export async function POST(req:Request){const s=await getCustomerSession();if(!s)return NextResponse.json({error:"No autorizado"},{status:401});try{const b=await req.json(),name=String(b.name||"recurso").replace(/[^a-zA-Z0-9._-]/g,"_").slice(-180),type=String(b.type||"application/octet-stream"),size=Number(b.size||0);if(!size||size>50*1024*1024)return NextResponse.json({error:"El recurso debe pesar menos de 50 MB."},{status:400});const path=`automation-resource/${s.userId}/${crypto.randomUUID()}-${name}`,db=supabaseAdmin(),q=await db.storage.from(BUCKET).createSignedUploadUrl(path,{upsert:false});if(q.error||!q.data)throw q.error||Error("No se pudo preparar el recurso");return NextResponse.json({ok:true,path,signedUrl:q.data.signedUrl,type})}catch(e:any){return NextResponse.json({error:e?.message||"No se pudo preparar el recurso."},{status:500})}}
