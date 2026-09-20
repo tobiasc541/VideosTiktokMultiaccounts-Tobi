@@ -64,26 +64,42 @@ export async function refreshInstagramLongLivedToken(token: string) {
   return { accessToken: String(json.access_token), expiresIn: Number(json.expires_in || 0) };
 }
 
-export async function saveInstagramAccount(userId: string, token: string) {
-  const profileUrl = new URL("https://graph.instagram.com/me");
-  profileUrl.searchParams.set("fields", "id,username,name,account_type");
-  profileUrl.searchParams.set("access_token", token);
+export async function saveInstagramAccount(
+  userId: string,
+  token: string,
+  knownInstagramUserId?: string,
+) {
+  const db = supabaseAdmin();
+  let instagramUserId = knownInstagramUserId || "";
+  let username: string | null = null;
+  let displayName: string | null = null;
+  let accountType: string | null = null;
 
-  const { response: profileResponse, json: profile } = await graphJson(profileUrl);
-  if (!profileResponse.ok || !profile.id) {
-    throw new Error(profile.error?.message || "No se pudo leer la cuenta de Instagram.");
+  // Profile metadata is optional. OAuth already gives us the authoritative
+  // account id, so a profile GET failure must never prevent connection.
+  if (!instagramUserId) {
+    const profileUrl = new URL("https://graph.instagram.com/me");
+    profileUrl.searchParams.set("fields", "id,username,name,account_type");
+    profileUrl.searchParams.set("access_token", token);
+    const { response, json } = await graphJson(profileUrl);
+    if (!response.ok || !json.id) {
+      throw new Error(json.error?.message || "Instagram no devolvió el identificador de la cuenta.");
+    }
+    instagramUserId = String(json.id);
+    username = json.username || null;
+    displayName = json.name || null;
+    accountType = json.account_type || null;
   }
 
-  const db = supabaseAdmin();
   const saved = await db
     .from("meta_instagram_accounts")
     .upsert(
       {
         user_id: userId,
-        instagram_user_id: String(profile.id),
-        username: profile.username || null,
-        display_name: profile.name || null,
-        account_type: profile.account_type || null,
+        instagram_user_id: instagramUserId,
+        username,
+        display_name: displayName,
+        account_type: accountType,
         access_token: token,
         updated_at: new Date().toISOString(),
       },
@@ -96,11 +112,10 @@ export async function saveInstagramAccount(userId: string, token: string) {
 
   const required = ["comments", "messages", "messaging_postbacks"];
   const subscriptionUrl = new URL(
-    `https://graph.instagram.com/${profile.id}/subscribed_apps`,
+    `https://graph.instagram.com/${instagramUserId}/subscribed_apps`,
   );
   subscriptionUrl.searchParams.set("subscribed_fields", required.join(","));
   subscriptionUrl.searchParams.set("access_token", token);
-
   const { response: subscriptionResponse, json: subscriptionJson } = await graphJson(
     subscriptionUrl,
     { method: "POST" },
@@ -109,29 +124,6 @@ export async function saveInstagramAccount(userId: string, token: string) {
     throw new Error(
       subscriptionJson.error?.message || "No se pudo activar la automatización de Instagram.",
     );
-  }
-
-  const verifyUrl = new URL(
-    `https://graph.instagram.com/${profile.id}/subscribed_apps`,
-  );
-  verifyUrl.searchParams.set("access_token", token);
-  const { response: verifyResponse, json: verifyJson } = await graphJson(verifyUrl);
-  if (!verifyResponse.ok || verifyJson.error) {
-    throw new Error(
-      verifyJson.error?.message || "No se pudo verificar la automatización de Instagram.",
-    );
-  }
-
-  const subscribed = Array.from(
-    new Set(
-      (Array.isArray(verifyJson.data) ? verifyJson.data : []).flatMap((item: any) =>
-        Array.isArray(item?.subscribed_fields) ? item.subscribed_fields.map(String) : [],
-      ),
-    ),
-  ) as string[];
-  const missing = required.filter((field) => !subscribed.includes(field));
-  if (missing.length) {
-    throw new Error(`Instagram no confirmó estas suscripciones: ${missing.join(", ")}`);
   }
 
   return saved.data;
