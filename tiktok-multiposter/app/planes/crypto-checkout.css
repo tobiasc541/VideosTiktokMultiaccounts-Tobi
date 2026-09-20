@@ -14,3 +14,5 @@
    These caused full-page compositor repaint/flicker on large desktop viewports. */
 .ccBackdrop{background:rgba(0,4,5,.94)!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;contain:layout paint!important;isolation:isolate!important}
 .ccModal{contain:layout paint!important;will-change:auto!important}
+
+.ccTimer{border:1px solid rgba(83,238,229,.22);border-radius:14px;padding:12px 15px;background:linear-gradient(135deg,rgba(83,238,229,.07),rgba(5,13,14,.9));display:flex;align-items:center;gap:12px}.ccTimer small{font-size:8px;color:#5f8587;letter-spacing:.14em}.ccTimer strong{margin-left:auto;font-variant-numeric:tabular-nums;font-size:20px;letter-spacing:.06em;color:#5af0e7}.ccTimer span{font-size:8px;color:#65787a;max-width:150px}@media(max-width:700px){.ccTimer{flex-wrap:wrap}.ccTimer strong{margin-left:auto}.ccTimer span{width:100%;max-width:none}}
