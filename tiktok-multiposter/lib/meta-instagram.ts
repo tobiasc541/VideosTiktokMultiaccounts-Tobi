@@ -112,7 +112,7 @@ export async function saveInstagramAccount(userId: string, token: string) {
   }
 
   const verifyUrl = new URL(
-    `https://graph.instagram.com/${version}/${profile.id}/subscribed_apps`,
+    `https://graph.instagram.com/${profile.id}/subscribed_apps`,
   );
   verifyUrl.searchParams.set("access_token", token);
   const { response: verifyResponse, json: verifyJson } = await graphJson(verifyUrl);
