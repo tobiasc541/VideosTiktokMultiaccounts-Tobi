@@ -23,7 +23,7 @@ export function readMetaState(state:string){
   if(sig.length!==expected.length||!crypto.timingSafeEqual(Buffer.from(sig),Buffer.from(expected)))return null;
   try{const v=JSON.parse(Buffer.from(payload,"base64url").toString("utf8"));if(!v.userId||Date.now()-v.iat>10*60*1000)return null;return v as {userId:string;nonce:string;iat:number};}catch{return null;}
 }
-export function redirectUri(){return process.env.META_INSTAGRAM_REDIRECT_URI||"https://www.libreriadelemprendedor.com/api/meta/instagram/callback";}
+export function redirectUri(){return process.env.META_INSTAGRAM_REDIRECT_URI||"https://vyralvideos.com/api/meta/instagram/callback";}
 export async function exchangeInstagramLongLivedToken(shortToken:string){
   const u=new URL("https://graph.instagram.com/access_token");
   u.searchParams.set("grant_type","ig_exchange_token");
