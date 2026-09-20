@@ -37,19 +37,19 @@ export async function PUT(req:Request){
  const session=await getCustomerSession(); if(!session)return NextResponse.json({error:"No autorizado"},{status:401});
  let path="";
  try{
-  const body=await req.json(),accountId=String(body.accountId||""),caption=String(body.caption||"").trim(); path=String(body.storagePath||"");
+  const body=await req.json(),accountId=String(body.accountId||""),caption=String(body.caption||"").trim(),shareToFeed=body.shareToFeed!==false; path=String(body.storagePath||"");
   if(!accountId||!caption||!path||!path.startsWith(`${session.userId}/instagram/`))return NextResponse.json({error:"Solicitud inválida."},{status:400});
   const db=supabaseAdmin();
   const q=await db.from("meta_instagram_accounts").select("instagram_user_id,username,access_token").eq("id",accountId).eq("user_id",session.userId).maybeSingle();
   if(q.error)throw new Error(q.error.message); if(!q.data)return NextResponse.json({error:"Cuenta no autorizada."},{status:403});
   const signed=await db.storage.from(BUCKET).createSignedUrl(path,900);
   if(signed.error||!signed.data?.signedUrl)throw new Error(signed.error?.message||"No se pudo exponer temporalmente el video.");
-  const params=new URLSearchParams({media_type:"REELS",video_url:signed.data.signedUrl,caption,share_to_feed:"true",access_token:q.data.access_token});
+  const params=new URLSearchParams({media_type:"REELS",video_url:signed.data.signedUrl,caption,share_to_feed:shareToFeed?"true":"false",access_token:q.data.access_token});
   const created=await graphJson(`${GRAPH}/${API_VERSION}/${q.data.instagram_user_id}/media?${params}`,{method:"POST"});
   const containerId=String(created.id||""); if(!containerId)throw new Error("Instagram no devolvió el contenedor del Reel.");
   let finished=false,last="";
-  for(let i=0;i<24;i++){await new Promise(r=>setTimeout(r,2500));const st=await graphJson(`${GRAPH}/${API_VERSION}/${containerId}?fields=status_code,status&access_token=${encodeURIComponent(q.data.access_token)}`);last=String(st.status_code||"");if(last==="FINISHED"){finished=true;break}if(["ERROR","EXPIRED"].includes(last))throw new Error(st.status||`Instagram: ${last}`)}
-  if(!finished)throw new Error("Instagram todavía está procesando el video. Volvé a intentar en unos segundos.");
+  for(let i=0;i<12;i++){await new Promise(r=>setTimeout(r,2000));const st=await graphJson(`${GRAPH}/${API_VERSION}/${containerId}?fields=status_code,status&access_token=${encodeURIComponent(q.data.access_token)}`);last=String(st.status_code||"");if(last==="FINISHED"){finished=true;break}if(["ERROR","EXPIRED"].includes(last))throw new Error(st.status||`Instagram: ${last}`)}
+  if(!finished)throw new Error("Instagram tardó más de lo esperado en procesar el Reel. No quedó bloqueado: intentá nuevamente en unos segundos.");
   const published=await graphJson(`${GRAPH}/${API_VERSION}/${q.data.instagram_user_id}/media_publish?creation_id=${encodeURIComponent(containerId)}&access_token=${encodeURIComponent(q.data.access_token)}`,{method:"POST"});
   await db.storage.from(BUCKET).remove([path]);
   return NextResponse.json({ok:true,mediaId:String(published.id||""),containerId,username:q.data.username});
