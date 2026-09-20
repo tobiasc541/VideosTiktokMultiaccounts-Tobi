@@ -62,7 +62,8 @@ export async function GET(req:Request){
     await diag("token_exchange",true,{http_status:response.status});
 
     const shortToken=String(token.access_token);
-    const ver=process.env.META_GRAPH_API_VERSION||"v24.0";\n    const profileUrl=new URL(`https://graph.instagram.com/${ver}/me`);
+    const ver=process.env.META_GRAPH_API_VERSION||"v24.0";
+    const profileUrl=new URL(`https://graph.instagram.com/${ver}/me`);
     profileUrl.searchParams.set("fields","id,username,name,account_type");
     profileUrl.searchParams.set("access_token",shortToken);
     const profileResponse=await fetch(profileUrl,{cache:"no-store"});
