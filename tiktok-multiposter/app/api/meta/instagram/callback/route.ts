@@ -91,6 +91,28 @@ export async function GET(req: Request) {
       throw new Error("Límite de cuentas alcanzado para tu plan.");
     }
 
+    // Persist the account as soon as Meta has returned a valid profile.
+    // Token upgrades and webhook subscriptions are follow-up work and must never
+    // decide whether an already-authorized account appears in VYRAL.
+    const persistedNow = await ctx.db
+      .from("meta_instagram_accounts")
+      .upsert(
+        {
+          user_id: session.userId,
+          instagram_user_id: instagramUserId,
+          username: profile.username || null,
+          display_name: profile.name || null,
+          account_type: profile.account_type || null,
+          access_token: shortToken,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "user_id,instagram_user_id" },
+      )
+      .select("id")
+      .single();
+
+    if (persistedNow.error) throw new Error(persistedNow.error.message);
+
     let accessToken = shortToken;
     try {
       const longLived = await exchangeInstagramLongLivedToken(shortToken);
