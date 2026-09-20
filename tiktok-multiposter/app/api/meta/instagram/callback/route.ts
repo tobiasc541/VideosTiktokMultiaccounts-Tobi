@@ -71,14 +71,10 @@ export async function GET(req: Request) {
       throw new Error("Límite de cuentas alcanzado para tu plan.");
     }
 
-    const longLived = await exchangeInstagramLongLivedToken(String(token.access_token));
-    await saveInstagramAccount(session.userId,longLived.accessToken);
-
-    return home(url,{
+    // Persist the authorized account immediately. This prevents a successful OAuth\n    // authorization from disappearing if Meta temporarily fails the long-lived\n    // token upgrade. Then upgrade and overwrite the token when available.\n    let accessToken = String(token.access_token);\n    try {\n      const longLived = await exchangeInstagramLongLivedToken(accessToken);\n      accessToken = longLived.accessToken;\n    } catch (upgradeError) {\n      console.error("Instagram long-lived token upgrade failed; keeping authorized token", upgradeError);\n    }\n\n    // saveInstagramAccount upserts before webhook subscription. Even if Meta rejects\n    // a subscription field, the account itself remains connected and visible.\n    let subscriptionWarning = "";\n    try {\n      await saveInstagramAccount(session.userId,accessToken);\n    } catch (saveError:any) {\n      // saveInstagramAccount may have already persisted the account and then failed\n      // while subscribing webhooks. Verify that before treating OAuth as failed.\n      const persisted = await ctx.db\n        .from("meta_instagram_accounts")\n        .select("id")\n        .eq("user_id",session.userId)\n        .eq("instagram_user_id",String(profile.id))\n        .maybeSingle();\n      if (persisted.error || !persisted.data) throw saveError;\n      subscriptionWarning = String(saveError?.message || "Webhook pendiente");\n    }\n\n    return home(url,{
       meta_connected:"instagram",
       connected_username:String(profile.username || ""),
-      connected_id:String(profile.id),
-    });
+      connected_id:String(profile.id),\n      ...(subscriptionWarning ? { meta_warning:subscriptionWarning } : {}),\n    });
   } catch (error:any) {
     return home(url,{ meta_error:error?.message || "oauth_failed" });
   }
