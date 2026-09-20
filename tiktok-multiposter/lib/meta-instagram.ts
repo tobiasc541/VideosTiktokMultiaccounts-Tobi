@@ -10,8 +10,6 @@ export const META_IG_SCOPES = [
   "instagram_business_manage_insights",
 ];
 
-const graphVersion = () => process.env.META_GRAPH_API_VERSION || "v24.0";
-
 export function metaState(userId: string) {
   const nonce = crypto.randomBytes(18).toString("base64url");
   const payload = Buffer.from(JSON.stringify({ userId, nonce, iat: Date.now() })).toString("base64url");
@@ -67,8 +65,7 @@ export async function refreshInstagramLongLivedToken(token: string) {
 }
 
 export async function saveInstagramAccount(userId: string, token: string) {
-  const version = graphVersion();
-  const profileUrl = new URL(`https://graph.instagram.com/${version}/me`);
+  const profileUrl = new URL("https://graph.instagram.com/me");
   profileUrl.searchParams.set("fields", "id,username,name,account_type");
   profileUrl.searchParams.set("access_token", token);
 
@@ -99,7 +96,7 @@ export async function saveInstagramAccount(userId: string, token: string) {
 
   const required = ["comments", "messages", "messaging_postbacks"];
   const subscriptionUrl = new URL(
-    `https://graph.instagram.com/${version}/${profile.id}/subscribed_apps`,
+    `https://graph.instagram.com/${profile.id}/subscribed_apps`,
   );
   subscriptionUrl.searchParams.set("subscribed_fields", required.join(","));
   subscriptionUrl.searchParams.set("access_token", token);
