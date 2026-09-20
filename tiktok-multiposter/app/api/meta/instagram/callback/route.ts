@@ -115,33 +115,19 @@ export async function GET(req: Request) {
       throw new Error("Instagram no devolvió el identificador de la cuenta.");
     }
 
-    const profileUrl = new URL(
-      `https://graph.instagram.com/${encodeURIComponent(oauthUserId)}`,
-    );
-    profileUrl.searchParams.set("fields", "id,username,name,account_type");
-    profileUrl.searchParams.set("access_token", shortToken);
+    const instagramUserId = oauthUserId;
+    const profile = {
+      id: instagramUserId,
+      username: null as string | null,
+      name: null as string | null,
+      account_type: null as string | null,
+    };
 
-    const profileResponse = await fetch(profileUrl, { cache: "no-store" });
-    const profile = await profileResponse.json().catch(() => ({}));
-
-    if (!profileResponse.ok || !profile.id) {
-      const message = String(
-        profile.error?.message || `Profile HTTP ${profileResponse.status}`,
-      );
-      await diagnostic("profile_fetch", false, {
-        external_account_id: oauthUserId,
-        error_message: message,
-        http_status: profileResponse.status,
-        error_code: profile.error?.code || null,
-      });
-      throw new Error(message);
-    }
-
-    const instagramUserId = String(profile.id);
-    await diagnostic("profile_fetch", true, {
+    // The OAuth token exchange already returned the authenticated Instagram
+    // account id. Persist it first instead of making profile lookup a hard
+    // dependency; profile metadata can be enriched later.
+    await diagnostic("oauth_identity_ready", true, {
       external_account_id: instagramUserId,
-      external_username: profile.username || null,
-      account_type: profile.account_type || null,
     });
 
     const existing = await ctx.db
@@ -175,9 +161,9 @@ export async function GET(req: Request) {
         {
           user_id: session.userId,
           instagram_user_id: instagramUserId,
-          username: profile.username || null,
-          display_name: profile.name || null,
-          account_type: profile.account_type || null,
+          username: profile.username,
+          display_name: profile.name,
+          account_type: profile.account_type,
           access_token: shortToken,
           updated_at: new Date().toISOString(),
         },
@@ -189,8 +175,7 @@ export async function GET(req: Request) {
     if (persisted.error) {
       await diagnostic("account_persist", false, {
         external_account_id: instagramUserId,
-        external_username: profile.username || null,
-        error_message: persisted.error.message,
+          error_message: persisted.error.message,
         code: persisted.error.code || null,
       });
       throw new Error(persisted.error.message);
@@ -230,7 +215,7 @@ export async function GET(req: Request) {
 
     return redirectHome(url, {
       meta_connected: "instagram",
-      connected_username: String(profile.username || ""),
+      connected_username: "",
       connected_id: instagramUserId,
     });
   } catch (error: any) {
