@@ -3,7 +3,7 @@ import { getCustomerSession } from "../../../../../lib/auth";
 import { supabaseAdmin } from "../../../../../lib/supabase-admin";
 
 const VER=process.env.META_GRAPH_API_VERSION||"v24.0";
-const REQUIRED_FIELDS=["comments","messages","messaging_postbacks"];
+const REQUIRED_FIELDS=["comments","live_comments","messages","messaging_postbacks","messaging_referral","messaging_seen"];
 
 async function ensureWebhookSubscription(a:any){
   try{
