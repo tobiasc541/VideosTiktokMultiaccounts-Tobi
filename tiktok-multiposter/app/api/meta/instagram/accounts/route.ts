@@ -97,7 +97,7 @@ export async function GET(){
       account_id:a.id,user_id:a.user_id,checked_at:new Date().toISOString(),graph_version:VER,
       subscription_ok:subscription.ok,subscribed_fields:subscription.fields,missing_fields:subscription.missing,
       subscription_error:subscription.error,media_read_ok:media.ok,latest_media_id:media.mediaId,
-      latest_comments:media.comments,media_error:media.error
+      latest_comments:media.comments,media_error:media.error,token_permissions_ok:permissions.ok,granted_permissions:permissions.granted,declined_permissions:permissions.declined,token_permissions_error:permissions.error
     },{onConflict:"account_id"});
     return {subscription,permissions,media:{ok:media.ok,error:media.error,latest_media_id:media.mediaId,comment_count:media.comments.length}};
   }));
