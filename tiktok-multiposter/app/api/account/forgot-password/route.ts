@@ -18,7 +18,7 @@ export async function POST(req: Request) {
 
   const client = supabaseAdmin();
   await client.auth.resetPasswordForEmail(email, {
-    redirectTo: "https://libreriadelemprendedor.com/restablecer-contrasena"
+    redirectTo: "https://vyralvideos.com/restablecer-contrasena"
   });
 
   // Respuesta deliberadamente genérica para no revelar si un correo está registrado.
