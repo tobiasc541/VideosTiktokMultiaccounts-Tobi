@@ -38,6 +38,20 @@ async function ensureWebhookSubscription(a:any){
   }
 }
 
+async function inspectTokenPermissions(a:any){
+  try{
+    // Instagram Login tokens expose granted scopes on /me/permissions.
+    const u=new URL(`https://graph.instagram.com/${VER}/me/permissions`);
+    u.searchParams.set("access_token",a.access_token);
+    const {r,j}=await jsonFetch(u);
+    if(!r.ok||j.error)return {ok:false,granted:[],declined:[],error:String(j?.error?.message||`Instagram HTTP ${r.status}`),http_status:r.status};
+    const rows=Array.isArray(j.data)?j.data:[];
+    const granted=rows.filter((x:any)=>String(x.status).toLowerCase()==="granted").map((x:any)=>String(x.permission));
+    const declined=rows.filter((x:any)=>String(x.status).toLowerCase()!=="granted").map((x:any)=>String(x.permission));
+    return {ok:true,granted,declined,error:null,http_status:r.status};
+  }catch(e:any){return {ok:false,granted:[],declined:[],error:String(e?.message||e),http_status:null};}
+}
+
 async function readLatestComments(a:any){
   try{
     const mediaUrl=new URL(`https://graph.instagram.com/${VER}/${a.instagram_user_id}/media`);
@@ -78,18 +92,18 @@ export async function GET(){
   if(q.error)return NextResponse.json({error:q.error.message},{status:500});
 
   const checked=await Promise.all((q.data||[]).map(async(a:any)=>{
-    const [subscription,media]=await Promise.all([ensureWebhookSubscription(a),readLatestComments(a)]);
+    const [subscription,media,permissions]=await Promise.all([ensureWebhookSubscription(a),readLatestComments(a),inspectTokenPermissions(a)]);
     await db.from("instagram_webhook_diagnostics").upsert({
       account_id:a.id,user_id:a.user_id,checked_at:new Date().toISOString(),graph_version:VER,
       subscription_ok:subscription.ok,subscribed_fields:subscription.fields,missing_fields:subscription.missing,
       subscription_error:subscription.error,media_read_ok:media.ok,latest_media_id:media.mediaId,
       latest_comments:media.comments,media_error:media.error
     },{onConflict:"account_id"});
-    return {subscription,media:{ok:media.ok,error:media.error,latest_media_id:media.mediaId,comment_count:media.comments.length}};
+    return {subscription,permissions,media:{ok:media.ok,error:media.error,latest_media_id:media.mediaId,comment_count:media.comments.length}};
   }));
 
   const accounts=(q.data||[]).map(({access_token,user_id,...a}:any,i:number)=>({
-    ...a,webhook_subscription:checked[i].subscription,webhook_diagnostic:checked[i].media
+    ...a,webhook_subscription:checked[i].subscription,token_permissions:checked[i].permissions,webhook_diagnostic:checked[i].media
   }));
   return NextResponse.json({accounts},{headers:{"Cache-Control":"private, no-store"}});
 }
