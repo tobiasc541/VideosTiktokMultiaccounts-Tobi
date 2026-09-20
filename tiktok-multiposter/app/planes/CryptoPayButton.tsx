@@ -1,23 +1,9 @@
 "use client";
-
-import { useState } from "react";
-
-export default function CryptoPayButton({ plan, label }: { plan: string; label: string }) {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  async function pay() {
-    setLoading(true); setError("");
-    try {
-      const r = await fetch("/api/payments/nowpayments/create", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ plan }) });
-      const data = await r.json();
-      if (!r.ok || !data?.url) throw new Error(data?.error || "No pudimos iniciar el pago");
-      window.location.href = data.url;
-    } catch (e) { setError(e instanceof Error ? e.message : "No pudimos iniciar el pago"); setLoading(false); }
-  }
-  return <div style={{marginTop:10}}>
-    <button type="button" onClick={pay} disabled={loading} className="vyralPlanCheckout" style={{width:"100%",cursor:loading?"wait":"pointer"}}>
-      {loading ? "Preparando pago…" : `₿ ${label} con cripto`} →
-    </button>
-    {error && <div style={{fontSize:12,color:"#ff8a8a",marginTop:8,textAlign:"center"}}>{error}</div>}
-  </div>;
+import {useState} from "react";
+type Option={id:string;symbol:string;name:string;icon:string;payAmount:number};
+export default function CryptoPayButton({plan,label}:{plan:string;label:string}){
+ const[loading,setLoading]=useState(false),[error,setError]=useState(""),[options,setOptions]=useState<Option[]|null>(null);
+ async function discover(){setLoading(true);setError("");try{const r=await fetch("/api/payments/nowpayments/options?plan="+encodeURIComponent(plan),{cache:"no-store"}),j=await r.json();if(!r.ok)throw Error(j.error||"No pudimos consultar las criptomonedas");setOptions(j.options||[]);if(!(j.options||[]).length)setError("Ahora mismo no hay una red con mínimo compatible para este plan. Probá más tarde.")}catch(e){setError(e instanceof Error?e.message:"No pudimos consultar las criptomonedas")}finally{setLoading(false)}}
+ async function pay(payCurrency:string){setLoading(true);setError("");try{const r=await fetch("/api/payments/nowpayments/create",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({plan,payCurrency})}),data=await r.json();if(!r.ok||!data?.url)throw Error(data?.error||"No pudimos iniciar el pago");location.href=data.url}catch(e){setError(e instanceof Error?e.message:"No pudimos iniciar el pago");setLoading(false)}}
+ return <div style={{marginTop:10}}>{options===null?<button type="button" onClick={discover} disabled={loading} className="vyralPlanCheckout" style={{width:"100%",cursor:loading?"wait":"pointer"}}>{loading?"Buscando redes disponibles…":"Pagar con criptomonedas"} →</button>:<div style={{border:"1px solid rgba(255,255,255,.12)",borderRadius:14,padding:10}}><div style={{fontSize:11,fontWeight:800,marginBottom:8,textAlign:"center"}}>ELEGÍ UNA OPCIÓN DISPONIBLE AHORA</div>{options.map(o=><button key={o.id} type="button" onClick={()=>pay(o.id)} disabled={loading} style={{width:"100%",display:"flex",alignItems:"center",gap:9,padding:"9px 10px",margin:"5px 0",border:"1px solid rgba(255,255,255,.10)",borderRadius:10,background:"rgba(255,255,255,.03)",color:"inherit",cursor:"pointer",textAlign:"left"}}><img src={o.icon} alt="" width="24" height="24"/><span style={{flex:1}}><b>{o.symbol}</b><small style={{display:"block",opacity:.65}}>{o.name}</small></span><span style={{fontSize:11,opacity:.7}}>Disponible ✓</span></button>)}<button type="button" onClick={discover} style={{width:"100%",border:0,background:"transparent",color:"inherit",opacity:.6,fontSize:11,cursor:"pointer",padding:7}}>Actualizar disponibilidad</button></div>}{error&&<div style={{fontSize:12,color:"#ff8a8a",marginTop:8,textAlign:"center"}}>{error}</div>}</div>
 }
