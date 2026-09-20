@@ -29,7 +29,7 @@ export async function POST(req:Request){
   storagePath=`${session.userId}/instagram/${crypto.randomUUID()}/${fileName.replace(/[^a-zA-Z0-9._-]/g,"_")}`;
   const prep=await db.storage.from(BUCKET).createSignedUploadUrl(storagePath,{upsert:true});
   if(prep.error||!prep.data)throw new Error(prep.error?.message||"No se pudo preparar el video.");
-  return NextResponse.json({ok:true,action:"upload",bucket:BUCKET,path:storagePath,token:prep.data.token,storageUrl:process.env.SUPABASE_URL});
+  return NextResponse.json({ok:true,action:"upload",bucket:BUCKET,path:storagePath,token:prep.data.token,signedUrl:prep.data.signedUrl});
  }catch(e:any){return NextResponse.json({error:e?.message||"No se pudo preparar Instagram."},{status:500})}
 }
 
