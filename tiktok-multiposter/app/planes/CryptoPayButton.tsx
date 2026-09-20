@@ -1,12 +1,11 @@
 "use client";
 import {useEffect,useMemo,useState} from "react";
-import QRCode from "qrcode";
 import "./crypto-checkout.css";
 const coins=[{id:"btc",name:"Bitcoin",ticker:"BTC",icon:"/crypto/bitcoin.svg",network:"Bitcoin"},{id:"usdttrc20",name:"Tether",ticker:"USDT",icon:"/crypto/usdt.svg",network:"TRON (TRC20)"},{id:"eth",name:"Ethereum",ticker:"ETH",icon:"/crypto/ethereum.svg",network:"Ethereum"},{id:"sol",name:"Solana",ticker:"SOL",icon:"/crypto/solana.svg",network:"Solana"}];
 type Payment={paymentId:string;status:string;payAddress:string;payAmount:string;payCurrency:string};
 export default function CryptoCheckout({plan}:{plan:string;label?:string}){const[open,setOpen]=useState(false),[coin,setCoin]=useState("btc"),[payment,setPayment]=useState<Payment|null>(null),[loading,setLoading]=useState(false),[error,setError]=useState(""),[qr,setQr]=useState(""),[copied,setCopied]=useState(false),[status,setStatus]=useState("");
  const selected=useMemo(()=>coins.find(x=>x.id===coin)!,[coin]);
- useEffect(()=>{if(!payment?.payAddress)return;QRCode.toDataURL(payment.payAddress,{width:420,margin:1,errorCorrectionLevel:"M"}).then(setQr)},[payment?.payAddress]);
+ useEffect(()=>{if(!payment?.payAddress)return;setQr(`https://quickchart.io/qr?size=420&margin=1&text=${encodeURIComponent(payment.payAddress)}`)},[payment?.payAddress]);
  useEffect(()=>{if(!payment?.paymentId)return;let alive=true;const check=async()=>{try{const r=await fetch("/api/payments/nowpayments/status/"+payment.paymentId,{cache:"no-store"}),d=await r.json();if(alive&&r.ok)setStatus(String(d.status||""))}catch{}};check();const t=setInterval(check,7000);return()=>{alive=false;clearInterval(t)}},[payment?.paymentId]);
  async function start(id=coin){setLoading(true);setError("");setPayment(null);setQr("");setStatus("");try{const r=await fetch("/api/payments/nowpayments/create",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({plan,payCurrency:id})}),d=await r.json();if(!r.ok||!d.paymentId)throw Error(d.error||"No pudimos crear el pago");setPayment(d);setStatus(d.status||"waiting")}catch(e){setError(e instanceof Error?e.message:"No pudimos crear el pago")}finally{setLoading(false)}}
  function close(){setOpen(false);setPayment(null);setError("");setQr("");setStatus("")}
