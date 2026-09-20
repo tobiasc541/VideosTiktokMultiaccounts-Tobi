@@ -1,6 +1,6 @@
 import crypto from "crypto";
 import { NextResponse } from "next/server";
-import { isLoggedIn } from "../../../../lib/auth";
+import { socialAccountContext } from "../../../../lib/social-account-limits";
 import { env } from "../../../../lib/env";
 
 function makeSignedState() {
@@ -15,7 +15,9 @@ function makeSignedState() {
 }
 
 export async function GET(req: Request) {
-  if (!(await isLoggedIn())) return NextResponse.redirect(new URL("/login", req.url));
+  const ctx=await socialAccountContext();
+  if (!ctx) return NextResponse.redirect(new URL("/login", req.url));
+  if(ctx.total>=ctx.limit)return NextResponse.redirect(new URL("/?account_limit=1",req.url));
 
   const appUrl = env("APP_URL").replace(/\/$/, "");
   const redirectUri = `${appUrl}/api/tiktok/callback`;
