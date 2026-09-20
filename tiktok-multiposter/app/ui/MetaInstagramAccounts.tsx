@@ -1,14 +1,305 @@
 "use client";
-import {useEffect,useState} from "react";
-import {createPortal} from "react-dom";
+
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import "./meta-instagram-accounts.css";
-type IG={id:string;instagram_user_id:string;username:string|null;display_name:string|null;account_type:string|null};type FB={id:string;page_id:string;page_name:string|null;category:string|null};
-export default function MetaInstagramAccounts(){
- const[mount,setMount]=useState<HTMLElement|null>(null),[publishMount,setPublishMount]=useState<HTMLElement|null>(null),[accounts,setAccounts]=useState<IG[]>([]),[selectedInstagram,setSelectedInstagram]=useState<string[]>([]),[loading,setLoading]=useState(true),[facebook,setFacebook]=useState<FB[]>([]),[limit,setLimit]=useState(0),[total,setTotal]=useState(0);
- async function load(){setLoading(true);try{const r=await fetch("/api/meta/instagram/accounts",{cache:"no-store"}),j=await r.json();if(r.ok){const next=j.accounts||[];setAccounts(next);window.dispatchEvent(new CustomEvent("vyral:instagram-accounts",{detail:{count:next.length}}))}const fr=await fetch("/api/meta/facebook/accounts",{cache:"no-store"}),fj=await fr.json();if(fr.ok){setFacebook(fj.accounts||[]);setLimit(Number(fj.limit||0));setTotal(Number(fj.total||0));}}finally{setLoading(false)}}
- useEffect(()=>{load();const timer=setInterval(()=>{const main=document.querySelector(".vdMain");const title=main?.querySelector(".vdSectionTitle")?.textContent||"";if(main&&title.includes("Tus cuentas conectadas")){let el=main.querySelector(".vyralMetaAccountsMount") as HTMLElement|null;if(!el){el=document.createElement("div");el.className="vyralMetaAccountsMount";main.appendChild(el)}setMount(el)}else setMount(null);if(main&&title.includes("Nueva publicación")){const cards=main.querySelectorAll(".vdGrid > .vdCard");const destination=cards[1] as HTMLElement|undefined;if(destination){let pel=destination.querySelector(".vyralMetaPublishMount") as HTMLElement|null;if(!pel){pel=document.createElement("div");pel.className="vyralMetaPublishMount";destination.appendChild(pel)}setPublishMount(pel)}else setPublishMount(null)}else setPublishMount(null)},300);return()=>clearInterval(timer)},[]);
- async function removeFacebook(id:string){if(!confirm("¿Desconectar esta página de Facebook de VYRAL?"))return;const r=await fetch("/api/meta/facebook/accounts?id="+encodeURIComponent(id),{method:"DELETE"});if(r.ok){setFacebook(x=>x.filter(a=>a.id!==id));setTotal(x=>Math.max(0,x-1));}}\n async function remove(id:string){if(!confirm("¿Desconectar esta cuenta de Instagram de VYRAL?"))return;const r=await fetch("/api/meta/instagram/accounts?id="+encodeURIComponent(id),{method:"DELETE"});if(r.ok)setAccounts(x=>x.filter(a=>a.id!==id))}
- const accountsPortal=mount?createPortal(<><section className="vmiWrap"><div className="vmiHead"><div><div className="vmiTitleLine"><img className="vmiBrandIcon" src="/instagram.png" alt="Instagram"/><div><small>INSTAGRAM</small><h2>Instagram ({accounts.length})</h2></div></div><p>Conectá varias cuentas profesionales. Cada usuario autoriza sus propias cuentas directamente con Meta.</p><a className="vmiConnect" href="/api/meta/instagram/connect">+ Conectar otra cuenta</a></div></div><div className="vmiGrid">{loading?<div className="vmiEmpty">Cargando cuentas…</div>:accounts.length?accounts.map(a=><article className="vmiAccount" key={a.id}><div className="vmiIcon"><img src="/instagram.png" alt=""/></div><div><strong>@{a.username||a.instagram_user_id}</strong><span>{a.display_name||"Cuenta profesional"}</span><small>{a.account_type==="MEDIA_CREATOR"?"CREADOR":"PROFESIONAL"} · CONECTADA</small></div><button onClick={()=>remove(a.id)} aria-label="Desconectar">×</button></article>):<div className="vmiEmpty">Todavía no conectaste Instagram. <a href="/api/meta/instagram/connect">Conectar ahora ↗</a></div>}</div></section><section className="vmiWrap vmiFacebook"><div className="vmiHead"><div><div className="vmiTitleLine"><img className="vmiBrandIcon" src="/facebook.png" alt="Facebook"/><div><small>FACEBOOK</small><h2>Facebook ({facebook.length})</h2></div></div><p>Páginas de Facebook conectadas a VYRAL. Tu plan admite {limit||"—"} cuentas en total.</p><a className="vmiConnect" href="/api/meta/facebook/connect">+ Conectar Facebook</a></div></div><div className="vmiGrid">{facebook.length?facebook.map(a=><article className="vmiAccount" key={a.id}><div className="vmiIcon"><img src="/facebook.png" alt=""/></div><div><strong>{a.page_name||a.page_id}</strong><span>{a.category||"Página de Facebook"}</span><small>CONECTADA</small></div><button onClick={()=>removeFacebook(a.id)} aria-label="Desconectar">×</button></article>):<div className="vmiFacebookEmpty"><img className="vmiBrandIcon" src="/facebook.png" alt="Facebook"/><div><b>Sin páginas conectadas</b><a href="/api/meta/facebook/connect">Conectar ahora ↗</a></div></div>}</div></section></>,mount):null;
- const publishPortal=publishMount?createPortal(<div className="vmiPublishNetworks"><section className="vmiPublishNetwork instagram"><div className="vmiPublishNetworkHead"><img src="/instagram.png" alt="Instagram"/><div><small>INSTAGRAM</small><strong>Instagram ({accounts.length})</strong></div></div>{loading?<span className="vmiPublishMuted">Cargando cuentas…</span>:accounts.length?accounts.map(a=><div className="vmiPublishAccount" key={a.id}><input type="checkbox" checked={selectedInstagram.includes(a.id)} onChange={()=>setSelectedInstagram(v=>{const next=v.includes(a.id)?v.filter(id=>id!==a.id):[...v,a.id];window.dispatchEvent(new CustomEvent("vyral:instagram-selection",{detail:{ids:next}}));return next})}/><img src="/instagram.png" alt=""/><div><b>@{a.username||a.instagram_user_id}</b><span>{a.display_name||"Cuenta profesional"}</span></div></div>):<span className="vmiPublishMuted">Sin cuentas conectadas</span>}</section><section className="vmiPublishNetwork facebook"><div className="vmiPublishNetworkHead"><img src="/facebook.png" alt="Facebook"/><div><small>FACEBOOK</small><strong>Facebook ({facebook.length})</strong></div></div>{facebook.length?facebook.map(a=><div className="vmiPublishAccount" key={a.id}><img src="/facebook.png" alt=""/><div><b>{a.page_name||a.page_id}</b><span>{a.category||"Página de Facebook"}</span></div></div>):<span className="vmiPublishMuted">Sin páginas conectadas</span>}</section></div>,publishMount):null;
- return <>{accountsPortal}{publishPortal}</>;
+
+type InstagramAccount = {
+  id: string;
+  instagram_user_id: string;
+  username: string | null;
+  display_name: string | null;
+  account_type: string | null;
+};
+
+type FacebookPage = {
+  id: string;
+  page_id: string;
+  page_name: string | null;
+  category: string | null;
+};
+
+export default function MetaInstagramAccounts() {
+  const [mount, setMount] = useState<HTMLElement | null>(null);
+  const [publishMount, setPublishMount] = useState<HTMLElement | null>(null);
+  const [accounts, setAccounts] = useState<InstagramAccount[]>([]);
+  const [facebook, setFacebook] = useState<FacebookPage[]>([]);
+  const [selectedInstagram, setSelectedInstagram] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [limit, setLimit] = useState(0);
+
+  async function loadAccounts() {
+    setLoading(true);
+    try {
+      const [instagramResponse, facebookResponse] = await Promise.all([
+        fetch("/api/meta/instagram/accounts", { cache: "no-store" }),
+        fetch("/api/meta/facebook/accounts", { cache: "no-store" }),
+      ]);
+
+      if (instagramResponse.ok) {
+        const data = await instagramResponse.json();
+        const next: InstagramAccount[] = Array.isArray(data.accounts) ? data.accounts : [];
+        setAccounts(next);
+        window.dispatchEvent(
+          new CustomEvent("vyral:instagram-accounts", { detail: { count: next.length } }),
+        );
+      }
+
+      if (facebookResponse.ok) {
+        const data = await facebookResponse.json();
+        setFacebook(Array.isArray(data.accounts) ? data.accounts : []);
+        setLimit(Number(data.limit || 0));
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void loadAccounts();
+
+    const timer = window.setInterval(() => {
+      const main = document.querySelector(".vdMain");
+      const title = main?.querySelector(".vdSectionTitle")?.textContent || "";
+
+      if (main && title.includes("Tus cuentas conectadas")) {
+        let element = main.querySelector(".vyralMetaAccountsMount") as HTMLElement | null;
+        if (!element) {
+          element = document.createElement("div");
+          element.className = "vyralMetaAccountsMount";
+          main.appendChild(element);
+        }
+        setMount(element);
+      } else {
+        setMount(null);
+      }
+
+      if (main && title.includes("Nueva publicación")) {
+        const cards = main.querySelectorAll(".vdGrid > .vdCard");
+        const destination = cards[1] as HTMLElement | undefined;
+        if (destination) {
+          let element = destination.querySelector(".vyralMetaPublishMount") as HTMLElement | null;
+          if (!element) {
+            element = document.createElement("div");
+            element.className = "vyralMetaPublishMount";
+            destination.appendChild(element);
+          }
+          setPublishMount(element);
+        } else {
+          setPublishMount(null);
+        }
+      } else {
+        setPublishMount(null);
+      }
+    }, 300);
+
+    return () => window.clearInterval(timer);
+  }, []);
+
+  async function removeFacebook(id: string) {
+    if (!window.confirm("¿Desconectar esta página de Facebook de VYRAL?")) return;
+    const response = await fetch(
+      "/api/meta/facebook/accounts?id=" + encodeURIComponent(id),
+      { method: "DELETE" },
+    );
+    if (response.ok) setFacebook((current) => current.filter((account) => account.id !== id));
+  }
+
+  async function removeInstagram(id: string) {
+    if (!window.confirm("¿Desconectar esta cuenta de Instagram de VYRAL?")) return;
+    const response = await fetch(
+      "/api/meta/instagram/accounts?id=" + encodeURIComponent(id),
+      { method: "DELETE" },
+    );
+    if (response.ok) setAccounts((current) => current.filter((account) => account.id !== id));
+  }
+
+  function toggleInstagram(id: string) {
+    setSelectedInstagram((current) => {
+      const next = current.includes(id)
+        ? current.filter((accountId) => accountId !== id)
+        : [...current, id];
+
+      window.dispatchEvent(
+        new CustomEvent("vyral:instagram-selection", { detail: { ids: next } }),
+      );
+      return next;
+    });
+  }
+
+  const accountsPortal = mount
+    ? createPortal(
+        <>
+          <section className="vmiWrap">
+            <div className="vmiHead">
+              <div>
+                <div className="vmiTitleLine">
+                  <img className="vmiBrandIcon" src="/instagram.png" alt="Instagram" />
+                  <div>
+                    <small>INSTAGRAM</small>
+                    <h2>Instagram ({accounts.length})</h2>
+                  </div>
+                </div>
+                <p>
+                  Conectá varias cuentas profesionales. Cada usuario autoriza sus propias cuentas
+                  directamente con Meta.
+                </p>
+                <a className="vmiConnect" href="/api/meta/instagram/connect">
+                  + Conectar otra cuenta
+                </a>
+              </div>
+            </div>
+
+            <div className="vmiGrid">
+              {loading ? (
+                <div className="vmiEmpty">Cargando cuentas…</div>
+              ) : accounts.length ? (
+                accounts.map((account) => (
+                  <article className="vmiAccount" key={account.id}>
+                    <div className="vmiIcon">
+                      <img src="/instagram.png" alt="" />
+                    </div>
+                    <div>
+                      <strong>@{account.username || account.instagram_user_id}</strong>
+                      <span>{account.display_name || "Cuenta profesional"}</span>
+                      <small>
+                        {account.account_type === "MEDIA_CREATOR" ? "CREADOR" : "PROFESIONAL"} ·
+                        CONECTADA
+                      </small>
+                    </div>
+                    <button onClick={() => void removeInstagram(account.id)} aria-label="Desconectar">
+                      ×
+                    </button>
+                  </article>
+                ))
+              ) : (
+                <div className="vmiEmpty">
+                  Todavía no conectaste Instagram.{" "}
+                  <a href="/api/meta/instagram/connect">Conectar ahora ↗</a>
+                </div>
+              )}
+            </div>
+          </section>
+
+          <section className="vmiWrap vmiFacebook">
+            <div className="vmiHead">
+              <div>
+                <div className="vmiTitleLine">
+                  <img className="vmiBrandIcon" src="/facebook.png" alt="Facebook" />
+                  <div>
+                    <small>FACEBOOK</small>
+                    <h2>Facebook ({facebook.length})</h2>
+                  </div>
+                </div>
+                <p>
+                  Páginas de Facebook conectadas a VYRAL. Tu plan admite {limit || "—"} cuentas
+                  en total.
+                </p>
+                <a className="vmiConnect" href="/api/meta/facebook/connect">
+                  + Conectar Facebook
+                </a>
+              </div>
+            </div>
+
+            <div className="vmiGrid">
+              {facebook.length ? (
+                facebook.map((page) => (
+                  <article className="vmiAccount" key={page.id}>
+                    <div className="vmiIcon">
+                      <img src="/facebook.png" alt="" />
+                    </div>
+                    <div>
+                      <strong>{page.page_name || page.page_id}</strong>
+                      <span>{page.category || "Página de Facebook"}</span>
+                      <small>CONECTADA</small>
+                    </div>
+                    <button onClick={() => void removeFacebook(page.id)} aria-label="Desconectar">
+                      ×
+                    </button>
+                  </article>
+                ))
+              ) : (
+                <div className="vmiFacebookEmpty">
+                  <img className="vmiBrandIcon" src="/facebook.png" alt="Facebook" />
+                  <div>
+                    <b>Sin páginas conectadas</b>
+                    <a href="/api/meta/facebook/connect">Conectar ahora ↗</a>
+                  </div>
+                </div>
+              )}
+            </div>
+          </section>
+        </>,
+        mount,
+      )
+    : null;
+
+  const publishPortal = publishMount
+    ? createPortal(
+        <div className="vmiPublishNetworks">
+          <section className="vmiPublishNetwork instagram">
+            <div className="vmiPublishNetworkHead">
+              <img src="/instagram.png" alt="Instagram" />
+              <div>
+                <small>INSTAGRAM</small>
+                <strong>Instagram ({accounts.length})</strong>
+              </div>
+            </div>
+
+            {loading ? (
+              <span className="vmiPublishMuted">Cargando cuentas…</span>
+            ) : accounts.length ? (
+              accounts.map((account) => (
+                <div className="vmiPublishAccount" key={account.id}>
+                  <input
+                    type="checkbox"
+                    checked={selectedInstagram.includes(account.id)}
+                    onChange={() => toggleInstagram(account.id)}
+                  />
+                  <img src="/instagram.png" alt="" />
+                  <div>
+                    <b>@{account.username || account.instagram_user_id}</b>
+                    <span>{account.display_name || "Cuenta profesional"}</span>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <span className="vmiPublishMuted">Sin cuentas conectadas</span>
+            )}
+          </section>
+
+          <section className="vmiPublishNetwork facebook">
+            <div className="vmiPublishNetworkHead">
+              <img src="/facebook.png" alt="Facebook" />
+              <div>
+                <small>FACEBOOK</small>
+                <strong>Facebook ({facebook.length})</strong>
+              </div>
+            </div>
+
+            {facebook.length ? (
+              facebook.map((page) => (
+                <div className="vmiPublishAccount" key={page.id}>
+                  <img src="/facebook.png" alt="" />
+                  <div>
+                    <b>{page.page_name || page.page_id}</b>
+                    <span>{page.category || "Página de Facebook"}</span>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <span className="vmiPublishMuted">Sin páginas conectadas</span>
+            )}
+          </section>
+        </div>,
+        publishMount,
+      )
+    : null;
+
+  return (
+    <>
+      {accountsPortal}
+      {publishPortal}
+    </>
+  );
 }
