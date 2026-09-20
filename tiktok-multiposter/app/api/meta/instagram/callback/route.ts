@@ -116,9 +116,13 @@ export async function GET(req: Request) {
     }
 
     const instagramUserId = oauthUserId;
+    const oauthUsername =
+      typeof tokenJson.username === "string" && tokenJson.username.trim()
+        ? tokenJson.username.trim()
+        : null;
     const profile = {
       id: instagramUserId,
-      username: null as string | null,
+      username: oauthUsername,
       name: null as string | null,
       account_type: null as string | null,
     };
