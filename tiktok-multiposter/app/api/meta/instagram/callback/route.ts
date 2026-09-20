@@ -202,7 +202,7 @@ export async function GET(req: Request) {
     }
 
     try {
-      await saveInstagramAccount(session.userId, finalToken);
+      await saveInstagramAccount(session.userId, finalToken, instagramUserId);
       await diagnostic("webhook_setup", true, {
         external_account_id: instagramUserId,
       });
