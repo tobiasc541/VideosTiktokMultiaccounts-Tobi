@@ -14,6 +14,9 @@ export async function POST(req: Request) {
     : "";
   if (!isPlanId(requestedPlan)) return NextResponse.json({ error: "Plan inválido" }, { status: 400 });
   const plan = requestedPlan;
+  const requestedCurrency = typeof body === "object" && body !== null && "payCurrency" in body ? String((body as { payCurrency?: unknown }).payCurrency ?? "").toLowerCase() : "";
+  const allowedCurrencies = new Set(["btc","usdttrc20","usdtbsc","usdtsol","eth","sol","trx","ltc"]);
+  if (requestedCurrency && !allowedCurrencies.has(requestedCurrency)) return NextResponse.json({ error: "Moneda no disponible" }, { status: 400 });
 
   const key = process.env.NOWPAYMENTS_API_KEY;
   if (!key) return NextResponse.json({ error: "Crypto payments not configured" }, { status: 503 });
@@ -28,6 +31,7 @@ export async function POST(req: Request) {
     body: JSON.stringify({
       price_amount: prices[plan],
       price_currency: "usd",
+      ...(requestedCurrency ? { pay_currency: requestedCurrency } : {}),
       order_id: orderId,
       order_description: `VYRAL ${PLAN_CONFIG[plan].name} - 1 mes`,
       ipn_callback_url: `${origin}/api/payments/nowpayments/webhook`,
