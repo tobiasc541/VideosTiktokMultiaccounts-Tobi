@@ -5,7 +5,6 @@ import { supabaseAdmin } from "../../../../../lib/supabase-admin";
 export const maxDuration=60;
 const BUCKET="scheduled-media";
 const GRAPH="https://graph.instagram.com";
-const API_VERSION=process.env.META_GRAPH_API_VERSION||"v24.0";
 const ALLOWED=new Set(["video/mp4","video/quicktime"]);
 
 async function graphJson(url:string,init?:RequestInit){
@@ -50,12 +49,22 @@ export async function PUT(req:Request){
   const signed=await db.storage.from(BUCKET).createSignedUrl(path,3600);
   if(signed.error||!signed.data?.signedUrl)throw new Error(signed.error?.message||"No se pudo exponer temporalmente el video.");
   const params=new URLSearchParams({media_type:"REELS",video_url:signed.data.signedUrl,caption,share_to_feed:shareToFeed?"true":"false",access_token:q.data.access_token});
-  const created=await graphJson(`${GRAPH}/${API_VERSION}/${q.data.instagram_user_id}/media?${params}`,{method:"POST"});
+  const created=await graphJson(`${GRAPH}/${q.data.instagram_user_id}/media?${params}`,{method:"POST"});
   const containerId=String(created.id||""); if(!containerId)throw new Error("Instagram no devolvió el contenedor del Reel.");await log("container_created",{created},containerId);
   let finished=false,last="";
-  for(let i=0;i<3;i++){await new Promise(r=>setTimeout(r,1200));const st=await graphJson(`${GRAPH}/${API_VERSION}/${containerId}?fields=status_code,status&access_token=${encodeURIComponent(q.data.access_token)}`);last=String(st.status_code||"");await log("container_status",{status_code:last,status:st.status||null},containerId);if(last==="FINISHED"){finished=true;break}if(["ERROR","EXPIRED"].includes(last))throw new Error(st.status||`Instagram: ${last}`)}
+  for(let i=0;i<3;i++){await new Promise(r=>setTimeout(r,1200));const st=await graphJson(`${GRAPH}/${containerId}?fields=status_code,status&access_token=${encodeURIComponent(q.data.access_token)}`);last=String(st.status_code||"");await log("container_status",{status_code:last,status:st.status||null},containerId);if(last==="FINISHED"){finished=true;break}if(["ERROR","EXPIRED"].includes(last))throw new Error(st.status||`Instagram: ${last}`)}
   if(!finished){await log("processing_returned",{last},containerId);return NextResponse.json({ok:true,processing:true,containerId,username:q.data.username,message:"Instagram sigue procesando el Reel."},{status:202});}
-  const published=await graphJson(`${GRAPH}/${API_VERSION}/${q.data.instagram_user_id}/media_publish?creation_id=${encodeURIComponent(containerId)}&access_token=${encodeURIComponent(q.data.access_token)}`,{method:"POST"});
+  const published=await graphJson(`${GRAPH}/${q.data.instagram_user_id}/media_publish?creation_id=${encodeURIComponent(containerId)}&access_token=${encodeURIComponent(q.data.access_token)}`,{method:"POST"});
   const mediaId=String(published.id||"");await log("published",{published},containerId,mediaId);return NextResponse.json({ok:true,mediaId,containerId,username:q.data.username});
- }catch(e:any){return NextResponse.json({error:e?.message||"No se pudo publicar en Instagram."},{status:500})}
+ }catch(e:any){
+  const db=supabaseAdmin();
+  await db.from("instagram_publish_events").insert({
+    user_id:session.userId,
+    account_id:null,
+    storage_path:path||null,
+    stage:"publish_failed",
+    detail:{error:String(e?.message||e||"unknown")},
+  });
+  return NextResponse.json({error:e?.message||"No se pudo publicar en Instagram."},{status:500})
+ }
 }
