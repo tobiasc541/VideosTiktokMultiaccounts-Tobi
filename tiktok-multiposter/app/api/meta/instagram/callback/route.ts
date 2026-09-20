@@ -11,8 +11,8 @@ import { socialAccountContext } from "../../../../../lib/social-account-limits";
 
 function redirectHome(url: URL, params: Record<string, string>) {
   const target = new URL("/", url.origin);
-  for (const [key, value] of Object.entries(params)) target.searchParams.set(key, value);
   target.searchParams.set("section", "accounts");
+  Object.entries(params).forEach(([key, value]) => target.searchParams.set(key, value));
   return NextResponse.redirect(target);
 }
 
@@ -24,7 +24,11 @@ export async function GET(req: Request) {
   const session = await getCustomerSession();
   const ctx = session ? await socialAccountContext() : null;
 
-  async function diagnostic(stage: string, ok: boolean, details: Record<string, unknown> = {}) {
+  const diagnostic = async (
+    stage: string,
+    ok: boolean,
+    details: Record<string, unknown> = {},
+  ) => {
     if (!session || !ctx) return;
     const safe = { ...details } as Record<string, any>;
     delete safe.access_token;
@@ -39,7 +43,7 @@ export async function GET(req: Request) {
       error_message: safe.error_message ? String(safe.error_message) : null,
       details: safe,
     });
-  }
+  };
 
   if (oauthError) {
     await diagnostic("oauth_return", false, { error_message: oauthError });
@@ -47,13 +51,17 @@ export async function GET(req: Request) {
   }
 
   const parsedState = state ? readMetaState(state) : null;
-  if (!session || !ctx || !parsedState || parsedState.userId !== session.userId || !code) {
+  const stateMatches = Boolean(
+    session && parsedState && parsedState.userId === session.userId,
+  );
+
+  if (!session || !ctx || !parsedState || !stateMatches || !code) {
     await diagnostic("state_session_validation", false, {
       error_message: "oauth_invalid",
       has_session: Boolean(session),
       has_state: Boolean(parsedState),
       has_code: Boolean(code),
-      state_matches: Boolean(session && parsedState && parsedState.userId === session.userId),
+      state_matches: stateMatches,
     });
     return redirectHome(url, { meta_error: "oauth_invalid" });
   }
@@ -92,17 +100,37 @@ export async function GET(req: Request) {
     }
 
     await diagnostic("token_exchange", true, { http_status: tokenResponse.status });
-    const shortToken = String(tokenJson.access_token);\n    const oauthUserId = tokenJson.user_id ? String(tokenJson.user_id) : "";\n    await diagnostic("oauth_identity", Boolean(oauthUserId), {\n      external_account_id: oauthUserId || null,\n      error_message: oauthUserId ? null : "Instagram token response did not include user_id",\n    });\n    if (!oauthUserId) throw new Error("Instagram no devolvió el identificador de la cuenta.");\n\n    const version = process.env.META_GRAPH_API_VERSION || "v24.0";\n    const profileUrl = new URL(`https://graph.instagram.com/${version}/${encodeURIComponent(oauthUserId)}`);
+
+    const shortToken = String(tokenJson.access_token);
+    const oauthUserId = tokenJson.user_id ? String(tokenJson.user_id) : "";
+
+    await diagnostic("oauth_identity", Boolean(oauthUserId), {
+      external_account_id: oauthUserId || null,
+      error_message: oauthUserId
+        ? null
+        : "Instagram token response did not include user_id",
+    });
+
+    if (!oauthUserId) {
+      throw new Error("Instagram no devolvió el identificador de la cuenta.");
+    }
+
+    const graphVersion = process.env.META_GRAPH_API_VERSION || "v24.0";
+    const profileUrl = new URL(
+      `https://graph.instagram.com/${graphVersion}/${encodeURIComponent(oauthUserId)}`,
+    );
     profileUrl.searchParams.set("fields", "id,username,name,account_type");
     profileUrl.searchParams.set("access_token", shortToken);
 
     const profileResponse = await fetch(profileUrl, { cache: "no-store" });
     const profile = await profileResponse.json().catch(() => ({}));
+
     if (!profileResponse.ok || !profile.id) {
       const message = String(
         profile.error?.message || `Profile HTTP ${profileResponse.status}`,
       );
       await diagnostic("profile_fetch", false, {
+        external_account_id: oauthUserId,
         error_message: message,
         http_status: profileResponse.status,
         error_code: profile.error?.code || null,
@@ -110,7 +138,7 @@ export async function GET(req: Request) {
       throw new Error(message);
     }
 
-    const instagramUserId = String(profile.id || oauthUserId);
+    const instagramUserId = String(profile.id);
     await diagnostic("profile_fetch", true, {
       external_account_id: instagramUserId,
       external_username: profile.username || null,
@@ -175,11 +203,13 @@ export async function GET(req: Request) {
       db_id: persisted.data?.id || null,
     });
 
-    let accessToken = shortToken;
+    let finalToken = shortToken;
     try {
       const longLived = await exchangeInstagramLongLivedToken(shortToken);
-      accessToken = longLived.accessToken;
-      await diagnostic("long_lived_token", true, { external_account_id: instagramUserId });
+      finalToken = longLived.accessToken;
+      await diagnostic("long_lived_token", true, {
+        external_account_id: instagramUserId,
+      });
     } catch (error: any) {
       await diagnostic("long_lived_token", false, {
         external_account_id: instagramUserId,
@@ -188,8 +218,10 @@ export async function GET(req: Request) {
     }
 
     try {
-      await saveInstagramAccount(session.userId, accessToken);
-      await diagnostic("webhook_setup", true, { external_account_id: instagramUserId });
+      await saveInstagramAccount(session.userId, finalToken);
+      await diagnostic("webhook_setup", true, {
+        external_account_id: instagramUserId,
+      });
     } catch (error: any) {
       await diagnostic("webhook_setup", false, {
         external_account_id: instagramUserId,
