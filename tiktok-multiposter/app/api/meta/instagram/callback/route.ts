@@ -92,9 +92,7 @@ export async function GET(req: Request) {
     }
 
     await diagnostic("token_exchange", true, { http_status: tokenResponse.status });
-    const shortToken = String(tokenJson.access_token);
-    const version = process.env.META_GRAPH_API_VERSION || "v24.0";
-    const profileUrl = new URL(`https://graph.instagram.com/${version}/me`);
+    const shortToken = String(tokenJson.access_token);\n    const oauthUserId = tokenJson.user_id ? String(tokenJson.user_id) : "";\n    await diagnostic("oauth_identity", Boolean(oauthUserId), {\n      external_account_id: oauthUserId || null,\n      error_message: oauthUserId ? null : "Instagram token response did not include user_id",\n    });\n    if (!oauthUserId) throw new Error("Instagram no devolvió el identificador de la cuenta.");\n\n    const version = process.env.META_GRAPH_API_VERSION || "v24.0";\n    const profileUrl = new URL(`https://graph.instagram.com/${version}/${encodeURIComponent(oauthUserId)}`);
     profileUrl.searchParams.set("fields", "id,username,name,account_type");
     profileUrl.searchParams.set("access_token", shortToken);
 
@@ -112,7 +110,7 @@ export async function GET(req: Request) {
       throw new Error(message);
     }
 
-    const instagramUserId = String(profile.id);
+    const instagramUserId = String(profile.id || oauthUserId);
     await diagnostic("profile_fetch", true, {
       external_account_id: instagramUserId,
       external_username: profile.username || null,
