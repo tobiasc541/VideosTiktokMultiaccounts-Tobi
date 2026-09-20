@@ -4,6 +4,7 @@ import { env } from "../../../../lib/env";
 import { getCustomerSession } from "../../../../lib/auth";
 import { exchangeCode, saveAccount } from "../../../../lib/tiktok";
 import { assignTikTokAccountOwner } from "../../../../lib/tiktok-ownership";
+import { socialAccountContext } from "../../../../lib/social-account-limits";
 
 function isValidSignedState(state: string | null) {
   if (!state) return false;
@@ -31,6 +32,7 @@ export async function GET(req: Request) {
   if (!session) return NextResponse.redirect(`${appUrl}/login?oauth_error=session_expired`);
 
   try {
+    const ctx=await socialAccountContext(); if(!ctx||ctx.total>=ctx.limit)throw new Error("Límite de cuentas alcanzado para tu plan.");
     const redirectUri = `${appUrl}/api/tiktok/callback`;
     const token = await exchangeCode(code, redirectUri);
     await saveAccount(token);
