@@ -7,14 +7,10 @@
 
 .vdInstagramProgress{margin:14px 0 10px;padding:14px 16px;border:1px solid rgba(34,211,238,.25);border-radius:14px;background:rgba(5,20,22,.72)}.vdInstagramProgressTop{display:flex;align-items:center;gap:11px}.vdInstagramProgressTop>div{display:flex;align-items:center;justify-content:space-between;gap:18px;width:100%}.vdInstagramProgressTop strong{font-size:13px;color:#eefefe}.vdInstagramProgressTop b{font-variant-numeric:tabular-nums;color:#63f3ea;font-size:13px;letter-spacing:.06em}.vdInstagramProgress p{margin:8px 0 0 25px;color:#819497;font-size:11px;line-height:1.5}.vdInstagramSpinner{width:14px;height:14px;border-radius:50%;border:2px solid rgba(99,243,234,.22);border-top-color:#63f3ea;animation:vdIgSpin .8s linear infinite;flex:0 0 auto}@keyframes vdIgSpin{to{transform:rotate(360deg)}}
 
-/* Dedicated automation navigation: keep it in normal sidebar flow and away from account links. */
-.vdAutomationNav{margin-top:14px;padding-top:14px;border-top:1px solid rgba(45,226,220,.18)}
-.vdAutomationNav button{min-height:58px;white-space:normal;line-height:1.15}
 
-/* Sidebar flow fix: automation item must never overlap account/support navigation. */
-.vdSidebar{overflow-y:auto;overflow-x:hidden;align-items:stretch}
-.vdSidebar>.vdNav{position:static!important;inset:auto!important;transform:none!important;flex:0 0 auto;width:100%;margin-bottom:0}
-.vdSidebar>.vdAutomationNav{position:static!important;display:flex!important;clear:both;margin:18px 0 18px!important;padding:16px 0 18px!important;border-top:1px solid rgba(45,226,220,.18);border-bottom:1px solid rgba(45,226,220,.12)}
-.vdSidebar>.vdAutomationNav button{position:static!important;width:100%;min-height:64px;margin:0!important;padding:12px!important;line-height:1.25;align-items:flex-start}
-.vdSidebar>.vdAutomationNav button span:last-child{display:block;max-width:120px}
-.vdSidebar>.vdSideBottom{position:static!important;clear:both;flex:0 0 auto;margin-top:auto!important}
+
+/* Sidebar: automations is a normal nav item immediately below VYRAL Coach. */
+.vdSidebar{overflow-y:auto;overflow-x:hidden}
+.vdNav button{position:static;min-height:46px;line-height:1.2}
+.vdNav button span:nth-child(2){min-width:0}
+.vdSideBottom{position:static;margin-top:auto}
