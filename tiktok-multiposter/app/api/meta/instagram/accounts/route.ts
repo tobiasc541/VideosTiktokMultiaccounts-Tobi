@@ -41,25 +41,28 @@ async function ensureWebhookSubscription(a:any){
 async function readLatestComments(a:any){
   try{
     const mediaUrl=new URL(`https://graph.instagram.com/${VER}/${a.instagram_user_id}/media`);
-    mediaUrl.searchParams.set("fields","id,timestamp");
+    mediaUrl.searchParams.set("fields","id,timestamp,media_type,permalink");
     mediaUrl.searchParams.set("limit","5");
     mediaUrl.searchParams.set("access_token",a.access_token);
     const {r:mr,j:mj}=await jsonFetch(mediaUrl);
     if(!mr.ok||mj.error)throw new Error(mj?.error?.message||`Instagram HTTP ${mr.status}`);
     const media=Array.isArray(mj.data)?mj.data:[];
-    const latest=media[0];
-    if(!latest?.id)return {ok:true,mediaId:null,comments:[],error:null};
-
-    const commentsUrl=new URL(`https://graph.instagram.com/${VER}/${latest.id}/comments`);
-    commentsUrl.searchParams.set("fields","id,text,timestamp,username");
-    commentsUrl.searchParams.set("limit","20");
-    commentsUrl.searchParams.set("access_token",a.access_token);
-    const {r:cr,j:cj}=await jsonFetch(commentsUrl);
-    if(!cr.ok||cj.error)throw new Error(cj?.error?.message||`Instagram HTTP ${cr.status}`);
-    const comments=(Array.isArray(cj.data)?cj.data:[]).map((x:any)=>({
-      id:String(x.id||""),text:String(x.text||"").slice(0,200),timestamp:x.timestamp||null,username:x.username||null
+    if(!media.length)return {ok:true,mediaId:null,comments:[],error:null};
+    const scans=await Promise.all(media.map(async(m:any)=>{
+      const commentsUrl=new URL(`https://graph.instagram.com/${VER}/${m.id}/comments`);
+      commentsUrl.searchParams.set("fields","id,text,timestamp,username");
+      commentsUrl.searchParams.set("limit","50");
+      commentsUrl.searchParams.set("access_token",a.access_token);
+      const {r:cr,j:cj}=await jsonFetch(commentsUrl);
+      return {
+        media_id:String(m.id),timestamp:m.timestamp||null,media_type:m.media_type||null,permalink:m.permalink||null,
+        http_status:cr.status,error:cj?.error?.message||null,
+        comments:(Array.isArray(cj.data)?cj.data:[]).map((x:any)=>({
+          id:String(x.id||""),text:String(x.text||"").slice(0,200),timestamp:x.timestamp||null,username:x.username||null
+        }))
+      };
     }));
-    return {ok:true,mediaId:String(latest.id),comments,error:null};
+    return {ok:scans.every((x:any)=>!x.error),mediaId:String(media[0].id),comments:scans,error:scans.find((x:any)=>x.error)?.error||null};
   }catch(e:any){
     return {ok:false,mediaId:null,comments:[],error:String(e?.message||e)};
   }
