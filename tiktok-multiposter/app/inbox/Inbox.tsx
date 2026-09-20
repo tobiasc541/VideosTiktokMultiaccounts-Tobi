@@ -1,149 +1,31 @@
 "use client";
+import Link from "next/link";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 
-import { FormEvent, useEffect, useState } from "react";
+type Handoff={id:string;contact_id:string;contact_username?:string|null;reason?:string|null;lead_score:number;last_message?:string|null;status:string;stage?:string;priority?:string;assigned_to?:string|null;notes?:string|null;unread?:boolean;updated_at?:string};
+type Message={id:string;body:string;direction:"in"|"out";sender_type:"contact"|"ai"|"human"|"system";created_at?:string};
+type Stats={total:number;hot:number;unread:number;human:number};
+const stages:Record<string,string>={new:"Nuevo",contacted:"Contactado",qualified:"Calificado",won:"Ganado",lost:"Perdido"};
 
-type Handoff = {
-  id: string;
-  contact_id: string;
-  contact_username?: string | null;
-  reason?: string | null;
-  lead_score: number;
-  last_message?: string | null;
-  status: string;
-};
-
-type Message = {
-  id: string;
-  body: string;
-  direction: "in" | "out";
-  sender_type: "contact" | "ai" | "human" | "system";
-};
-
-export default function Inbox() {
-  const [handoffs, setHandoffs] = useState<Handoff[]>([]);
-  const [selected, setSelected] = useState<Handoff | null>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [message, setMessage] = useState("");
-  const [sending, setSending] = useState(false);
-
-  async function loadHandoffs() {
-    const response = await fetch("/api/inbox", { cache: "no-store" });
-    if (!response.ok) return;
-    const data = await response.json();
-    setHandoffs(data.handoffs || []);
-  }
-
-  async function loadThread(handoff: Handoff) {
-    setSelected(handoff);
-    const response = await fetch(
-      "/api/inbox?contact=" + encodeURIComponent(handoff.contact_id),
-      { cache: "no-store" }
-    );
-    if (!response.ok) return;
-    const data = await response.json();
-    setMessages(data.messages || []);
-  }
-
-  useEffect(() => {
-    void loadHandoffs();
-    const timer = window.setInterval(() => void loadHandoffs(), 8000);
-    return () => window.clearInterval(timer);
-  }, []);
-
-  async function send(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!selected || !message.trim() || sending) return;
-    setSending(true);
-    try {
-      const response = await fetch("/api/inbox", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          handoffId: selected.id,
-          message: message.trim(),
-        }),
-      });
-      if (!response.ok) return;
-      setMessage("");
-      await loadThread(selected);
-    } finally {
-      setSending(false);
-    }
-  }
-
-  return (
-    <main className="vi">
-      <header>
-        <small>VYRAL INBOX</small>
-        <h1>Conversaciones que necesitan una persona.</h1>
-        <p>
-          La IA deriva automáticamente leads calientes y personas que piden
-          hablar con un humano.
-        </p>
-      </header>
-
-      <div className="viGrid">
-        <aside>
-          {handoffs.length ? (
-            handoffs.map((handoff) => (
-              <button
-                type="button"
-                className={selected?.id === handoff.id ? "on" : ""}
-                onClick={() => void loadThread(handoff)}
-                key={handoff.id}
-              >
-                <b>@{handoff.contact_username || handoff.contact_id}</b>
-                <span>{handoff.reason || "Requiere atención"}</span>
-                <i>Lead {handoff.lead_score}/100</i>
-              </button>
-            ))
-          ) : (
-            <div className="empty">No hay conversaciones pendientes.</div>
-          )}
-        </aside>
-
-        <section>
-          {selected ? (
-            <>
-              <div className="viThreadHead">
-                <div>
-                  <b>@{selected.contact_username || selected.contact_id}</b>
-                  <span>Instagram · atención humana</span>
-                </div>
-                <strong>{selected.lead_score}/100</strong>
-              </div>
-
-              <div className="viMessages">
-                {messages.map((item) => (
-                  <div key={item.id} className={"msg " + item.direction}>
-                    <small>
-                      {item.sender_type === "human"
-                        ? "VOS"
-                        : item.direction === "out"
-                          ? "VYRAL IA"
-                          : "CONTACTO"}
-                    </small>
-                    {item.body}
-                  </div>
-                ))}
-              </div>
-
-              <form onSubmit={send}>
-                <input
-                  value={message}
-                  onChange={(event) => setMessage(event.target.value)}
-                  placeholder="Respondé desde VYRAL…"
-                />
-                <button type="submit" disabled={sending}>
-                  {sending ? "ENVIANDO…" : "ENVIAR →"}
-                </button>
-              </form>
-            </>
-          ) : (
-            <div className="choose">Elegí una conversación.</div>
-          )}
-        </section>
-      </div>
-    </main>
-  );
+export default function Inbox(){
+ const[handoffs,setHandoffs]=useState<Handoff[]>([]),[selected,setSelected]=useState<Handoff|null>(null),[messages,setMessages]=useState<Message[]>([]),[message,setMessage]=useState(""),[search,setSearch]=useState(""),[filter,setFilter]=useState("open"),[sending,setSending]=useState(false),[stats,setStats]=useState<Stats>({total:0,hot:0,unread:0,human:0}),[notes,setNotes]=useState("");
+ async function load(){const r=await fetch("/api/inbox",{cache:"no-store"});if(!r.ok)return;const d=await r.json();setHandoffs(d.handoffs||[]);setStats(d.stats||{total:0,hot:0,unread:0,human:0})}
+ async function thread(h:H){setSelected(h);setNotes(h.notes||"");const r=await fetch("/api/inbox?contact="+encodeURIComponent(h.contact_id),{cache:"no-store"});if(r.ok){const d=await r.json();setMessages(d.messages||[])}}
+ useEffect(()=>{void load();const t=window.setInterval(()=>void load(),8000);return()=>window.clearInterval(t)},[]);
+ const visible=useMemo(()=>handoffs.filter(h=>{const q=search.toLowerCase();const matches=!q||String(h.contact_username||h.contact_id).toLowerCase().includes(q)||String(h.last_message||"").toLowerCase().includes(q);const f=filter==="all"||filter==="hot"?h.status==="open"&&h.lead_score>=75:filter==="unread"?h.status==="open"&&h.unread:filter==="resolved"?h.status==="resolved":h.status==="open";return matches&&f}),[handoffs,search,filter]);
+ async function send(e:FormEvent){e.preventDefault();if(!selected||!message.trim()||sending)return;setSending(true);try{const r=await fetch("/api/inbox",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({handoffId:selected.id,message:message.trim()})});if(r.ok){setMessage("");await thread(selected);await load()}}finally{setSending(false)}}
+ async function update(patch:Record<string,unknown>){if(!selected)return;const r=await fetch("/api/inbox",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"update",id:selected.id,...patch})});if(r.ok){const d=await r.json();if(d.handoff)setSelected(d.handoff);await load()}}
+ return <div className="viShell">
+  <aside className="viNav"><div className="viLogo">V<b>Y</b>RAL</div><nav><Link href="/?section=dashboard"><span>⌂</span>Dashboard</Link><Link href="/?section=publish"><span>↗</span>Publicar</Link><Link href="/?section=accounts"><span>◎</span>Cuentas</Link><Link href="/?section=history"><span>▥</span>Historial</Link><Link href="/?section=analytics"><span>⌁</span>Analytics</Link><Link href="/?section=coach"><span>✦</span>VYRAL Coach <i>AI</i></Link><Link className="active" href="/inbox"><span>◉</span>VYRAL Inbox <em>{stats.unread||""}</em></Link><Link href="/?section=automations"><span>⚡</span>Automatizaciones</Link></nav><div className="viNavBottom"><Link href="/mi-plan">◇ Tu cuenta</Link><Link href="/soporte">↗ Soporte 24/7</Link></div></aside>
+  <main className="vi">
+   <header className="viHero"><div><small>VYRAL INBOX · ESCALA</small><h1>Convertí conversaciones en ventas.</h1><p>IA, leads y atención humana en una sola bandeja.</p></div><div className="viLive"><i/> EN VIVO</div></header>
+   <div className="viStats"><button onClick={()=>setFilter("open")}><span>PENDIENTES</span><b>{stats.total}</b><small>Necesitan atención</small></button><button onClick={()=>setFilter("hot")}><span>LEADS CALIENTES</span><b>{stats.hot}</b><small>Score ≥ 75</small></button><button onClick={()=>setFilter("unread")}><span>SIN LEER</span><b>{stats.unread}</b><small>Nuevos mensajes</small></button><button onClick={()=>setFilter("open")}><span>PIDIERON HUMANO</span><b>{stats.human}</b><small>Derivados por IA</small></button></div>
+   <div className="viToolbar"><div className="viSearch">⌕ <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar persona o mensaje…"/></div><div className="viFilters">{[["open","Activas"],["hot","🔥 Calientes"],["unread","Sin leer"],["resolved","Cerradas"],["all","Todas"]].map(x=><button key={x[0]} className={filter===x[0]?"on":""} onClick={()=>setFilter(x[0])}>{x[1]}</button>)}</div></div>
+   <div className="viGrid">
+    <aside className="viThreads">{visible.length?visible.map(h=><button className={(selected?.id===h.id?"on ":"")+(h.unread?"unread":"")} onClick={()=>void thread(h)} key={h.id}><div className="viAvatar">{(h.contact_username||"?").slice(0,1).toUpperCase()}</div><div className="viThreadText"><div><b>@{h.contact_username||h.contact_id}</b><time>{h.unread?"● NUEVO":stages[h.stage||"new"]}</time></div><p>{h.last_message||h.reason||"Requiere atención"}</p><span className={h.lead_score>=75?"hot":""}>Lead {h.lead_score}/100</span></div></button>):<div className="empty"><b>Todo al día.</b><span>No hay conversaciones en este filtro.</span></div>}</aside>
+    <section className="viConversation">{selected?<><div className="viThreadHead"><div className="viPerson"><div className="viAvatar">{(selected.contact_username||"?").slice(0,1).toUpperCase()}</div><div><b>@{selected.contact_username||selected.contact_id}</b><span>Instagram · {selected.reason||"Conversación activa"}</span></div></div><div className="viScore"><small>INTENCIÓN</small><strong>{selected.lead_score}/100</strong></div></div><div className="viMessages">{messages.map(m=><div key={m.id} className={"msg "+m.direction}><small>{m.sender_type==="human"?"VOS":m.direction==="out"?"VYRAL IA":"CONTACTO"}</small><p>{m.body}</p>{m.created_at&&<time>{new Date(m.created_at).toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"})}</time>}</div>)}</div><form onSubmit={send}><div className="viComposer"><textarea value={message} onChange={e=>setMessage(e.target.value)} placeholder="Respondé desde VYRAL…"/><button disabled={sending}>{sending?"ENVIANDO…":"ENVIAR →"}</button></div></form></>:<div className="choose"><div>◉</div><b>Tu centro de conversaciones</b><span>Elegí un lead para ver el historial completo y responder sin salir de VYRAL.</span></div>}</section>
+    <aside className="viCRM">{selected?<><small>CRM DEL LEAD</small><h3>@{selected.contact_username||selected.contact_id}</h3><label>Etapa<select value={selected.stage||"new"} onChange={e=>void update({stage:e.target.value})}>{Object.entries(stages).map(([k,v])=><option key={k} value={k}>{v}</option>)}</select></label><label>Prioridad<select value={selected.priority||"normal"} onChange={e=>void update({priority:e.target.value})}><option value="normal">Normal</option><option value="high">Alta</option><option value="urgent">Urgente</option></select></label><div className="viLeadMeter"><span><b>Lead score</b><i>{selected.lead_score}%</i></span><div><i style={{width:selected.lead_score+"%"}}/></div></div><label>Notas<textarea value={notes} onChange={e=>setNotes(e.target.value)} onBlur={()=>void update({notes})} placeholder="Datos, objeciones, seguimiento…"/></label><button className="viClose" onClick={()=>void update({status:selected.status==="resolved"?"open":"resolved"})}>{selected.status==="resolved"?"REABRIR CONVERSACIÓN":"MARCAR COMO RESUELTA ✓"}</button><div className="viAIReason"><small>POR QUÉ LA DERIVÓ VYRAL AI</small><p>{selected.reason||"Intención comercial detectada."}</p></div></>:<div className="viCrmEmpty">Seleccioná un lead para ver su ficha CRM.</div>}</aside>
+   </div>
+  </main>
+ </div>
 }
