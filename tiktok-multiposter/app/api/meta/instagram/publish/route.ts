@@ -42,7 +42,8 @@ export async function PUT(req:Request){
   const db=supabaseAdmin();
   const q=await db.from("meta_instagram_accounts").select("instagram_user_id,username,access_token").eq("id",accountId).eq("user_id",session.userId).maybeSingle();
   if(q.error)throw new Error(q.error.message); if(!q.data)return NextResponse.json({error:"Cuenta no autorizada."},{status:403});
-  const signed=await db.storage.from(BUCKET).createSignedUrl(path,900);
+  const parent=path.split("/").slice(0,-1).join("/"),leaf=path.split("/").pop()||"";const exists=await db.storage.from(BUCKET).list(parent,{search:leaf,limit:10});if(exists.error)throw new Error(`No se pudo verificar el video: ${exists.error.message}`);if(!(exists.data||[]).some(x=>x.name===leaf))return NextResponse.json({error:"El video no llegó al almacenamiento de VYRAL. Volvé a intentar la subida."},{status:409});
+  const signed=await db.storage.from(BUCKET).createSignedUrl(path,3600);
   if(signed.error||!signed.data?.signedUrl)throw new Error(signed.error?.message||"No se pudo exponer temporalmente el video.");
   const params=new URLSearchParams({media_type:"REELS",video_url:signed.data.signedUrl,caption,share_to_feed:shareToFeed?"true":"false",access_token:q.data.access_token});
   const created=await graphJson(`${GRAPH}/${API_VERSION}/${q.data.instagram_user_id}/media?${params}`,{method:"POST"});
