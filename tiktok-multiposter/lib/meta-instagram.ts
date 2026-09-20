@@ -38,7 +38,8 @@ export async function refreshInstagramLongLivedToken(token:string){
   const r=await fetch(u,{cache:"no-store"});const j=await r.json();if(!r.ok||!j.access_token)throw new Error(j.error?.message||j.error_message||"No se pudo renovar Instagram.");return {accessToken:String(j.access_token),expiresIn:Number(j.expires_in||0)};
 }
 export async function saveInstagramAccount(userId:string, token:string){
-  const ver=process.env.META_GRAPH_API_VERSION||"v24.0";\n  const profileRes=await fetch(`https://graph.instagram.com/${ver}/me?fields=id,username,name,account_type&access_token=${encodeURIComponent(token)}`,{cache:"no-store"});
+  const ver=process.env.META_GRAPH_API_VERSION||"v24.0";
+  const profileRes=await fetch(`https://graph.instagram.com/${ver}/me?fields=id,username,name,account_type&access_token=${encodeURIComponent(token)}`,{cache:"no-store"});
   const profile=await profileRes.json(); if(!profileRes.ok||!profile.id)throw new Error(profile.error?.message||"No se pudo leer la cuenta de Instagram.");
   const db=supabaseAdmin();
   const q=await db.from("meta_instagram_accounts").upsert({user_id:userId,instagram_user_id:String(profile.id),username:profile.username||null,display_name:profile.name||null,account_type:profile.account_type||null,access_token:token,updated_at:new Date().toISOString()},{onConflict:"user_id,instagram_user_id"}).select("id,instagram_user_id,username").single();
