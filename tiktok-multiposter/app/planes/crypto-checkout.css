@@ -7,5 +7,10 @@
 .vyralPlanCard .ccModal h2,.ccModal h2{width:auto!important;max-width:none!important}
 .vyralPlanCard .ccCoins,.ccCoins{width:100%!important;max-width:none!important}
 .vyralPlanCard .ccPayment,.ccPayment{width:100%!important}
-body:has(.ccBackdrop){overflow:hidden!important}
+
 @media(max-width:700px){.ccBackdrop{padding:10px!important}.vyralPlanCard .ccModal,.ccModal{width:calc(100vw - 20px)!important;max-height:calc(100dvh - 20px)!important}}
+
+/* Portal modal: deliberately no :has(), backdrop-filter or inherited card transforms.
+   These caused full-page compositor repaint/flicker on large desktop viewports. */
+.ccBackdrop{background:rgba(0,4,5,.94)!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;contain:layout paint!important;isolation:isolate!important}
+.ccModal{contain:layout paint!important;will-change:auto!important}
