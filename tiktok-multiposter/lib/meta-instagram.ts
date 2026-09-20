@@ -24,6 +24,19 @@ export function readMetaState(state:string){
   try{const v=JSON.parse(Buffer.from(payload,"base64url").toString("utf8"));if(!v.userId||Date.now()-v.iat>10*60*1000)return null;return v as {userId:string;nonce:string;iat:number};}catch{return null;}
 }
 export function redirectUri(){return process.env.META_INSTAGRAM_REDIRECT_URI||"https://www.libreriadelemprendedor.com/api/meta/instagram/callback";}
+export async function exchangeInstagramLongLivedToken(shortToken:string){
+  const u=new URL("https://graph.instagram.com/access_token");
+  u.searchParams.set("grant_type","ig_exchange_token");
+  u.searchParams.set("client_secret",env("META_INSTAGRAM_APP_SECRET"));
+  u.searchParams.set("access_token",shortToken);
+  const r=await fetch(u,{cache:"no-store"});const j=await r.json();
+  if(!r.ok||!j.access_token)throw new Error(j.error?.message||j.error_message||"No se pudo extender la sesión de Instagram.");
+  return {accessToken:String(j.access_token),expiresIn:Number(j.expires_in||0)};
+}
+export async function refreshInstagramLongLivedToken(token:string){
+  const u=new URL("https://graph.instagram.com/refresh_access_token");u.searchParams.set("grant_type","ig_refresh_token");u.searchParams.set("access_token",token);
+  const r=await fetch(u,{cache:"no-store"});const j=await r.json();if(!r.ok||!j.access_token)throw new Error(j.error?.message||j.error_message||"No se pudo renovar Instagram.");return {accessToken:String(j.access_token),expiresIn:Number(j.expires_in||0)};
+}
 export async function saveInstagramAccount(userId:string, token:string){
   const profileRes=await fetch(`https://graph.instagram.com/me?fields=id,username,name,account_type&access_token=${encodeURIComponent(token)}`,{cache:"no-store"});
   const profile=await profileRes.json(); if(!profileRes.ok||!profile.id)throw new Error(profile.error?.message||"No se pudo leer la cuenta de Instagram.");
