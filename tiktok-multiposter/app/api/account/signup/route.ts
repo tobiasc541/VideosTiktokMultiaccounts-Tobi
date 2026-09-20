@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { env } from "../../../../lib/env";
 
-const VYRAL_PRODUCTION_URL = "https://libreriadelemprendedor.com";
+const VYRAL_PRODUCTION_URL = "https://vyralvideos.com";
 
 function supabaseAdmin() {
   return createClient(env("SUPABASE_URL"), env("SUPABASE_SERVICE_ROLE_KEY"), {
