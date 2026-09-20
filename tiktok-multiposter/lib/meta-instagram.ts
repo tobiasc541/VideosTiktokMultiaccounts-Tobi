@@ -44,7 +44,7 @@ export async function saveInstagramAccount(userId:string, token:string){
   const q=await db.from("meta_instagram_accounts").upsert({user_id:userId,instagram_user_id:String(profile.id),username:profile.username||null,display_name:profile.name||null,account_type:profile.account_type||null,access_token:token,updated_at:new Date().toISOString()},{onConflict:"user_id,instagram_user_id"}).select("id,instagram_user_id,username").single();
   if(q.error)throw new Error(q.error.message);
   const ver=process.env.META_GRAPH_API_VERSION||"v24.0";
-  const required=["comments","messages","messaging_postbacks"];
+  const required=["comments","live_comments","messages","messaging_postbacks","messaging_referral","messaging_seen"];
   const sub=new URL(`https://graph.instagram.com/${ver}/${profile.id}/subscribed_apps`);
   sub.searchParams.set("subscribed_fields",required.join(","));
   sub.searchParams.set("access_token",token);
