@@ -115,9 +115,8 @@ export async function GET(req: Request) {
       throw new Error("Instagram no devolvió el identificador de la cuenta.");
     }
 
-    const graphVersion = process.env.META_GRAPH_API_VERSION || "v24.0";
     const profileUrl = new URL(
-      `https://graph.instagram.com/${graphVersion}/${encodeURIComponent(oauthUserId)}`,
+      `https://graph.instagram.com/${encodeURIComponent(oauthUserId)}`,
     );
     profileUrl.searchParams.set("fields", "id,username,name,account_type");
     profileUrl.searchParams.set("access_token", shortToken);
