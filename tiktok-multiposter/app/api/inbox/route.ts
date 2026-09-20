@@ -28,8 +28,10 @@ export async function GET(req: NextRequest) {
     const interested = rows.filter((x) => Number(x.lead_score) >= 60 || ["qualified","won"].includes(String(x.stage))).length;
     const hot = rows.filter((x) => Number(x.lead_score) >= 75).length;
     const whatsapp = count("whatsapp");
-    const won = rows.filter((x) => x.stage === "won").length;
-    return NextResponse.json({days,conversations,interested,hot,whatsapp,won,human:rows.filter((x)=>String(x.reason||"").toLowerCase().includes("persona")).length,conversion:conversations?Math.round(won/conversations*1000)/10:0});
+    const goals = ev.filter((x) => ["goal_completed","sale","resource_delivered","whatsapp"].includes(String(x.event_type))).length;
+    const buckets = 12, span = Math.max(1, days * 86400000 / buckets), now = Date.now();
+    const series = Array.from({length:buckets},(_,i)=>{const from=now-(buckets-i)*span,to=from+span;return ev.filter((x)=>{const t=new Date(x.created_at).getTime();return t>=from&&t<to&&["goal_completed","sale","resource_delivered","whatsapp","interested"].includes(String(x.event_type))}).length});
+    return NextResponse.json({days,conversations,interested,hot,whatsapp,goals,human:rows.filter((x)=>String(x.reason||"").toLowerCase().includes("persona")).length,conversion:conversations?Math.round(goals/conversations*1000)/10:0,series});
   }
   if (contact) {
     const result = await db.from("vyral_inbox_messages").select("*").eq("user_id", session.userId).eq("contact_id", contact).order("created_at", { ascending: true }).limit(200);
@@ -58,10 +60,10 @@ export async function POST(req: NextRequest) {
   if (body.action === "event") {
     const handoff = await db.from("vyral_handoffs").select("account_id,contact_id,automation_id").eq("id", String(body.id)).eq("user_id", session.userId).single();
     if (handoff.error || !handoff.data) return NextResponse.json({ error: "Lead no encontrado" }, { status: 404 });
-    const allowed = ["whatsapp","interested","payment_intent","sale"];
+    const allowed = ["whatsapp","interested","payment_intent","sale","goal_completed","resource_delivered"];
     if (!allowed.includes(String(body.eventType))) return NextResponse.json({ error: "Evento inválido" }, { status: 400 });
     await db.from("vyral_crm_events").insert({user_id:session.userId,account_id:handoff.data.account_id,contact_id:handoff.data.contact_id,event_type:String(body.eventType),source:"human",automation_id:handoff.data.automation_id});
-    if(body.eventType==="sale") await db.from("vyral_handoffs").update({stage:"won",updated_at:new Date().toISOString()}).eq("id",String(body.id)).eq("user_id",session.userId);
+    if(body.eventType==="sale"||body.eventType==="goal_completed") await db.from("vyral_handoffs").update({stage:"won",updated_at:new Date().toISOString()}).eq("id",String(body.id)).eq("user_id",session.userId);
     return NextResponse.json({ok:true});
   }
 
