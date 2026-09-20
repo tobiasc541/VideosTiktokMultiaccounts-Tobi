@@ -9,3 +9,22 @@
  .dashboardSideExtras .dashboardAutomationLink{margin-bottom:1px!important}
  .dashboardSideExtras .dashboardCredits{margin-top:8px!important}
 }
+
+/* Sidebar separation correction: keep extras safely BELOW VYRAL Coach. */
+@media (min-width:761px){
+ .dashboardPageWrap .dashboardSideExtras{
+   top:410px!important;
+   gap:10px!important;
+ }
+ .dashboardSideExtras .dashboardAutomationLink,
+ .dashboardSideExtras a{
+   min-height:46px!important;
+   padding:10px 12px!important;
+ }
+ .dashboardSideExtras .dashboardAutomationLink{
+   margin-bottom:6px!important;
+ }
+ .dashboardSideExtras .dashboardCredits{
+   margin-top:16px!important;
+ }
+}
