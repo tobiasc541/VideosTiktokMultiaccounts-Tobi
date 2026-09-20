@@ -42,5 +42,5 @@ export async function saveInstagramAccount(userId:string, token:string){
   const profile=await profileRes.json(); if(!profileRes.ok||!profile.id)throw new Error(profile.error?.message||"No se pudo leer la cuenta de Instagram.");
   const db=supabaseAdmin();
   const q=await db.from("meta_instagram_accounts").upsert({user_id:userId,instagram_user_id:String(profile.id),username:profile.username||null,display_name:profile.name||null,account_type:profile.account_type||null,access_token:token,updated_at:new Date().toISOString()},{onConflict:"user_id,instagram_user_id"}).select("id,instagram_user_id,username").single();
-  if(q.error)throw new Error(q.error.message); return q.data;
+  if(q.error)throw new Error(q.error.message); const ver=process.env.META_GRAPH_API_VERSION||"v24.0";const sub=new URL(`https://graph.instagram.com/${ver}/${profile.id}/subscribed_apps`);sub.searchParams.set("subscribed_fields","comments,messages,messaging_postbacks");sub.searchParams.set("access_token",token);const sr=await fetch(sub,{method:"POST",cache:"no-store"}),sj=await sr.json().catch(()=>({}));if(!sr.ok||sj.success!==true)throw new Error(sj.error?.message||"No se pudo activar la automatización de Instagram.");return q.data;
 }
