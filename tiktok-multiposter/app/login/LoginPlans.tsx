@@ -1,0 +1,8 @@
+import Link from "next/link";
+import "./login-plans.css";
+const plans=[
+ {id:"inicio",name:"Inicio",price:"4,99",accounts:"Hasta 2 cuentas",crypto:false},
+ {id:"pro",name:"Crecimiento",price:"9,99",accounts:"Hasta 5 cuentas",crypto:false,popular:true},
+ {id:"escala",name:"Escala",price:"19,99",accounts:"Hasta 30 cuentas",crypto:true}
+];
+export default function LoginPlans(){return <section className="lpPlans" id="planes"><div className="lpHead"><small>PLANES VYRAL · PAGO MENSUAL</small><h2>Elegí cómo querés empezar.</h2><p>Primero creás tu cuenta y la verificás. Después completás el pago de forma segura.</p></div><div className="lpGrid">{plans.map(p=><article key={p.id} className={p.popular?"popular":""}>{p.popular&&<span className="lpPopular">MÁS ELEGIDO</span>}<small>PLAN VYRAL</small><h3>{p.name}</h3><strong>US$ {p.price}<i>/mes</i></strong><p>{p.accounts}</p><div className="lpMethods"><span><img src="/payment-card.svg" alt=""/>Tarjeta</span><span><img src="/crypto/bitcoin.svg" alt=""/>BTC</span><span><img src="/crypto/usdt.svg" alt=""/>USDT</span><span><img src="/crypto/ethereum.svg" alt=""/>ETH</span><span><img src="/crypto/solana.svg" alt=""/>SOL</span></div><Link href={"/registro?plan="+p.id} className="lpCard">Pagar con tarjeta <b>→</b></Link>{p.crypto?<Link href={"/registro?plan="+p.id+"&payment=crypto"} className="lpCrypto">Pagar con criptomonedas <b>→</b></Link>:<div className="lpSoon">Pagar con criptomonedas <b>PRÓXIMAMENTE</b></div>}<em>Creá tu cuenta → verificá tu email → pagá tu plan</em></article>)}</div><div className="lpSecure">◆ PAGO SEGURO · La activación del plan queda asociada a tu cuenta VYRAL.</div></section>}
