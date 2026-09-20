@@ -41,7 +41,7 @@ async function ensureWebhookSubscription(a:any){
 async function readLatestComments(a:any){
   try{
     const mediaUrl=new URL(`https://graph.instagram.com/${VER}/${a.instagram_user_id}/media`);
-    mediaUrl.searchParams.set("fields","id,timestamp,media_type,permalink");
+    mediaUrl.searchParams.set("fields","id,timestamp,media_type,permalink,comments_count");
     mediaUrl.searchParams.set("limit","5");
     mediaUrl.searchParams.set("access_token",a.access_token);
     const {r:mr,j:mj}=await jsonFetch(mediaUrl);
@@ -55,7 +55,7 @@ async function readLatestComments(a:any){
       commentsUrl.searchParams.set("access_token",a.access_token);
       const {r:cr,j:cj}=await jsonFetch(commentsUrl);
       return {
-        media_id:String(m.id),timestamp:m.timestamp||null,media_type:m.media_type||null,permalink:m.permalink||null,
+        media_id:String(m.id),timestamp:m.timestamp||null,media_type:m.media_type||null,permalink:m.permalink||null,comments_count:Number(m.comments_count||0),
         http_status:cr.status,error:cj?.error?.message||null,
         comments:(Array.isArray(cj.data)?cj.data:[]).map((x:any)=>({
           id:String(x.id||""),text:String(x.text||"").slice(0,200),timestamp:x.timestamp||null,username:x.username||null
