@@ -1,6 +1,6 @@
 import {NextResponse} from "next/server";
-import {getCustomerSession} from "../../../../../../lib/auth";
-import {isPlanId} from "../../../../../../lib/plans";
+import {getCustomerSession} from "../../../../../lib/auth";
+import {isPlanId} from "../../../../../lib/plans";
 const API="https://api.nowpayments.io/v1";
 const prices={inicio:4.99,pro:9.99,escala:19.99} as const;
 const preferred=[
