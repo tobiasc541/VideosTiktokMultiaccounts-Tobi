@@ -10,3 +10,11 @@
 /* Dedicated automation navigation: keep it in normal sidebar flow and away from account links. */
 .vdAutomationNav{margin-top:14px;padding-top:14px;border-top:1px solid rgba(45,226,220,.18)}
 .vdAutomationNav button{min-height:58px;white-space:normal;line-height:1.15}
+
+/* Sidebar flow fix: automation item must never overlap account/support navigation. */
+.vdSidebar{overflow-y:auto;overflow-x:hidden;align-items:stretch}
+.vdSidebar>.vdNav{position:static!important;inset:auto!important;transform:none!important;flex:0 0 auto;width:100%;margin-bottom:0}
+.vdSidebar>.vdAutomationNav{position:static!important;display:flex!important;clear:both;margin:18px 0 18px!important;padding:16px 0 18px!important;border-top:1px solid rgba(45,226,220,.18);border-bottom:1px solid rgba(45,226,220,.12)}
+.vdSidebar>.vdAutomationNav button{position:static!important;width:100%;min-height:64px;margin:0!important;padding:12px!important;line-height:1.25;align-items:flex-start}
+.vdSidebar>.vdAutomationNav button span:last-child{display:block;max-width:120px}
+.vdSidebar>.vdSideBottom{position:static!important;clear:both;flex:0 0 auto;margin-top:auto!important}
