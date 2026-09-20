@@ -1,0 +1,1 @@
+import {redirect} from "next/navigation";import {getCustomerSession} from "../../lib/auth";import Inbox from "./Inbox";import "./inbox.css";export const dynamic="force-dynamic";export default async function Page(){if(!await getCustomerSession())redirect("/login");return <Inbox/>}
