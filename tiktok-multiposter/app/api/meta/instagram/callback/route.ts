@@ -195,14 +195,37 @@ export async function GET(req: Request) {
     try {
       const longLived = await exchangeInstagramLongLivedToken(shortToken);
       finalToken = longLived.accessToken;
+      const expiresAt = longLived.expiresIn > 0
+        ? new Date(Date.now() + longLived.expiresIn * 1000).toISOString()
+        : null;
+      const tokenUpdate = await ctx.db
+        .from("meta_instagram_accounts")
+        .update({
+          access_token: finalToken,
+          token_expires_at: expiresAt,
+          token_refreshed_at: new Date().toISOString(),
+          token_status: "long_lived",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("user_id", session.userId)
+        .eq("instagram_user_id", instagramUserId);
+      if (tokenUpdate.error) throw new Error(tokenUpdate.error.message);
       await diagnostic("long_lived_token", true, {
         external_account_id: instagramUserId,
+        expires_in: longLived.expiresIn,
+        expires_at: expiresAt,
       });
     } catch (error: any) {
+      await ctx.db
+        .from("meta_instagram_accounts")
+        .update({ token_status: "exchange_failed", updated_at: new Date().toISOString() })
+        .eq("user_id", session.userId)
+        .eq("instagram_user_id", instagramUserId);
       await diagnostic("long_lived_token", false, {
         external_account_id: instagramUserId,
         error_message: String(error?.message || error),
       });
+      throw new Error("No pudimos activar una sesión duradera de Instagram. Volvé a autorizar esta cuenta.");
     }
 
     try {
