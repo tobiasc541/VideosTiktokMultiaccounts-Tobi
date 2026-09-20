@@ -2,6 +2,37 @@ import { NextResponse } from "next/server";
 import { getCustomerSession } from "../../../../../lib/auth";
 import { supabaseAdmin } from "../../../../../lib/supabase-admin";
 
+const VER=process.env.META_GRAPH_API_VERSION||"v24.0";
+const REQUIRED_FIELDS=["comments","messages","messaging_postbacks"];
+
+async function ensureWebhookSubscription(a:any){
+  try{
+    const postUrl=new URL(`https://graph.instagram.com/${VER}/${a.instagram_user_id}/subscribed_apps`);
+    postUrl.searchParams.set("subscribed_fields",REQUIRED_FIELDS.join(","));
+    postUrl.searchParams.set("access_token",a.access_token);
+    const post=await fetch(postUrl,{method:"POST",cache:"no-store"});
+    const postJson=await post.json().catch(()=>({}));
+    if(!post.ok||postJson.success!==true){
+      return {ok:false,fields:[],error:String(postJson?.error?.message||`Instagram HTTP ${post.status}`)};
+    }
+
+    // Do not assume POST success means the account is really subscribed.
+    // Read it back from Meta and expose a safe diagnostic (never the token).
+    const getUrl=new URL(`https://graph.instagram.com/${VER}/${a.instagram_user_id}/subscribed_apps`);
+    getUrl.searchParams.set("access_token",a.access_token);
+    const get=await fetch(getUrl,{cache:"no-store"});
+    const getJson=await get.json().catch(()=>({}));
+    if(!get.ok||getJson.error){
+      return {ok:false,fields:[],error:String(getJson?.error?.message||`Instagram HTTP ${get.status}`)};
+    }
+    const fields=Array.from(new Set((getJson?.data||[]).flatMap((x:any)=>Array.isArray(x?.subscribed_fields)?x.subscribed_fields:[]).map(String)));
+    const missing=REQUIRED_FIELDS.filter(x=>!fields.includes(x));
+    return {ok:missing.length===0,fields,missing,error:missing.length?`Faltan suscripciones: ${missing.join(", ")}`:null};
+  }catch(e:any){
+    return {ok:false,fields:[],error:String(e?.message||e)};
+  }
+}
+
 export async function GET(){
   const session=await getCustomerSession();
   if(!session)return NextResponse.json({error:"No autorizado"},{status:401});
@@ -10,7 +41,13 @@ export async function GET(){
     .select("id,instagram_user_id,username,display_name,account_type,created_at,access_token")
     .eq("user_id",session.userId).order("created_at",{ascending:true});
   if(q.error)return NextResponse.json({error:q.error.message},{status:500});
-  const ver=process.env.META_GRAPH_API_VERSION||"v24.0";await Promise.all((q.data||[]).map(async(a:any)=>{try{const u=new URL(`https://graph.instagram.com/${ver}/${a.instagram_user_id}/subscribed_apps`);u.searchParams.set("subscribed_fields","comments,messages,messaging_postbacks");u.searchParams.set("access_token",a.access_token);await fetch(u,{method:"POST",cache:"no-store"})}catch{}}));const accounts=(q.data||[]).map(({access_token,...a}:any)=>a);return NextResponse.json({accounts},{headers:{"Cache-Control":"private, no-store"}});
+
+  const subscriptions=await Promise.all((q.data||[]).map((a:any)=>ensureWebhookSubscription(a)));
+  const accounts=(q.data||[]).map(({access_token,...a}:any,i:number)=>({
+    ...a,
+    webhook_subscription:subscriptions[i]
+  }));
+  return NextResponse.json({accounts},{headers:{"Cache-Control":"private, no-store"}});
 }
 
 export async function DELETE(req:Request){
