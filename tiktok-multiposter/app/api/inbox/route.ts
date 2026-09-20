@@ -16,6 +16,21 @@ export async function GET(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "VYRAL Inbox es exclusivo del plan Escala" }, { status: 403 });
   const db = supabaseAdmin();
   const contact = req.nextUrl.searchParams.get("contact");
+  const analytics = req.nextUrl.searchParams.get("analytics");
+  if (analytics === "1") {
+    const days = Math.min(90, Math.max(1, Number(req.nextUrl.searchParams.get("days") || 30)));
+    const since = new Date(Date.now() - days * 86400000).toISOString();
+    const leads = await db.from("vyral_handoffs").select("id,stage,lead_score,reason,created_at,updated_at").eq("user_id", session.userId).gte("created_at", since);
+    const events = await db.from("vyral_crm_events").select("event_type,created_at").eq("user_id", session.userId).gte("created_at", since);
+    const rows = leads.data || [], ev = events.data || [];
+    const count = (type:string) => ev.filter((x) => x.event_type === type).length;
+    const conversations = rows.length;
+    const interested = rows.filter((x) => Number(x.lead_score) >= 60 || ["qualified","won"].includes(String(x.stage))).length;
+    const hot = rows.filter((x) => Number(x.lead_score) >= 75).length;
+    const whatsapp = count("whatsapp");
+    const won = rows.filter((x) => x.stage === "won").length;
+    return NextResponse.json({days,conversations,interested,hot,whatsapp,won,human:rows.filter((x)=>String(x.reason||"").toLowerCase().includes("persona")).length,conversion:conversations?Math.round(won/conversations*1000)/10:0});
+  }
   if (contact) {
     const result = await db.from("vyral_inbox_messages").select("*").eq("user_id", session.userId).eq("contact_id", contact).order("created_at", { ascending: true }).limit(200);
     await db.from("vyral_handoffs").update({ unread: false }).eq("user_id", session.userId).eq("contact_id", contact).eq("status", "open");
@@ -39,6 +54,16 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "VYRAL Inbox es exclusivo del plan Escala" }, { status: 403 });
   const body = await req.json();
   const db = supabaseAdmin();
+
+  if (body.action === "event") {
+    const handoff = await db.from("vyral_handoffs").select("account_id,contact_id,automation_id").eq("id", String(body.id)).eq("user_id", session.userId).single();
+    if (handoff.error || !handoff.data) return NextResponse.json({ error: "Lead no encontrado" }, { status: 404 });
+    const allowed = ["whatsapp","interested","payment_intent","sale"];
+    if (!allowed.includes(String(body.eventType))) return NextResponse.json({ error: "Evento inválido" }, { status: 400 });
+    await db.from("vyral_crm_events").insert({user_id:session.userId,account_id:handoff.data.account_id,contact_id:handoff.data.contact_id,event_type:String(body.eventType),source:"human",automation_id:handoff.data.automation_id});
+    if(body.eventType==="sale") await db.from("vyral_handoffs").update({stage:"won",updated_at:new Date().toISOString()}).eq("id",String(body.id)).eq("user_id",session.userId);
+    return NextResponse.json({ok:true});
+  }
 
   if (body.action === "update") {
     const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
