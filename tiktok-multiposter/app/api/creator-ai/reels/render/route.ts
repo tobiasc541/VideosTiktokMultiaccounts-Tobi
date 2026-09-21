@@ -26,7 +26,7 @@ export async function POST(req:Request){
   const prompt=[
    "Create a finished vertical social-media Reel in 9:16, maximum "+duration+" seconds.",
    "Use this script exactly as the spoken message, preserving its language: "+script,
-   b.avatar?"Presenter: the selected presenter.":"Presenter: natural UGC creator.",
+   b.avatarName?"Preferred presenter/look selected in VYRAL: "+String(b.avatarName)+". Match that presenter as closely as the Video Agent supports.":"Presenter: natural UGC creator.",
    "Voice direction: "+String(b.voice||"natural and warm")+".",
    "Setting: "+String(b.setting||"lifestyle")+". Style: "+String(b.style||"UGC")+".",
    b.captions?"Add clean burned-in social captions.":"Do not add captions.",
