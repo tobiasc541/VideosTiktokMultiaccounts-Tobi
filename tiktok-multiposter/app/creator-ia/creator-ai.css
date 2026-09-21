@@ -27,3 +27,13 @@
 .avatarGallery>button>span,.avatarGallery>button>small{box-sizing:border-box!important;display:block!important;width:100%!important;height:auto!important;margin:0!important;overflow:hidden!important;white-space:nowrap!important;text-overflow:ellipsis!important}
 .productNoImages{padding:12px;border:1px dashed #314246;border-radius:10px;color:#9aabad;font-size:10px;line-height:1.5}
 @media(max-width:700px){.avatarGallery{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+
+/* Avatar picker v2 — intentionally NOT a grid. Fixed one-row rail prevents cross-row overlap. */
+.avatarPicker{min-width:0;overflow:hidden}
+.avatarRail{box-sizing:border-box;display:flex;flex-flow:row nowrap;align-items:stretch;gap:12px;width:100%;max-width:100%;height:258px;padding:4px 4px 12px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x proximity;overscroll-behavior-x:contain}
+.avatarRail .avatarCard{box-sizing:border-box;position:relative;display:flex;flex-direction:column;flex:0 0 166px;width:166px;height:232px;min-width:166px;min-height:232px;max-width:166px;max-height:232px;margin:0;padding:6px;overflow:hidden;border:1px solid #172629;border-radius:14px;background:#050809;color:#aab7b9;text-align:left;cursor:pointer;scroll-snap-align:start}
+.avatarRail .avatarCard:hover{border-color:#315a58}.avatarRail .avatarCard.selected{border-color:#67f3ec;box-shadow:inset 0 0 0 1px rgba(103,243,236,.25)}
+.avatarRail .avatarPhoto{box-sizing:border-box;position:relative;display:block;flex:0 0 184px;width:152px;height:184px;min-width:152px;min-height:184px;max-width:152px;max-height:184px;margin:0;padding:0;overflow:hidden;border-radius:9px;background:#0b1011}
+.avatarRail .avatarPhoto img{box-sizing:border-box;position:absolute;inset:0;display:block;width:152px!important;height:184px!important;min-width:152px!important;min-height:184px!important;max-width:152px!important;max-height:184px!important;margin:0!important;padding:0!important;border:0!important;border-radius:0!important;object-fit:cover!important;object-position:center center!important;transform:none!important}
+.avatarRail .avatarMeta{box-sizing:border-box;display:flex;flex-direction:column;justify-content:center;flex:1;min-height:0;padding:5px 3px 0;overflow:hidden}
+.avatarRail .avatarMeta b,.avatarRail .avatarMeta span{display:block;width:100%;margin:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;line-height:14px}.avatarRail .avatarMeta b{font-size:9px;color:#dce8e7}.avatarRail .avatarMeta span{font-size:8px;color:#637276}
