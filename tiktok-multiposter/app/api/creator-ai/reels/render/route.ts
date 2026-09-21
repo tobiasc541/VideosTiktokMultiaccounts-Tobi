@@ -1,54 +1,9 @@
 import {NextResponse} from "next/server";
 import {getCustomerSession} from "../../../../../lib/auth";
 import {supabaseAdmin} from "../../../../../lib/supabase-admin";
-
-export const runtime="nodejs";
-export const maxDuration=60;
-const BASE="https://api.heygen.com";
-
-async function allowed(){
- const session=await getCustomerSession();
- if(!session)return {error:NextResponse.json({error:"Iniciá sesión."},{status:401})};
- const {data}=await supabaseAdmin().auth.admin.getUserById(session.userId);
- const plan=String(data.user?.user_metadata?.plan||session.plan||"");
- if(plan!=="ai")return {error:NextResponse.json({error:"Creator Reels está disponible en VYRAL AI."},{status:403})};
- return {session};
-}
+export const runtime="nodejs";export const maxDuration=60;const BASE="https://api.heygen.com";
 function key(){return process.env.HEYGEN_API_KEY||process.env.VYRAL_HEYGEN_API_KEY||""}
-
-export async function POST(req:Request){
- const gate=await allowed();if(gate.error)return gate.error;
- const apiKey=key();if(!apiKey)return NextResponse.json({error:"Falta HEYGEN_API_KEY en Vercel. Agregala y Creator Reels queda listo para renderizar."},{status:503});
- try{
-  const b=await req.json();
-  const script=String(b.script||"").trim();if(!script)return NextResponse.json({error:"Elegí un guion antes de generar."},{status:400});
-  const duration=Math.min(30,Math.max(10,Number(b.duration)||30));
-  const prompt=[
-   "Create a finished vertical social-media Reel in 9:16, maximum "+duration+" seconds.",
-   "Use this script exactly as the spoken message, preserving its language: "+script,
-   b.avatarName?"Preferred presenter/look selected in VYRAL: "+String(b.avatarName)+". Match that presenter as closely as the Video Agent supports.":"Presenter: natural UGC creator.",
-   "Voice direction: "+String(b.voice||"natural and warm")+".",
-   "Setting: "+String(b.setting||"lifestyle")+". Style: "+String(b.style||"UGC")+".",
-   b.captions?"Add clean burned-in social captions.":"Do not add captions.",
-   b.music?"Use subtle background music that never competes with speech.":"No background music.",
-   "Natural delivery, believable gestures, polished commercial lighting, no fake claims, no invented prices, vertical composition for Instagram Reels/TikTok."
-  ].join("\n");
-  const r=await fetch(BASE+"/v3/video-agents",{method:"POST",headers:{"x-api-key":apiKey,"Content-Type":"application/json","Idempotency-Key":crypto.randomUUID()},body:JSON.stringify({mode:"generate",prompt,orientation:"portrait",auto_proceed:true})});
-  const j=await r.json().catch(()=>({}));
-  if(!r.ok)return NextResponse.json({error:j?.message||j?.error?.message||j?.error||"HeyGen rechazó el render.",providerStatus:r.status},{status:502});
-  const data=j?.data||j;const sessionId=String(data?.session_id||data?.id||data?.video_agent_id||data?.job_id||"");const videoId=String(data?.video_id||"");
-  if(!sessionId&&!videoId)return NextResponse.json({error:"HeyGen aceptó la solicitud pero no devolvió un identificador."},{status:502});
-  return NextResponse.json({ok:true,id:sessionId||videoId,sessionId,videoId,status:data?.status||"pending",provider:"heygen",rawStatus:data?.status||null});
- }catch(e:any){return NextResponse.json({error:e?.message||"No se pudo iniciar el Reel."},{status:500})}
-}
-
-export async function GET(req:Request){
- const gate=await allowed();if(gate.error)return gate.error;
- const apiKey=key();if(!apiKey)return NextResponse.json({error:"Falta HEYGEN_API_KEY."},{status:503});
- const url=new URL(req.url);const sessionId=url.searchParams.get("id");const requestedVideoId=url.searchParams.get("videoId")||"";if(!sessionId&&!requestedVideoId)return NextResponse.json({error:"Falta el id del render."},{status:400});
- try{
-  let videoId=requestedVideoId;let sessionStatus="processing";
-  if(sessionId&&!videoId){const ar=await fetch(BASE+"/v3/video-agents/"+encodeURIComponent(sessionId),{headers:{"x-api-key":apiKey},cache:"no-store"});const aj=await ar.json().catch(()=>({}));if(!ar.ok)return NextResponse.json({error:aj?.message||aj?.error?.message||aj?.error||"No se pudo consultar la sesión de HeyGen."},{status:502});const ad=aj?.data||aj;sessionStatus=String(ad?.status||ad?.state||"processing");videoId=String(ad?.video_id||ad?.output?.video_id||"");if(["failed","error","cancelled","canceled"].includes(sessionStatus.toLowerCase()))return NextResponse.json({id:sessionId,status:"failed",error:ad?.failure_message||ad?.error||"HeyGen no pudo completar el Reel."});if(!videoId)return NextResponse.json({id:sessionId,status:sessionStatus,videoId:null,videoUrl:null});}
-  const vr=await fetch(BASE+"/v3/videos/"+encodeURIComponent(videoId),{headers:{"x-api-key":apiKey},cache:"no-store"});const vj=await vr.json().catch(()=>({}));if(!vr.ok)return NextResponse.json({error:vj?.message||vj?.error?.message||vj?.error||"No se pudo consultar el video."},{status:502});const d=vj?.data||vj;return NextResponse.json({id:sessionId||videoId,videoId,status:d?.status||d?.state||sessionStatus,videoUrl:d?.video_url||d?.url||d?.output?.video_url||null,thumbnailUrl:d?.thumbnail_url||d?.output?.thumbnail_url||null,error:d?.failure_message||null});
- }catch(e:any){return NextResponse.json({error:e?.message||"No se pudo consultar el render."},{status:500})}
-}
+async function allowed(){const session=await getCustomerSession();if(!session)return {error:NextResponse.json({error:"Iniciá sesión."},{status:401})};const {data}=await supabaseAdmin().auth.admin.getUserById(session.userId);if(String(data.user?.user_metadata?.plan||session.plan||"")!=="ai")return {error:NextResponse.json({error:"Creator Reels requiere VYRAL AI."},{status:403})};return {session}}
+async function defaultVoice(apiKey:string,language:string){const r=await fetch(BASE+"/v2/voices",{headers:{"x-api-key":apiKey,accept:"application/json"},cache:"no-store"});const j=await r.json().catch(()=>({}));if(!r.ok)return "";const voices=j?.data?.voices||[];const want=language.toLowerCase().includes("español")?"es":language.toLowerCase().includes("portugu")?"pt":language.toLowerCase().includes("fran")?"fr":language.toLowerCase().includes("ital")?"it":language.toLowerCase().includes("deutsch")?"de":"en";const v=voices.find((x:any)=>String(x.language||x.locale||"").toLowerCase().startsWith(want))||voices[0];return String(v?.voice_id||"")}
+export async function POST(req:Request){const gate=await allowed();if(gate.error)return gate.error;const apiKey=key();if(!apiKey)return NextResponse.json({error:"Falta HEYGEN_API_KEY."},{status:503});try{const b=await req.json();const script=String(b.script||"").trim(),avatarId=String(b.avatar||"").trim();if(!script||!avatarId)return NextResponse.json({error:"Elegí un guion y un avatar."},{status:400});const voiceId=await defaultVoice(apiKey,String(b.language||""));if(!voiceId)return NextResponse.json({error:"HeyGen no devolvió una voz disponible para este idioma."},{status:502});const body={video_inputs:[{character:{type:"avatar",avatar_id:avatarId,avatar_style:"normal"},voice:{type:"text",input_text:script,voice_id:voiceId}}],dimension:{width:1080,height:1920},caption:Boolean(b.captions),test:false};const r=await fetch(BASE+"/v2/video/generate",{method:"POST",headers:{"x-api-key":apiKey,"Content-Type":"application/json"},body:JSON.stringify(body)});const j=await r.json().catch(()=>({}));if(!r.ok)return NextResponse.json({error:j?.message||j?.error?.message||j?.error||"HeyGen rechazó el render.",providerStatus:r.status},{status:502});const id=String(j?.data?.video_id||j?.video_id||"");if(!id)return NextResponse.json({error:"HeyGen no devolvió el identificador del video."},{status:502});return NextResponse.json({ok:true,id,status:"pending",provider:"heygen"});}catch(e:any){return NextResponse.json({error:e?.message||"No se pudo iniciar el Reel."},{status:500})}}
+export async function GET(req:Request){const gate=await allowed();if(gate.error)return gate.error;const apiKey=key();if(!apiKey)return NextResponse.json({error:"Falta HEYGEN_API_KEY."},{status:503});const id=new URL(req.url).searchParams.get("id");if(!id)return NextResponse.json({error:"Falta el id del render."},{status:400});try{const r=await fetch(BASE+"/v1/video_status.get?video_id="+encodeURIComponent(id),{headers:{"x-api-key":apiKey,accept:"application/json"},cache:"no-store"});const j=await r.json().catch(()=>({}));if(!r.ok)return NextResponse.json({error:j?.message||j?.error?.message||"No se pudo consultar el Reel."},{status:502});const d=j?.data||j;return NextResponse.json({id,status:d?.status||"processing",videoUrl:d?.video_url||null,thumbnailUrl:d?.thumbnail_url||null,error:d?.error||null});}catch(e:any){return NextResponse.json({error:e?.message||"No se pudo consultar el Reel."},{status:500})}}
