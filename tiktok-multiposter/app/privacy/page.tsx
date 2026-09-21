@@ -19,7 +19,7 @@ export default function PrivacyPage() {
         <header className="vyralLegalHero">
           <small>PRIVACIDAD / VYRAL</small>
           <h1>Política de<br/><em>Privacidad.</em></h1>
-          <p>Qué información utiliza VYRAL, para qué la necesita y cómo protegemos tu operación.</p>
+          <p>Qué información utiliza VYRAL, para qué la necesita y cómo protegemos tu operación.</p>\n          <p><strong>VYRAL es operado por TOBIAS CARRIZO TRADING LLC, una limited liability company constituida en New Mexico, Estados Unidos.</strong></p>
           <div className="vyralLegalMeta"><span>Última actualización</span><strong>13 de septiembre de 2026</strong></div>
         </header>
 
@@ -37,7 +37,7 @@ export default function PrivacyPage() {
         </section>
 
         <footer className="vyralLegalFooter">
-          <div className="vyralLegalPowered"><span>POWERED BY</span><strong>Tobias Carrizo</strong></div>
+          <div className="vyralLegalPowered"><span>OPERADO POR</span><strong>TOBIAS CARRIZO TRADING LLC</strong><small>1209 Mountain Road Pl NE, Ste R, Albuquerque, NM 87110, United States</small></div>
           <div><Link href="/terms">Términos y condiciones</Link><Link href="/login">Volver al login</Link></div>
         </footer>
       </div>
