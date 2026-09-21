@@ -12,9 +12,9 @@ export async function POST(req:Request){
  try{
   const {data}=await db.auth.admin.getUserById(session.userId);const plan=String(data.user?.user_metadata?.plan||session.plan||"");
   if(plan!=="escala")return NextResponse.json({error:"Creator IA está disponible únicamente en el plan Escala."},{status:403});
-  const keySource=process.env.VYRAL_OPENAI_ADMIN_KEY?"VYRAL_OPENAI_ADMIN_KEY":process.env.OPENAI_API_KEY?"OPENAI_API_KEY":"missing";
-  const key=process.env.VYRAL_OPENAI_ADMIN_KEY||process.env.OPENAI_API_KEY;
-  if(!key){await diag(db,{user_id:session.userId,stage:"config",ok:false,error_code:"missing_key",error_message:"No OpenAI key configured"});return NextResponse.json({error:"Falta configurar la API de OpenAI.",diagnosticStage:"config"},{status:503})}
+  const keySource=process.env.VYRAL_CREATOR_PRODUCTION?"VYRAL_CREATOR_PRODUCTION":"missing";
+  const key=process.env.VYRAL_CREATOR_PRODUCTION;
+  if(!key){await diag(db,{user_id:session.userId,stage:"config",ok:false,error_code:"missing_key",error_message:"VYRAL_CREATOR_PRODUCTION is not configured"});return NextResponse.json({error:"Falta configurar la API de OpenAI.",diagnosticStage:"config"},{status:503})}
   const body=await req.json();const count=Math.min(7,Math.max(1,Number(body.count)||6));const single=!!body.slide;
   const strategy=single?JSON.stringify([body.slide]):`Creá ${count} placas distintas. Estructura recomendada: hook que detiene el scroll, problema/deseo, consecuencia o tensión, solución, beneficio/prueba, oferta y CTA. Adaptala al número de placas.`;
   const prompt=`Sos el director creativo de VYRAL. Diseñás carruseles de Instagram persuasivos en español rioplatense, claros y modernos. No inventes testimonios, cifras ni garantías. Cada placa debe tener poco texto y avanzar una historia. Negocio/producto: ${String(body.business||"")}. Oferta: ${String(body.offer||"")}. Público: ${String(body.audience||"")}. Objetivo: ${String(body.goal||"ventas")}. CTA final: ${String(body.cta||"Escribí INFO")}. Estética solicitada: ${String(body.tone||"animado premium")}. ${strategy} Respondé SOLO JSON array con objetos {"role":"hook|problema|tension|solucion|beneficio|oferta|cta","title":"máx 9 palabras","copy":"máx 22 palabras","visualPrompt":"descripción visual detallada sin texto incrustado, composición vertical 4:5, misma identidad/personajes/paleta en todo el carrusel"}.`;
