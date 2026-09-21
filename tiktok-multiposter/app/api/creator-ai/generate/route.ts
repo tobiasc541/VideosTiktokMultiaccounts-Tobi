@@ -18,7 +18,7 @@ export async function POST(req:Request){
   const tj=await tr.json();if(!tr.ok)throw new Error(tj.error?.message||"Falló la estrategia de IA.");
   let slides=cleanJson(tj.choices?.[0]?.message?.content||"");
   if(single)slides=slides.slice(0,1);else slides=slides.slice(0,count);
-  const model=process.env.VYRAL_IMAGE_MODEL||"gpt-image-2.5-flare";
+  const model=process.env.VYRAL_IMAGE_MODEL||"gpt-image-2";
   for(let i=0;i<slides.length;i++){
    const s=slides[i];const ip=`Draw a premium social media illustration for an Instagram carousel. Vertical 4:5. ${s.visualPrompt}. Brand/business context: ${String(body.business||"")}. Visual style: ${String(body.tone||"animated premium")}. Keep generous negative space for overlay copy. Do not render words, letters, logos, watermarks or UI. High visual continuity and polished commercial art direction.`;
    const ir=await fetch(OPENAI+"/images/generations",{method:"POST",headers:{Authorization:`Bearer ${key}`,"Content-Type":"application/json"},body:JSON.stringify({model,prompt:ip,size:"1024x1280",quality:"medium",output_format:"webp"})});
