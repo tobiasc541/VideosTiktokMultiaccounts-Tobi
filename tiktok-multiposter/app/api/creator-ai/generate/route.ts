@@ -28,7 +28,30 @@ export async function POST(req:Request){
   const model=process.env.VYRAL_IMAGE_MODEL||"gpt-image-2";
   const generated=await Promise.all(slides.map(async(s:any,i:number)=>{
    const imageStage=`image_${i+1}`;const logoRule=logo?"A brand logo reference is attached. Preserve its recognizable symbol, proportions, colors and lettering as faithfully as possible. Integrate it naturally as a small brand signature; do not redesign it, invent a replacement, or make it dominate the composition.":"No brand logo was supplied; do not invent one.";const ip=`Create a FINISHED premium Instagram carousel slide, vertical 4:5. ${referenceSystem} Slide role: ${s.role}. Exact headline to render legibly: "${s.title}". Exact supporting copy to render legibly: "${s.copy}". ${s.visualPrompt}. Business context: ${String(body.business||"")}. Requested style: ${String(body.tone||"editorial premium")}. The text is part of the final design: render it clearly, correctly spelled in Spanish, with strong hierarchy and highlighted keywords. Do not add invented claims, fake UI, fake logos or watermarks. Maintain visual continuity with the carousel while making this slide compositionally distinct.`;
-   const imageEndpoint=logo?"/images/edits":"/images/generations";let imageBody:BodyInit;if(logo){const m=/^data:image\\/(png|jpeg|jpg|webp);base64,(.+)$/i.exec(logo);if(!m)throw new Error("El logo cargado no es válido.");const mime=m[1].toLowerCase()==="jpg"?"image/jpeg":`image/${m[1].toLowerCase()}`;const bytes=Uint8Array.from(atob(m[2]),ch=>ch.charCodeAt(0));const form=new FormData();form.append("model",model);form.append("prompt",`${ip} ${logoRule}`);form.append("size","1024x1280");form.append("quality","medium");form.append("output_format","webp");form.append("image",new Blob([bytes],{type:mime}),`brand-logo.${m[1]}`);imageBody=form}else imageBody=JSON.stringify({model,prompt:`${ip} ${logoRule}`,size:"1024x1280",quality:"medium",output_format:"webp"});const ir=await fetch(OPENAI+imageEndpoint,{method:"POST",headers:logo?{Authorization:`Bearer ${key}`}:{Authorization:`Bearer ${key}`,"Content-Type":"application/json"},body:imageBody});
+   const imageEndpoint=logo?"/images/edits":"/images/generations";
+   let imageBody:BodyInit;
+   if(logo){
+    const comma=logo.indexOf(",");
+    const header=comma>=0?logo.slice(0,comma):"";
+    const encoded=comma>=0?logo.slice(comma+1):"";
+    const mime=header.slice(5).split(";")[0];
+    if(!encoded||!["image/png","image/jpeg","image/webp"].includes(mime))throw new Error("El logo cargado no es válido.");
+    const ext=mime==="image/jpeg"?"jpg":mime.split("/")[1];
+    const bytes=Uint8Array.from(atob(encoded),ch=>ch.charCodeAt(0));
+    const form=new FormData();
+    form.append("model",model);
+    form.append("prompt",ip+" "+logoRule);
+    form.append("size","1024x1280");
+    form.append("quality","medium");
+    form.append("output_format","webp");
+    form.append("image",new Blob([bytes],{type:mime}),"brand-logo."+ext);
+    imageBody=form;
+   }else{
+    imageBody=JSON.stringify({model,prompt:ip+" "+logoRule,size:"1024x1280",quality:"medium",output_format:"webp"});
+   }
+   const headers:Record<string,string>={Authorization:"Bearer "+key};
+   if(!logo)headers["Content-Type"]="application/json";
+   const ir=await fetch(OPENAI+imageEndpoint,{method:"POST",headers,body:imageBody});
    const ij=await ir.json();const irId=ir.headers.get("x-request-id");
    await diag(db,{user_id:session.userId,stage:imageStage,ok:ir.ok,http_status:ir.status,model,request_id:irId,error_type:safeError(ij).type,error_code:safeError(ij).code,error_message:safeError(ij).message,details:{key_source:keySource,endpoint:logo?"images/edits":"images/generations",slide:i+1,logo_used:!!logo,param:safeError(ij).param}});
    if(!ir.ok)throw new Error(ij.error?.message||`Falló la generación de la imagen ${i+1}.`);
