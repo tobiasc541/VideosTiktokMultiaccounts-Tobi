@@ -14,9 +14,7 @@ export default function CreatorAIStudio({enabled,reelsEnabled}:{enabled:boolean;
   try{
    const ready=slides.filter(s=>s.image&&s.storagePath);
    if(ready.length<2){setError("El carrusel todavía no está listo para publicar.");return}
-   const payload={version:2,createdAt:Date.now(),slides:ready.map((s,i)=>({index:i,title:s.title,copy:s.copy,role:s.role,image:s.image,storagePath:s.storagePath})),caption:[slides.map(s=>s.title).filter(Boolean).join(" · "),cta].filter(Boolean).join("
-
-"),business,offer,audience,goal,cta};
+   const payload={version:2,createdAt:Date.now(),slides:ready.map((s,i)=>({index:i,title:s.title,copy:s.copy,role:s.role,image:s.image,storagePath:s.storagePath})),caption:[slides.map(s=>s.title).filter(Boolean).join(" · "),cta].filter(Boolean).join(String.fromCharCode(10,10)),business,offer,audience,goal,cta};
    sessionStorage.setItem("vyral:creator-ai-publication",JSON.stringify(payload));
    window.location.href="/?section=publish&source=creator-ai";
   }catch(e:any){setError(e?.name==="QuotaExceededError"?"No hay espacio temporal suficiente en el navegador. Regenerá el carrusel y volvé a intentar.":"No se pudo preparar el carrusel para Publicar.")}
