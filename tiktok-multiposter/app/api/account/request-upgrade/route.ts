@@ -3,8 +3,8 @@ import { getCustomerSession } from "../../../../lib/auth";
 import { supabaseAdmin } from "../../../../lib/supabase-admin";
 import { PLAN_CONFIG, isPlanId } from "../../../../lib/plans";
 
-const order = ["inicio", "pro", "escala"] as const;
-const numericPrice = { inicio: 1.99, pro: 6.99, escala: 19.99 } as const;
+const order = ["inicio", "pro", "escala", "ai"] as const;
+const numericPrice = { inicio: 4.99, pro: 9.99, escala: 19.99, ai: 49 } as const;
 
 export async function POST(req: Request) {
   const session = await getCustomerSession();
