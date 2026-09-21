@@ -26,32 +26,29 @@ export async function POST(req:Request){
   const prompt=[
    "Create a finished vertical social-media Reel in 9:16, maximum "+duration+" seconds.",
    "Use this script exactly as the spoken message, preserving its language: "+script,
-   "Presenter: "+String(b.avatar||"natural UGC creator")+". Voice: "+String(b.voice||"natural and warm")+".",
+   b.avatar?"Presenter: the selected presenter.":"Presenter: natural UGC creator.",
+   "Voice direction: "+String(b.voice||"natural and warm")+".",
    "Setting: "+String(b.setting||"lifestyle")+". Style: "+String(b.style||"UGC")+".",
    b.captions?"Add clean burned-in social captions.":"Do not add captions.",
    b.music?"Use subtle background music that never competes with speech.":"No background music.",
    "Natural delivery, believable gestures, polished commercial lighting, no fake claims, no invented prices, vertical composition for Instagram Reels/TikTok."
   ].join("\n");
-  const r=await fetch(BASE+"/v3/video-agents",{method:"POST",headers:{"x-api-key":apiKey,"Content-Type":"application/json","Idempotency-Key":crypto.randomUUID()},body:JSON.stringify({mode:"generate",prompt,orientation:"portrait"})});
+  const r=await fetch(BASE+"/v3/video-agents",{method:"POST",headers:{"x-api-key":apiKey,"Content-Type":"application/json","Idempotency-Key":crypto.randomUUID()},body:JSON.stringify({mode:"generate",prompt,orientation:"portrait",auto_proceed:true,...(b.avatar?{avatar_id:String(b.avatar)}:{})})});
   const j=await r.json().catch(()=>({}));
   if(!r.ok)return NextResponse.json({error:j?.message||j?.error?.message||j?.error||"HeyGen rechazó el render.",providerStatus:r.status},{status:502});
-  const data=j?.data||j;const id=String(data?.video_id||data?.id||data?.video_agent_id||data?.job_id||"");
-  return NextResponse.json({ok:true,id,status:data?.status||"pending",provider:"heygen",rawStatus:data?.status||null});
+  const data=j?.data||j;const sessionId=String(data?.session_id||data?.id||data?.video_agent_id||data?.job_id||"");const videoId=String(data?.video_id||"");
+  if(!sessionId&&!videoId)return NextResponse.json({error:"HeyGen aceptó la solicitud pero no devolvió un identificador."},{status:502});
+  return NextResponse.json({ok:true,id:sessionId||videoId,sessionId,videoId,status:data?.status||"pending",provider:"heygen",rawStatus:data?.status||null});
  }catch(e:any){return NextResponse.json({error:e?.message||"No se pudo iniciar el Reel."},{status:500})}
 }
 
 export async function GET(req:Request){
  const gate=await allowed();if(gate.error)return gate.error;
  const apiKey=key();if(!apiKey)return NextResponse.json({error:"Falta HEYGEN_API_KEY."},{status:503});
- const id=new URL(req.url).searchParams.get("id");if(!id)return NextResponse.json({error:"Falta el id del render."},{status:400});
+ const url=new URL(req.url);const sessionId=url.searchParams.get("id");const requestedVideoId=url.searchParams.get("videoId")||"";if(!sessionId&&!requestedVideoId)return NextResponse.json({error:"Falta el id del render."},{status:400});
  try{
-  const candidates=[BASE+"/v3/video-agents/"+encodeURIComponent(id),BASE+"/v3/videos/"+encodeURIComponent(id)];
-  let last:any=null;
-  for(const url of candidates){
-   const r=await fetch(url,{headers:{"x-api-key":apiKey},cache:"no-store"});
-   const j=await r.json().catch(()=>({}));last={r,j};if(r.ok){const d=j?.data||j;return NextResponse.json({id,status:d?.status||d?.state||"processing",videoUrl:d?.video_url||d?.url||d?.output?.video_url||null,thumbnailUrl:d?.thumbnail_url||d?.output?.thumbnail_url||null});}
-   if(r.status!==404)break;
-  }
-  return NextResponse.json({error:last?.j?.message||last?.j?.error?.message||"No se pudo consultar el render."},{status:502});
+  let videoId=requestedVideoId;let sessionStatus="processing";
+  if(sessionId&&!videoId){const ar=await fetch(BASE+"/v3/video-agents/"+encodeURIComponent(sessionId),{headers:{"x-api-key":apiKey},cache:"no-store"});const aj=await ar.json().catch(()=>({}));if(!ar.ok)return NextResponse.json({error:aj?.message||aj?.error?.message||aj?.error||"No se pudo consultar la sesión de HeyGen."},{status:502});const ad=aj?.data||aj;sessionStatus=String(ad?.status||ad?.state||"processing");videoId=String(ad?.video_id||ad?.output?.video_id||"");if(["failed","error","cancelled","canceled"].includes(sessionStatus.toLowerCase()))return NextResponse.json({id:sessionId,status:"failed",error:ad?.failure_message||ad?.error||"HeyGen no pudo completar el Reel."});if(!videoId)return NextResponse.json({id:sessionId,status:sessionStatus,videoId:null,videoUrl:null});}
+  const vr=await fetch(BASE+"/v3/videos/"+encodeURIComponent(videoId),{headers:{"x-api-key":apiKey},cache:"no-store"});const vj=await vr.json().catch(()=>({}));if(!vr.ok)return NextResponse.json({error:vj?.message||vj?.error?.message||vj?.error||"No se pudo consultar el video."},{status:502});const d=vj?.data||vj;return NextResponse.json({id:sessionId||videoId,videoId,status:d?.status||d?.state||sessionStatus,videoUrl:d?.video_url||d?.url||d?.output?.video_url||null,thumbnailUrl:d?.thumbnail_url||d?.output?.thumbnail_url||null,error:d?.failure_message||null});
  }catch(e:any){return NextResponse.json({error:e?.message||"No se pudo consultar el render."},{status:500})}
 }
