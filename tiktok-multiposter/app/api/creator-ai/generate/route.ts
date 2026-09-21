@@ -25,13 +25,15 @@ export async function POST(req:Request){
   if(!tr.ok)return NextResponse.json({error:tj.error?.message||"Falló la estrategia de IA.",diagnosticStage:stage,requestId:trId},{status:tr.status});
   let slides=cleanJson(tj.choices?.[0]?.message?.content||""); slides=single?slides.slice(0,1):slides.slice(0,count);
   const model=process.env.VYRAL_IMAGE_MODEL||"gpt-image-2";
-  for(let i=0;i<slides.length;i++){stage=`image_${i+1}`;const s=slides[i];const ip=`Draw a premium social media illustration for an Instagram carousel. Vertical 4:5. ${s.visualPrompt}. Brand/business context: ${String(body.business||"")}. Visual style: ${String(body.tone||"animated premium")}. Keep generous negative space for overlay copy. Do not render words, letters, logos, watermarks or UI. High visual continuity and polished commercial art direction.`;
+  const generated=await Promise.all(slides.map(async(s:any,i:number)=>{
+   const imageStage=`image_${i+1}`;const ip=`Draw a premium social media illustration for an Instagram carousel. Vertical 4:5. ${s.visualPrompt}. Brand/business context: ${String(body.business||"")}. Visual style: ${String(body.tone||"animated premium")}. Keep generous negative space for overlay copy. Do not render words, letters, logos, watermarks or UI. High visual continuity and polished commercial art direction.`;
    const ir=await fetch(OPENAI+"/images/generations",{method:"POST",headers:{Authorization:`Bearer ${key}`,"Content-Type":"application/json"},body:JSON.stringify({model,prompt:ip,size:"1024x1280",quality:"medium",output_format:"webp"})});
    const ij=await ir.json();const irId=ir.headers.get("x-request-id");
-   await diag(db,{user_id:session.userId,stage,ok:ir.ok,http_status:ir.status,model,request_id:irId,error_type:safeError(ij).type,error_code:safeError(ij).code,error_message:safeError(ij).message,details:{key_source:keySource,endpoint:"images/generations",slide:i+1,param:safeError(ij).param}});
-   if(!ir.ok)return NextResponse.json({error:ij.error?.message||"Falló la generación de una imagen.",diagnosticStage:stage,requestId:irId},{status:ir.status});
-   const b64=ij.data?.[0]?.b64_json;if(!b64)throw new Error("OpenAI no devolvió la imagen.");slides[i]={role:s.role,title:s.title,copy:s.copy,image:`data:image/webp;base64,${b64}`};
-  }
-  return NextResponse.json({slides,model});
+   await diag(db,{user_id:session.userId,stage:imageStage,ok:ir.ok,http_status:ir.status,model,request_id:irId,error_type:safeError(ij).type,error_code:safeError(ij).code,error_message:safeError(ij).message,details:{key_source:keySource,endpoint:"images/generations",slide:i+1,param:safeError(ij).param}});
+   if(!ir.ok)throw new Error(ij.error?.message||`Falló la generación de la imagen ${i+1}.`);
+   const b64=ij.data?.[0]?.b64_json;if(!b64)throw new Error(`OpenAI no devolvió la imagen ${i+1}.`);
+   return {role:s.role,title:s.title,copy:s.copy,image:`data:image/webp;base64,${b64}`};
+  }));
+  return NextResponse.json({slides:generated,model});
  }catch(e:any){await diag(db,{user_id:session.userId,stage,ok:false,error_type:"local_exception",error_message:e.message||"unknown"});return NextResponse.json({error:e.message||"No se pudo generar el carrusel.",diagnosticStage:stage},{status:500})}
 }
