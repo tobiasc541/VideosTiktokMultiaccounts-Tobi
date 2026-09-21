@@ -1,9 +1,9 @@
 "use client";
 import {useEffect,useState} from "react";
-import Link from "next/link";
+import Link from "next/link";\nimport CreatorReelsStudio from "./CreatorReelsStudio";
 type Slide={title:string;copy:string;role:string;image?:string;storagePath?:string};
-export default function CreatorAIStudio({enabled}:{enabled:boolean}){
- const [business,setBusiness]=useState(""); const [offer,setOffer]=useState(""); const [audience,setAudience]=useState(""); const [tone,setTone]=useState("animado premium"); const [cta,setCta]=useState("Escribí INFO"); const [goal,setGoal]=useState("ventas"); const [count,setCount]=useState(6); const [slides,setSlides]=useState<Slide[]>([]); const [loading,setLoading]=useState(false); const [error,setError]=useState(""); const [elapsed,setElapsed]=useState(0); const [logo,setLogo]=useState("");
+export default function CreatorAIStudio({enabled,reelsEnabled}:{enabled:boolean;reelsEnabled:boolean}){
+ const [mode,setMode]=useState<"images"|"reels">("images");\n const [business,setBusiness]=useState(""); const [offer,setOffer]=useState(""); const [audience,setAudience]=useState(""); const [tone,setTone]=useState("animado premium"); const [cta,setCta]=useState("Escribí INFO"); const [goal,setGoal]=useState("ventas"); const [count,setCount]=useState(6); const [slides,setSlides]=useState<Slide[]>([]); const [loading,setLoading]=useState(false); const [error,setError]=useState(""); const [elapsed,setElapsed]=useState(0); const [logo,setLogo]=useState("");
  useEffect(()=>{if(!loading){setElapsed(0);return}const id=setInterval(()=>setElapsed(v=>v+1),1000);return()=>clearInterval(id)},[loading]);
  const eta=count===3?"20–50 s":count===5?"30–70 s":count===6?"35–85 s":"40–100 s";
  function pickLogo(file?:File){if(!file){setLogo("");return}if(!file.type.startsWith("image/"))return setError("El logo debe ser una imagen.");if(file.size>4*1024*1024)return setError("El logo puede pesar hasta 4 MB.");const reader=new FileReader();reader.onload=()=>{setLogo(String(reader.result||""));setError("")};reader.readAsDataURL(file)}
