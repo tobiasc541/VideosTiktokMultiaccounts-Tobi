@@ -19,3 +19,16 @@
 @media(max-width:1200px) and (min-width:841px){.vyralPlanGrid{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
 
 .enterpriseContact{border:0;cursor:pointer;font-family:inherit}.enterpriseContactOverlay{position:fixed;inset:0;z-index:10000;transform:none!important;background:rgba(0,0,0,.78);backdrop-filter:blur(12px);display:grid;place-items:center;padding:22px}.enterpriseContactModal{position:relative;width:min(520px,100%);box-sizing:border-box;background:radial-gradient(circle at 85% 0,rgba(110,245,239,.12),transparent 36%),#090d0f;border:1px solid rgba(110,245,239,.22);border-radius:22px;padding:32px;box-shadow:0 28px 90px rgba(0,0,0,.55);color:#eef8f7}.enterpriseContactModal small{color:#6ef5ef;letter-spacing:.16em;font-size:9px;font-weight:850}.enterpriseContactModal h2{font-size:34px;letter-spacing:-.04em;margin:9px 0 15px}.enterpriseContactModal p{color:#91a0a4;line-height:1.65;font-size:13px;margin:12px 0}.enterpriseEmail{display:block;color:#dffffd;font-size:18px;font-weight:850;text-decoration:none;padding:15px 16px;border:1px solid rgba(110,245,239,.18);background:#071315;border-radius:12px;margin:16px 0;word-break:break-all}.enterpriseMailButton{display:flex;justify-content:center;margin-top:20px;padding:14px 16px;border-radius:12px;background:linear-gradient(135deg,#e9fffd,#6ef5ef);color:#061012;text-decoration:none;font-size:12px;font-weight:900}.enterpriseContactClose{position:absolute;right:16px;top:14px;width:34px;height:34px;border-radius:50%;border:1px solid rgba(255,255,255,.1);background:#111719;color:#b7c3c5;font-size:21px;cursor:pointer}
+
+
+/* Desktop: five pricing cards in one full-width row. Keep card scale/content unchanged. */
+@media (min-width: 1201px){
+  .vyralPlansWrap{width:min(1880px,98vw)!important;max-width:none!important}
+  .vyralPlanGrid{
+    width:100%!important;
+    grid-template-columns:repeat(5,minmax(0,1fr))!important;
+    gap:14px!important;
+    align-items:start!important;
+  }
+  .vyralPlanCard{min-width:0!important;width:auto!important}
+}
