@@ -2,7 +2,7 @@ import {NextResponse} from "next/server";
 import {getCustomerSession} from "../../../../../lib/auth";
 import {isPlanId} from "../../../../../lib/plans";
 const API="https://api.nowpayments.io/v1";
-const prices={inicio:4.99,pro:9.99,escala:19.99} as const;
+const prices={inicio:4.99,pro:9.99,escala:19.99,ai:49} as const;
 const preferred=[
  {id:"btc",symbol:"BTC",name:"Bitcoin",icon:"/crypto/bitcoin.svg"},
  {id:"usdttrc20",symbol:"USDT",name:"Tether · TRON",icon:"/crypto/usdt.svg"},
