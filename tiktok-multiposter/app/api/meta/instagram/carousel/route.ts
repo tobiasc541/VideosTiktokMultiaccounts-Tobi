@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import {NextResponse} from "next/server";
 import {getCustomerSession} from "../../../../../lib/auth";
 import {supabaseAdmin} from "../../../../../lib/supabase-admin";
@@ -64,7 +65,7 @@ export async function POST(req:Request){
   await waitForContainer(String(parent.id),account.data.access_token);
 
   const published=await graphJson(`${GRAPH}/${account.data.instagram_user_id}/media_publish?creation_id=${encodeURIComponent(parent.id)}&access_token=${encodeURIComponent(account.data.access_token)}`,{method:"POST"});
-  return NextResponse.json({ok:true,mediaId:published.id||null,containerId:parent.id,username:account.data.username});
+  const historyId=crypto.randomUUID();\n  await db.from("scheduled_publications").insert({id:historyId,user_id:session.userId,scheduled_at:new Date().toISOString(),timezone:"UTC",caption,privacy_level:"PUBLIC_TO_EVERYONE",platforms:["instagram"],targets:[{platform:"instagram",accountId,name:account.data.username}],storage_bucket:BUCKET,storage_path:storagePaths[0],mime_type:"image/webp",file_name:`Carrusel · ${storagePaths.length} imágenes`,file_size:0,status:"published",platform_results:{instagram:{mediaId:published.id||null,containerId:parent.id,kind:"carousel",storagePaths}}});\n  return NextResponse.json({ok:true,mediaId:published.id||null,containerId:parent.id,username:account.data.username,historyId});
  }catch(e:any){
   return NextResponse.json({error:e?.message||"No se pudo publicar el carrusel en Instagram."},{status:500});
  }
