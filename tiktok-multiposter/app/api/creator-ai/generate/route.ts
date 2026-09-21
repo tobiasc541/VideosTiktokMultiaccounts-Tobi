@@ -56,7 +56,13 @@ export async function POST(req:Request){
    await diag(db,{user_id:session.userId,stage:imageStage,ok:ir.ok,http_status:ir.status,model,request_id:irId,error_type:safeError(ij).type,error_code:safeError(ij).code,error_message:safeError(ij).message,details:{key_source:keySource,endpoint:logo?"images/edits":"images/generations",slide:i+1,logo_used:!!logo,param:safeError(ij).param}});
    if(!ir.ok)throw new Error(ij.error?.message||`Falló la generación de la imagen ${i+1}.`);
    const b64=ij.data?.[0]?.b64_json;if(!b64)throw new Error(`OpenAI no devolvió la imagen ${i+1}.`);
-   return {role:s.role,title:s.title,copy:s.copy,image:`data:image/webp;base64,${b64}`};
+   const imageBytes=Uint8Array.from(atob(b64),ch=>ch.charCodeAt(0));
+   const storagePath=`${session.userId}/creator-ai/${crypto.randomUUID()}-${i+1}.webp`;
+   const uploaded=await db.storage.from("scheduled-media").upload(storagePath,imageBytes,{contentType:"image/webp",upsert:false});
+   if(uploaded.error)throw new Error(`No se pudo guardar la placa ${i+1}: ${uploaded.error.message}`);
+   const signed=await db.storage.from("scheduled-media").createSignedUrl(storagePath,86400);
+   if(signed.error||!signed.data?.signedUrl)throw new Error(`No se pudo preparar la placa ${i+1}.`);
+   return {role:s.role,title:s.title,copy:s.copy,image:signed.data.signedUrl,storagePath};
   }));
   return NextResponse.json({slides:generated,model});
  }catch(e:any){await diag(db,{user_id:session.userId,stage,ok:false,error_type:"local_exception",error_message:e.message||"unknown"});return NextResponse.json({error:e.message||"No se pudo generar el carrusel.",diagnosticStage:stage},{status:500})}
