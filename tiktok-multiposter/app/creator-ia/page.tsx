@@ -8,5 +8,5 @@ export default async function CreatorAIPage(){
  const session=await getCustomerSession(); if(!session)redirect("/login");
  const {data}=await supabaseAdmin().auth.admin.getUserById(session.userId);
  const plan=String(data.user?.user_metadata?.plan||session.plan||"");
- return <CreatorAIStudio enabled={plan==="escala"}/>;
+ return <CreatorAIStudio enabled={plan==="escala"||plan==="ai"} reelsEnabled={plan==="ai"}/>;
 }
