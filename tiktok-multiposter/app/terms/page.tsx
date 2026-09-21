@@ -24,7 +24,7 @@ export default function TermsPage() {
         </header>
 
         <section className="vyralLegalContent">
-          <article><span>01</span><div><h2>Sobre VYRAL</h2><p>VYRAL es una plataforma web que permite a usuarios autorizados conectar sus propias cuentas de redes sociales compatibles, preparar contenido y distribuirlo desde un flujo centralizado mediante las herramientas y APIs oficiales disponibles.</p></div></article>
+          <article><span>01</span><div><h2>Sobre VYRAL</h2><p>VYRAL es una plataforma web operada por <strong>TOBIAS CARRIZO TRADING LLC</strong>, una limited liability company constituida en New Mexico, Estados Unidos. VYRAL permite a usuarios autorizados conectar sus propias cuentas de redes sociales compatibles, preparar contenido y distribuirlo desde un flujo centralizado mediante las herramientas y APIs oficiales disponibles.</p><p>Domicilio comercial: 1209 Mountain Road Pl NE, Ste R, Albuquerque, NM 87110, United States.</p></div></article>
           <article><span>02</span><div><h2>Tu cuenta y autorización</h2><p>Solo podés conectar cuentas que sean de tu propiedad o que estés autorizado a administrar. Las autorizaciones de plataformas externas se realizan mediante sus mecanismos oficiales. VYRAL no solicita ni almacena las contraseñas de tus cuentas de TikTok.</p></div></article>
           <article><span>03</span><div><h2>Tu contenido</h2><p>Sos responsable por los videos, textos, hashtags, marcas, música y cualquier otro material que publiques mediante VYRAL. Debés contar con los derechos y permisos necesarios y cumplir la legislación aplicable y las normas de cada plataforma.</p></div></article>
           <article><span>04</span><div><h2>Uso permitido</h2><p>No está permitido utilizar VYRAL para actividades ilegales, acceso no autorizado a cuentas de terceros, spam, suplantación de identidad, infracciones de propiedad intelectual, distribución de software malicioso o intentos de eludir restricciones y medidas de seguridad.</p></div></article>
@@ -37,7 +37,7 @@ export default function TermsPage() {
         </section>
 
         <footer className="vyralLegalFooter">
-          <div className="vyralLegalPowered"><span>POWERED BY</span><strong>Tobias Carrizo</strong></div>
+          <div className="vyralLegalPowered"><span>OPERADO POR</span><strong>TOBIAS CARRIZO TRADING LLC</strong><small>1209 Mountain Road Pl NE, Ste R, Albuquerque, NM 87110, United States</small></div>
           <div><Link href="/privacy">Política de privacidad</Link><Link href="/login">Volver al login</Link></div>
         </footer>
       </div>
