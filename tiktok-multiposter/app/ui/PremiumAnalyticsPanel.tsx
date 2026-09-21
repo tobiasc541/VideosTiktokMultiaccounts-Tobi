@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
-type Props = { planId: "inicio" | "pro" | "escala" };
+type Props = { planId: "inicio" | "pro" | "escala" | "ai" };
 type FilterState = { network:string; period:string; from?:string; to?:string };
 type Insight = {k:string;title:string;text:string;why:string;action:string;watch:string};
 
