@@ -33,7 +33,7 @@ export async function POST(req:Request){
    b.music?"Use subtle background music that never competes with speech.":"No background music.",
    "Natural delivery, believable gestures, polished commercial lighting, no fake claims, no invented prices, vertical composition for Instagram Reels/TikTok."
   ].join("\n");
-  const r=await fetch(BASE+"/v3/video-agents",{method:"POST",headers:{"x-api-key":apiKey,"Content-Type":"application/json","Idempotency-Key":crypto.randomUUID()},body:JSON.stringify({mode:"generate",prompt,orientation:"portrait",auto_proceed:true,...(b.avatar?{avatar_id:String(b.avatar)}:{})})});
+  const r=await fetch(BASE+"/v3/video-agents",{method:"POST",headers:{"x-api-key":apiKey,"Content-Type":"application/json","Idempotency-Key":crypto.randomUUID()},body:JSON.stringify({mode:"generate",prompt,orientation:"portrait",auto_proceed:true})});
   const j=await r.json().catch(()=>({}));
   if(!r.ok)return NextResponse.json({error:j?.message||j?.error?.message||j?.error||"HeyGen rechazó el render.",providerStatus:r.status},{status:502});
   const data=j?.data||j;const sessionId=String(data?.session_id||data?.id||data?.video_agent_id||data?.job_id||"");const videoId=String(data?.video_id||"");
