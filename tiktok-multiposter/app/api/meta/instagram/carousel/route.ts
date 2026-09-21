@@ -1,6 +1,6 @@
 import {NextResponse} from "next/server";
-import {getCustomerSession} from "../../../../../../lib/auth";
-import {supabaseAdmin} from "../../../../../../lib/supabase-admin";
+import {getCustomerSession} from "../../../../../lib/auth";
+import {supabaseAdmin} from "../../../../../lib/supabase-admin";
 export const maxDuration=60;
 const GRAPH="https://graph.instagram.com";
 async function graphJson(url:string,init?:RequestInit){const r=await fetch(url,{...init,cache:"no-store"});const j=await r.json().catch(()=>({}));if(!r.ok||j.error)throw new Error(j.error?.message||j.error_message||`Instagram API HTTP ${r.status}`);return j}
