@@ -1,9 +1,11 @@
 "use client";
 import {useEffect,useState} from "react";
-import Link from "next/link";\nimport CreatorReelsStudio from "./CreatorReelsStudio";
+import Link from "next/link";
+import CreatorReelsStudio from "./CreatorReelsStudio";
 type Slide={title:string;copy:string;role:string;image?:string;storagePath?:string};
 export default function CreatorAIStudio({enabled,reelsEnabled}:{enabled:boolean;reelsEnabled:boolean}){
- const [mode,setMode]=useState<"images"|"reels">("images");\n const [business,setBusiness]=useState(""); const [offer,setOffer]=useState(""); const [audience,setAudience]=useState(""); const [tone,setTone]=useState("animado premium"); const [cta,setCta]=useState("Escribí INFO"); const [goal,setGoal]=useState("ventas"); const [count,setCount]=useState(6); const [slides,setSlides]=useState<Slide[]>([]); const [loading,setLoading]=useState(false); const [error,setError]=useState(""); const [elapsed,setElapsed]=useState(0); const [logo,setLogo]=useState("");
+ const [mode,setMode]=useState<"images"|"reels">("images");
+ const [business,setBusiness]=useState(""); const [offer,setOffer]=useState(""); const [audience,setAudience]=useState(""); const [tone,setTone]=useState("animado premium"); const [cta,setCta]=useState("Escribí INFO"); const [goal,setGoal]=useState("ventas"); const [count,setCount]=useState(6); const [slides,setSlides]=useState<Slide[]>([]); const [loading,setLoading]=useState(false); const [error,setError]=useState(""); const [elapsed,setElapsed]=useState(0); const [logo,setLogo]=useState("");
  useEffect(()=>{if(!loading){setElapsed(0);return}const id=setInterval(()=>setElapsed(v=>v+1),1000);return()=>clearInterval(id)},[loading]);
  const eta=count===3?"20–50 s":count===5?"30–70 s":count===6?"35–85 s":"40–100 s";
  function pickLogo(file?:File){if(!file){setLogo("");return}if(!file.type.startsWith("image/"))return setError("El logo debe ser una imagen.");if(file.size>4*1024*1024)return setError("El logo puede pesar hasta 4 MB.");const reader=new FileReader();reader.onload=()=>{setLogo(String(reader.result||""));setError("")};reader.readAsDataURL(file)}
@@ -12,7 +14,9 @@ export default function CreatorAIStudio({enabled,reelsEnabled}:{enabled:boolean;
   try{
    const ready=slides.filter(s=>s.image&&s.storagePath);
    if(ready.length<2){setError("El carrusel todavía no está listo para publicar.");return}
-   const payload={version:2,createdAt:Date.now(),slides:ready.map((s,i)=>({index:i,title:s.title,copy:s.copy,role:s.role,image:s.image,storagePath:s.storagePath})),caption:[slides.map(s=>s.title).filter(Boolean).join(" · "),cta].filter(Boolean).join("\n\n"),business,offer,audience,goal,cta};
+   const payload={version:2,createdAt:Date.now(),slides:ready.map((s,i)=>({index:i,title:s.title,copy:s.copy,role:s.role,image:s.image,storagePath:s.storagePath})),caption:[slides.map(s=>s.title).filter(Boolean).join(" · "),cta].filter(Boolean).join("
+
+"),business,offer,audience,goal,cta};
    sessionStorage.setItem("vyral:creator-ai-publication",JSON.stringify(payload));
    window.location.href="/?section=publish&source=creator-ai";
   }catch(e:any){setError(e?.name==="QuotaExceededError"?"No hay espacio temporal suficiente en el navegador. Regenerá el carrusel y volvé a intentar.":"No se pudo preparar el carrusel para Publicar.")}
