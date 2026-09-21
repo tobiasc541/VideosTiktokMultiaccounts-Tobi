@@ -18,6 +18,9 @@ export const metadata = {
     icon: appIcon,
     shortcut: appIcon,
     apple: appIcon
+  },
+  verification: {
+    facebook: "0p05weezhqqr0my58x9rqzjo8ejzs1"
   }
 };
 
