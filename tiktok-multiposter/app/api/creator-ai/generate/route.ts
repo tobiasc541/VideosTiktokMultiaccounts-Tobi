@@ -11,7 +11,7 @@ export async function POST(req:Request){
  const db=supabaseAdmin(); let stage="boot";
  try{
   const {data}=await db.auth.admin.getUserById(session.userId);const plan=String(data.user?.user_metadata?.plan||session.plan||"");
-  if(plan!=="escala")return NextResponse.json({error:"Creator IA está disponible únicamente en el plan Escala."},{status:403});
+  if(plan!=="escala"&&plan!=="ai")return NextResponse.json({error:"Creator IA está disponible en los planes Escala y VYRAL AI."},{status:403});
   const keySource=process.env.VYRAL_CREATOR_PRODUCTION?"VYRAL_CREATOR_PRODUCTION":"missing";
   const key=process.env.VYRAL_CREATOR_PRODUCTION;
   if(!key){await diag(db,{user_id:session.userId,stage:"config",ok:false,error_code:"missing_key",error_message:"VYRAL_CREATOR_PRODUCTION is not configured"});return NextResponse.json({error:"Falta configurar la API de OpenAI.",diagnosticStage:"config"},{status:503})}
