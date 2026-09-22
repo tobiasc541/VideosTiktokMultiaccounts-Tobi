@@ -9,6 +9,7 @@ export default function UploadPhonePreview() {
     let currentName = "";
     let carouselIndex = 0;
     let carouselImages: string[] = [];
+    let lastCarouselRaw = "";
     let processingListener: ((ev: Event) => void) | null = null;
 
     const applyRememberedVideo = (root: HTMLElement) => {
@@ -40,7 +41,9 @@ export default function UploadPhonePreview() {
 
     const applyCarousel = (root: HTMLElement) => {
       try {
-        const raw=sessionStorage.getItem("vyral:creator-ai-publication");
+        const raw=sessionStorage.getItem("vyral:creator-ai-publication")||"";
+        if(raw===lastCarouselRaw && carouselImages.length)return;
+        lastCarouselRaw=raw;
         const data=raw?JSON.parse(raw):null;
         carouselImages=Array.isArray(data?.slides)?data.slides.map((s:any)=>String(s?.image||"")).filter(Boolean):[];
       } catch { carouselImages=[]; }
@@ -105,9 +108,11 @@ export default function UploadPhonePreview() {
     enhanceUpload();
     const observer = new MutationObserver(enhanceUpload);
     observer.observe(document.body, { childList: true, subtree: true });
+    const carouselTimer = window.setInterval(enhanceUpload, 700);
 
     return () => {
       observer.disconnect();
+      window.clearInterval(carouselTimer);
       if (currentUrl) URL.revokeObjectURL(currentUrl);
       if (processingListener) window.removeEventListener("vyral:video-processing", processingListener);
     };
