@@ -18,7 +18,7 @@ export default function VyralSidebar({active,onSection,showInbox=true}:{active:V
    {item("analytics","⌁","Analytics")}
    {item("coach","✦","VYRAL Coach","AI")}
    {item("automations","◫","Automatizaciones")}
-   {showInbox&&<Link className={active==="inbox"?"active":""} href="/inbox"><span>◉</span><span>VYRAL Inbox</span></Link>}
+   {showInbox&&<button type="button" className="vyralInboxSoon" disabled title="VYRAL Inbox estará disponible próximamente"><span>◉</span><span>VYRAL Inbox</span><span className="vdSoon">PRÓXIMAMENTE</span></button>}
    <Link href="/mi-plan"><span>◇</span><span>Tu cuenta</span></Link>
    <Link href="/creator-ia"><span>✧</span><span>Creator IA</span><span className="vdSoon">ESCALA</span></Link>
    <Link href="/creadores"><span>✦</span><span>Creator Viral</span></Link>
