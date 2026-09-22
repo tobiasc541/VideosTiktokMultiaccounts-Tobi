@@ -75,20 +75,20 @@ export async function saveInstagramAccount(
   let displayName: string | null = null;
   let accountType: string | null = null;
 
-  // Profile metadata is optional. OAuth already gives us the authoritative
-  // account id, so a profile GET failure must never prevent connection.
-  if (!instagramUserId) {
-    const profileUrl = new URL("https://graph.instagram.com/me");
-    profileUrl.searchParams.set("fields", "id,username,name,account_type");
-    profileUrl.searchParams.set("access_token", token);
-    const { response, json } = await graphJson(profileUrl);
-    if (!response.ok || !json.id) {
-      throw new Error(json.error?.message || "Instagram no devolvió el identificador de la cuenta.");
-    }
-    instagramUserId = String(json.id);
-    username = json.username || null;
-    displayName = json.name || null;
-    accountType = json.account_type || null;
+  // Always enrich the connected account from Instagram. OAuth gives us the
+  // account id, but the token exchange does not reliably include username/name.
+  // instagram_business_basic grants the profile fields used by the UI.
+  const profileUrl = new URL("https://graph.instagram.com/me");
+  profileUrl.searchParams.set("fields", "id,username,name,account_type");
+  profileUrl.searchParams.set("access_token", token);
+  const { response: profileResponse, json: profileJson } = await graphJson(profileUrl);
+  if (profileResponse.ok && profileJson.id) {
+    instagramUserId = String(profileJson.id);
+    username = typeof profileJson.username === "string" && profileJson.username.trim() ? profileJson.username.trim() : null;
+    displayName = typeof profileJson.name === "string" && profileJson.name.trim() ? profileJson.name.trim() : null;
+    accountType = typeof profileJson.account_type === "string" && profileJson.account_type.trim() ? profileJson.account_type.trim() : null;
+  } else if (!instagramUserId) {
+    throw new Error(profileJson.error?.message || "Instagram no devolvió el identificador de la cuenta.");
   }
 
   const saved = await db
