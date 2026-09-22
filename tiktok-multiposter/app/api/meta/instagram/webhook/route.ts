@@ -96,7 +96,7 @@ export async function POST(req:Request){
   if(!account){
    const mediaId=String((entry.changes||[]).find((x:any)=>x.field==="comments")?.value?.media?.id||"");
    if(mediaId){
-    const all=await db.from("meta_instagram_accounts").select("id,user_id,instagram_user_id,access_token");
+    const all=await db.from("meta_instagram_accounts").select("id,user_id,instagram_user_id,webhook_user_id,access_token");
     for(const candidate of all.data||[]){
      try{
       const u=new URL(`${GRAPH}/${VER}/${encodeURIComponent(mediaId)}`);
