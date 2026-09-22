@@ -68,6 +68,29 @@ export async function POST(req:Request){
    .maybeSingle();
   let account=direct.data;
 
+  // Resolve VYRAL-published media from the publication ledger before any API fallback.
+  // Both video and carousel publishing persist the final Instagram media id and account id here.
+  if(!account){
+   const mediaId=String((entry.changes||[]).find((x:any)=>x.field==="comments")?.value?.media?.id||"");
+   if(mediaId){
+    const pub=await db.from("scheduled_publications")
+     .select("targets")
+     .eq("status","published")
+     .eq("platform_results->instagram->>mediaId",mediaId)
+     .order("scheduled_at",{ascending:false})
+     .limit(1)
+     .maybeSingle();
+    const target=Array.isArray(pub.data?.targets)?pub.data.targets.find((x:any)=>x?.platform==="instagram"&&x?.accountId):null;
+    if(target?.accountId){
+     const owned=await db.from("meta_instagram_accounts")
+      .select("id,user_id,instagram_user_id,access_token")
+      .eq("id",String(target.accountId))
+      .maybeSingle();
+     account=owned.data||null;
+    }
+   }
+  }
+
   // Instagram Login and webhook events can expose different account-id namespaces.
   // Resolve comment events by proving which connected token owns the event media.
   if(!account){
