@@ -83,7 +83,7 @@ export async function POST(req:Request){
     const target=Array.isArray(pub.data?.targets)?pub.data.targets.find((x:any)=>x?.platform==="instagram"&&x?.accountId):null;
     if(target?.accountId){
      const owned=await db.from("meta_instagram_accounts")
-      .select("id,user_id,instagram_user_id,access_token")
+      .select("id,user_id,instagram_user_id,webhook_user_id,access_token")
       .eq("id",String(target.accountId))
       .maybeSingle();
      account=owned.data||null;
@@ -116,7 +116,7 @@ export async function POST(req:Request){
     String(m?.sender?.id||"")
    ]).filter(Boolean))];
    if(ids.length){
-    const all=await db.from("meta_instagram_accounts").select("id,user_id,instagram_user_id,access_token");
+    const all=await db.from("meta_instagram_accounts").select("id,user_id,instagram_user_id,webhook_user_id,access_token");
     account=(all.data||[]).find((x:any)=>ids.includes(String(x.instagram_user_id)))||null;
     if(!account&&(all.data||[]).length===1)account=(all.data||[])[0];
    }
