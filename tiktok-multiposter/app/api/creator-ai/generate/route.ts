@@ -4,6 +4,7 @@ import {supabaseAdmin} from "../../../../lib/supabase-admin";
 export const runtime="nodejs"; export const maxDuration=300;
 const OPENAI="https://api.openai.com/v1";
 function cleanJson(s:string){const a=s.indexOf("[");const b=s.lastIndexOf("]");if(a<0||b<a)throw new Error("La IA no devolvió una estructura válida.");return JSON.parse(s.slice(a,b+1))}
+async function readProviderJson(r:Response,label:string){const raw=await r.text();try{return JSON.parse(raw)}catch{throw new Error(`${label} respondió con un formato inválido (HTTP ${r.status}). Reintentá la generación.`)}}
 function safeError(j:any){return {type:j?.error?.type||null,code:j?.error?.code||null,message:j?.error?.message||null,param:j?.error?.param||null}}
 async function diag(db:any,row:any){try{await db.from("creator_ai_diagnostics").insert(row)}catch{}}
 export async function POST(req:Request){
@@ -22,7 +23,7 @@ export async function POST(req:Request){
   const prompt=`Sos el director creativo de VYRAL. Diseñás carruseles de Instagram persuasivos en español rioplatense, claros y modernos. ${referenceSystem} ${humanDirection} No inventes testimonios, cifras ni garantías. Cada placa debe tener poco texto y avanzar una historia. Negocio/producto: ${String(body.business||"")}. Oferta: ${String(body.offer||"")}. Público: ${String(body.audience||"")}. Objetivo: ${String(body.goal||"ventas")}. CTA final: ${String(body.cta||"Escribí INFO")}. IMPORTANTE: el CTA se escribe UNA SOLA VEZ. Si la frase ya contiene un verbo de acción como "comentá", "escribí", "mandame", "comprá" o equivalente, no lo antepongas ni lo repitas. Ejemplo: si CTA final es "Comentá BRYAN", renderizar exactamente "Comentá BRYAN", nunca "Comentá Comentá BRYAN". Estética solicitada: ${String(body.tone||"animado premium")}. ${strategy} Respondé SOLO JSON array con objetos {"role":"hook|problema|tension|solucion|beneficio|oferta|cta","title":"máx 9 palabras","copy":"máx 22 palabras","visualPrompt":"dirección de arte detallada para una placa TERMINADA, indicando layout, fondo, tipografía, jerarquía, bloques, fotos/ilustraciones, flechas/stickers y ubicación del texto; composición vertical 4:5, misma identidad/paleta en todo el carrusel"}.`;
   const textModel=process.env.VYRAL_TEXT_MODEL||"gpt-5.6-sol"; stage="text_model";
   const tr=await fetch(OPENAI+"/chat/completions",{method:"POST",headers:{Authorization:`Bearer ${key}`,"Content-Type":"application/json"},body:JSON.stringify({model:textModel,messages:[{role:"user",content:prompt}]})});
-  const tj=await tr.json(); const trId=tr.headers.get("x-request-id");
+  const tj=await readProviderJson(tr,"La estrategia de IA"); const trId=tr.headers.get("x-request-id");
   await diag(db,{user_id:session.userId,stage,ok:tr.ok,http_status:tr.status,model:textModel,request_id:trId,error_type:safeError(tj).type,error_code:safeError(tj).code,error_message:safeError(tj).message,details:{key_source:keySource,endpoint:"chat/completions",param:safeError(tj).param}});
   if(!tr.ok)return NextResponse.json({error:tj.error?.message||"Falló la estrategia de IA.",diagnosticStage:stage,requestId:trId},{status:tr.status});
   let slides=cleanJson(tj.choices?.[0]?.message?.content||""); slides=single?slides.slice(0,1):slides.slice(0,count);
@@ -51,7 +52,7 @@ export async function POST(req:Request){
    const headers:Record<string,string>={Authorization:"Bearer "+key};
    if(!editRefs.length)headers["Content-Type"]="application/json";
    const ir=await fetch(OPENAI+imageEndpoint,{method:"POST",headers,body:imageBody});
-   const ij=await ir.json();const irId=ir.headers.get("x-request-id");
+   const ij=await readProviderJson(ir,`La generación de la imagen ${i+1}`);const irId=ir.headers.get("x-request-id");
    await diag(db,{user_id:session.userId,stage:imageStage,ok:ir.ok,http_status:ir.status,model,request_id:irId,error_type:safeError(ij).type,error_code:safeError(ij).code,error_message:safeError(ij).message,details:{key_source:keySource,endpoint:editRefs.length?"images/edits":"images/generations",slide:i+1,logo_used:!!logo,human_mode:humanMode,person_refs:personRefs.length,param:safeError(ij).param}});
    if(!ir.ok)throw new Error(ij.error?.message||`Falló la generación de la imagen ${i+1}.`);
    const b64=ij.data?.[0]?.b64_json;if(!b64)throw new Error(`OpenAI no devolvió la imagen ${i+1}.`);
