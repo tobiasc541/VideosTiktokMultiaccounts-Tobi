@@ -39,16 +39,15 @@ async function ensureWebhookSubscription(a:any){
 }
 
 async function inspectTokenPermissions(a:any){
+  // Instagram Login tokens do not expose Facebook's /me/permissions edge.
+  // Validate the scopes VYRAL needs by exercising the documented account subscription endpoint instead.
   try{
-    // Instagram Login tokens expose granted scopes on /me/permissions.
-    const u=new URL(`https://graph.instagram.com/${VER}/me/permissions`);
+    const u=new URL(`https://graph.instagram.com/${VER}/${a.instagram_user_id}/subscribed_apps`);
     u.searchParams.set("access_token",a.access_token);
     const {r,j}=await jsonFetch(u);
     if(!r.ok||j.error)return {ok:false,granted:[],declined:[],error:String(j?.error?.message||`Instagram HTTP ${r.status}`),http_status:r.status};
-    const rows=Array.isArray(j.data)?j.data:[];
-    const granted=rows.filter((x:any)=>String(x.status).toLowerCase()==="granted").map((x:any)=>String(x.permission));
-    const declined=rows.filter((x:any)=>String(x.status).toLowerCase()!=="granted").map((x:any)=>String(x.permission));
-    return {ok:true,granted,declined,error:null,http_status:r.status};
+    const fields=Array.from(new Set((j?.data||[]).flatMap((x:any)=>Array.isArray(x?.subscribed_fields)?x.subscribed_fields:[]).map(String))) as string[];
+    return {ok:true,granted:fields,declined:REQUIRED_FIELDS.filter(x=>!fields.includes(x)),error:null,http_status:r.status};
   }catch(e:any){return {ok:false,granted:[],declined:[],error:String(e?.message||e),http_status:null};}
 }
 
