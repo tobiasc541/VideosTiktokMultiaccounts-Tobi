@@ -144,9 +144,6 @@ export default function MetaInstagramAccounts() {
                   Conectá varias cuentas profesionales. Cada usuario autoriza sus propias cuentas
                   directamente con Meta.
                 </p>
-                <a className="vmiConnect" href="/api/meta/instagram/connect">
-                  + Conectar otra cuenta
-                </a>
               </div>
             </div>
 
@@ -175,7 +172,6 @@ export default function MetaInstagramAccounts() {
               ) : (
                 <div className="vmiEmpty">
                   Todavía no conectaste Instagram.{" "}
-                  <a href="/api/meta/instagram/connect">Conectar ahora ↗</a>
                 </div>
               )}
             </div>
@@ -195,9 +191,6 @@ export default function MetaInstagramAccounts() {
                   Páginas de Facebook conectadas a VYRAL. Tu plan admite {limit || "—"} cuentas
                   en total.
                 </p>
-                <a className="vmiConnect" href="/api/meta/facebook/connect">
-                  + Conectar Facebook
-                </a>
               </div>
             </div>
 
@@ -223,7 +216,6 @@ export default function MetaInstagramAccounts() {
                   <img className="vmiBrandIcon" src="/facebook.png" alt="Facebook" />
                   <div>
                     <b>Sin páginas conectadas</b>
-                    <a href="/api/meta/facebook/connect">Conectar ahora ↗</a>
                   </div>
                 </div>
               )}
