@@ -26,9 +26,20 @@ export async function POST(req:Request){
  try{
   const b=await req.json();
   const brief=String(b.brief||"").trim();
+  const previousIdeas=Array.isArray(b.previousIdeas)?b.previousIdeas.map((x:any)=>String(x||"").trim()).filter(Boolean).slice(-24):[];
+  const variationSeed=String(b.variationSeed||crypto.randomUUID());
   if(brief.length<3)return NextResponse.json({error:"Contame brevemente qué querés vender o comunicar."},{status:400});
 
-  const prompt=`Sos director creativo de performance para VYRAL. Brief: "${brief}". Proponé exactamente 8 conceptos distintos de carrusel de Instagram que parezcan creados por un equipo humano. Mezclá UGC hiperrealista con personas reales, producto en uso, lifestyle, demostración, problema/solución, comparativa visual sin datos falsos, editorial premium y storytelling. Priorizá conceptos que detengan el scroll y vendan. No inventes precio, métricas, testimonios ni características ausentes. Devolvé un objeto JSON con una única clave "ideas". "ideas" debe ser un array de 8 objetos con: id, name, hook, angle, humanStyle, business, offer, audience, goal, tone, cta, count. goal solo puede ser ventas, mensajes, seguidores, trafico o educar. count debe ser 6.`;
+  const prompt=`Sos director creativo senior de performance para VYRAL. Brief: "${brief}". Creá exactamente 8 conceptos de carrusel realmente diferentes entre sí y diferentes de ejecuciones anteriores.
+
+REGLA DE DIVERSIDAD: no uses ocho variantes de problema→solución. En esta tanda cubrí 8 familias creativas distintas elegidas y combinadas de este banco: historia personal/documental, POV, mito o creencia contraria, comparación A/B, antes/después sin inventar resultados, demostración paso a paso, lista/checklist, errores frecuentes, mini caso sin datos inventados, detrás de escena, diario/nota manuscrita, editorial de revista, UGC/lifestyle, conversación/chat ficticio claramente ilustrativo, objeto/metáfora visual, tutorial, desafío/pregunta, aspiracional, humor observacional, producto en contexto, framework/diagrama, manifiesto/opinión, FAQ/objeciones. Cambiá también hooks, ritmo, estructura narrativa, dirección de arte, presencia humana, fondos, encuadres, tipografías y CTA. No repitas fórmulas como "la clave", "nadie te cuenta", "no es X es Y" más de una vez.
+
+Cada idea debe tener un hook semánticamente distinto y una dirección visual específica. Algunas pueden ser minimalistas, otras fotográficas, otras editoriales, otras diagramáticas o UGC; no fuerces personas en todas.
+
+Ideas/títulos ya mostrados al usuario que NO debés repetir ni parafrasear de cerca: ${previousIdeas.length?previousIdeas.join(" | "):"ninguna"}.
+Semilla de variación de esta tanda: ${variationSeed}. Usala solo para forzar una nueva exploración creativa, no la menciones en la respuesta.
+
+No inventes precio, métricas, testimonios ni características ausentes. Priorizá ideas vendibles pero genuinamente variadas. Devolvé un objeto JSON con una única clave "ideas". "ideas" debe ser un array de 8 objetos con: id, name, hook, angle, humanStyle, business, offer, audience, goal, tone, cta, count. goal solo puede ser ventas, mensajes, seguidores, trafico o educar. count debe ser 6.`;
 
   const controller=new AbortController();
   const timer=setTimeout(()=>controller.abort(),120000);
