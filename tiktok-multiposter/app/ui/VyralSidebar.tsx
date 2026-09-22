@@ -20,7 +20,8 @@ export default function VyralSidebar({active,onSection,showInbox=true}:{active:V
    {item("automations","◫","Automatizaciones")}
    {showInbox&&<Link className={active==="inbox"?"active":""} href="/inbox"><span>◉</span><span>VYRAL Inbox</span></Link>}
    <Link href="/mi-plan"><span>◇</span><span>Tu cuenta</span></Link>
-   <Link href="/creator-ia"><span>✧</span><span>Creator IA</span><span className="vdSoon">ESCALA</span></Link>\n   <Link href="/creadores"><span>✦</span><span>Creator Viral</span></Link>
+   <Link href="/creator-ia"><span>✧</span><span>Creator IA</span><span className="vdSoon">ESCALA</span></Link>
+   <Link href="/creadores"><span>✦</span><span>Creator Viral</span></Link>
    <Link href="/ayuda"><span>?</span><span>Preguntas frecuentes</span></Link>
    <Link href="/soporte"><span>↗</span><span>Soporte 24/7</span></Link>
   </nav>
