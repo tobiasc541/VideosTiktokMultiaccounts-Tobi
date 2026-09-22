@@ -7,6 +7,8 @@ export default function UploadPhonePreview() {
   useEffect(() => {
     let currentUrl = "";
     let currentName = "";
+    let carouselIndex = 0;
+    let carouselImages: string[] = [];
     let processingListener: ((ev: Event) => void) | null = null;
 
     const applyRememberedVideo = (root: HTMLElement) => {
@@ -36,6 +38,22 @@ export default function UploadPhonePreview() {
       video.play().catch(() => undefined);
     };
 
+    const applyCarousel = (root: HTMLElement) => {
+      try {
+        const raw=sessionStorage.getItem("vyral:creator-ai-publication");
+        const data=raw?JSON.parse(raw):null;
+        carouselImages=Array.isArray(data?.slides)?data.slides.map((s:any)=>String(s?.image||"")).filter(Boolean):[];
+      } catch { carouselImages=[]; }
+      if(!carouselImages.length)return;
+      const phone=root.querySelector<HTMLElement>(".vyralUploadPhone"),screen=root.querySelector<HTMLElement>(".vyralUploadPhoneScreen"),video=root.querySelector<HTMLVideoElement>("video"),placeholder=root.querySelector<HTMLElement>(".vyralUploadPhonePlaceholder"),meta=root.querySelector<HTMLElement>(".vyralUploadPhoneMeta b");
+      if(!phone||!screen)return;
+      video?.style.setProperty("display","none");if(placeholder)placeholder.style.display="none";
+      let img=screen.querySelector<HTMLImageElement>(".vyralCarouselPreviewImage");
+      if(!img){img=document.createElement("img");img.className="vyralCarouselPreviewImage";img.style.cssText="width:100%;height:100%;object-fit:cover;display:block";screen.insertBefore(img,screen.firstChild)}
+      const render=()=>{if(!img)return;img.src=carouselImages[carouselIndex];if(meta)meta.textContent=`Imagen ${carouselIndex+1} de ${carouselImages.length}`;phone.classList.add("hasVideo")};render();
+      if(!screen.querySelector(".vyralCarouselNav")){const nav=document.createElement("div");nav.className="vyralCarouselNav";nav.style.cssText="position:absolute;inset:0;display:flex;align-items:center;justify-content:space-between;pointer-events:none;padding:8px";nav.innerHTML='<button type="button" data-dir="-1" style="pointer-events:auto;border:0;border-radius:50%;width:34px;height:34px;background:rgba(0,0,0,.62);color:white;font-size:20px">‹</button><button type="button" data-dir="1" style="pointer-events:auto;border:0;border-radius:50%;width:34px;height:34px;background:rgba(0,0,0,.62);color:white;font-size:20px">›</button>';nav.querySelectorAll("button").forEach(b=>b.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();carouselIndex=(carouselIndex+Number((b as HTMLElement).dataset.dir||1)+carouselImages.length)%carouselImages.length;render()}));screen.appendChild(nav)}
+    };
+
     const enhanceUpload = () => {
       const upload = document.querySelector<HTMLElement>(".vdUpload");
       const input = upload?.querySelector<HTMLInputElement>('input[type="file"]');
@@ -49,6 +67,7 @@ export default function UploadPhonePreview() {
       upload.appendChild(root);
 
       applyRememberedVideo(root);
+      applyCarousel(root);
 
       const phone = root.querySelector<HTMLElement>(".vyralUploadPhone");
       const video = root.querySelector<HTMLVideoElement>("video");
