@@ -41,7 +41,7 @@ export async function POST(req:Request){
     form.append("output_format","webp");
     editRefs.forEach((ref:any,refIndex:number)=>{
      const mime=ref.blob.type||"image/jpeg";const ext=mime==="image/jpeg"?"jpg":mime.split("/")[1]||"img";
-     form.append("image",ref.blob,refIndex===0&&logoPath?"brand-logo."+ext:"person-reference-"+refIndex+"."+ext);
+     form.append("image[]",ref.blob,refIndex===0&&logoPath?"brand-logo."+ext:"person-reference-"+refIndex+"."+ext);
     });
     imageBody=form;
    }else{
