@@ -57,7 +57,8 @@ export default function UploadPhonePreview() {
     const enhanceUpload = () => {
       const upload = document.querySelector<HTMLElement>(".vdUpload");
       const input = upload?.querySelector<HTMLInputElement>('input[type="file"]');
-      if (!upload || !input || upload.dataset.vyralPreviewReady === "1") return;
+      if (!upload || !input) return;
+      if (upload.dataset.vyralPreviewReady === "1") { const existing=upload.querySelector<HTMLElement>(".vyralUploadPreviewRoot"); if(existing) applyCarousel(existing); return; }
 
       upload.dataset.vyralPreviewReady = "1";
       upload.classList.add("vyralPhoneUpload");
