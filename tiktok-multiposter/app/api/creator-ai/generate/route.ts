@@ -28,7 +28,8 @@ export async function POST(req:Request){
   if(!tr.ok)return NextResponse.json({error:tj.error?.message||"Falló la estrategia de IA.",diagnosticStage:stage,requestId:trId},{status:tr.status});
   let slides=cleanJson(tj.choices?.[0]?.message?.content||""); slides=single?slides.slice(0,1):slides.slice(0,count);
   const model=process.env.VYRAL_IMAGE_MODEL||"gpt-image-2";
-  const generated=await Promise.all(slides.map(async(s:any,i:number)=>{
+  const generated=[] as any[];
+  for(let i=0;i<slides.length;i++){const s:any=slides[i];
    const imageStage=`image_${i+1}`;const personRule=humanMode&&personRefPaths.length?`Identity references are attached. Preserve the same person faithfully across generated scenes: facial geometry, eyes, nose, mouth, jaw, hair, skin tone and distinctive visible traits. Do not beautify, age-shift, change ethnicity, reshape the face or invent facial details. Use natural photographic variation only in pose, expression, wardrobe, lighting, lens and environment. Do not place the person in every slide unless narratively useful.`:"No person identity reference is supplied.";const logoRule=logoPath?"A brand logo reference is attached. Preserve its recognizable symbol, proportions, colors and lettering as faithfully as possible. Integrate it naturally as a small brand signature; do not redesign it, invent a replacement, or make it dominate the composition.":"No brand logo was supplied; do not invent one.";const ip=`Create a FINISHED premium Instagram carousel slide, vertical 4:5. ${referenceSystem} Slide role: ${s.role}. Exact headline to render legibly: "${s.title}". Exact supporting copy to render legibly: "${s.copy}". ${s.visualPrompt}. Business context: ${String(body.business||"")}. Requested style: ${String(body.tone||"editorial premium")}. ${humanDirection} ${personRule} The text is part of the final design: render it clearly, correctly spelled in Spanish, with strong hierarchy and highlighted keywords. Do not add invented claims, fake UI, fake logos or watermarks. Maintain visual continuity with the carousel while making this slide compositionally distinct.`;
    const refPaths=[...(logoPath?[logoPath]:[]),...(humanMode?personRefPaths:[])];const editRefs=await Promise.all(refPaths.map(async(path:string)=>{const d=await db.storage.from("scheduled-media").download(path);if(d.error||!d.data)throw new Error("No se pudo leer una imagen de referencia.");return {path,blob:d.data};}));const imageEndpoint=editRefs.length?"/images/edits":"/images/generations";
    let imageBody:BodyInit;
@@ -49,8 +50,14 @@ export async function POST(req:Request){
    }
    const headers:Record<string,string>={Authorization:"Bearer "+key};
    if(!editRefs.length)headers["Content-Type"]="application/json";
-   const ir=await fetch(OPENAI+imageEndpoint,{method:"POST",headers,body:imageBody});
-   const ij=await readProviderJson(ir,`La generación de la imagen ${i+1}`);const irId=ir.headers.get("x-request-id");
+   let ir=await fetch(OPENAI+imageEndpoint,{method:"POST",headers,body:imageBody});
+   let ij=await readProviderJson(ir,`La generación de la imagen ${i+1}`);let irId=ir.headers.get("x-request-id");
+   if(ir.status===429){
+    const retryMs=Math.min(20000,Math.max(12000,Number(ir.headers.get("retry-after")||0)*1000||12000));
+    await new Promise(resolve=>setTimeout(resolve,retryMs));
+    ir=await fetch(OPENAI+imageEndpoint,{method:"POST",headers,body:imageBody});
+    ij=await readProviderJson(ir,`La generación de la imagen ${i+1}`);irId=ir.headers.get("x-request-id");
+   }
    await diag(db,{user_id:session.userId,stage:imageStage,ok:ir.ok,http_status:ir.status,model,request_id:irId,error_type:safeError(ij).type,error_code:safeError(ij).code,error_message:safeError(ij).message,details:{key_source:keySource,endpoint:editRefs.length?"images/edits":"images/generations",slide:i+1,logo_used:!!logoPath,human_mode:humanMode,person_refs:personRefPaths.length,param:safeError(ij).param}});
    if(!ir.ok)throw new Error(ij.error?.message||`Falló la generación de la imagen ${i+1}.`);
    const b64=ij.data?.[0]?.b64_json;if(!b64)throw new Error(`OpenAI no devolvió la imagen ${i+1}.`);
@@ -60,8 +67,9 @@ export async function POST(req:Request){
    if(uploaded.error)throw new Error(`No se pudo guardar la placa ${i+1}: ${uploaded.error.message}`);
    const signed=await db.storage.from("scheduled-media").createSignedUrl(storagePath,86400);
    if(signed.error||!signed.data?.signedUrl)throw new Error(`No se pudo preparar la placa ${i+1}.`);
-   return {role:s.role,title:s.title,copy:s.copy,image:signed.data.signedUrl,storagePath};
-  }));
+   generated.push({role:s.role,title:s.title,copy:s.copy,image:signed.data.signedUrl,storagePath});
+   if(i<slides.length-1)await new Promise(resolve=>setTimeout(resolve,12500));
+  }
   return NextResponse.json({slides:generated,model});
  }catch(e:any){await diag(db,{user_id:session.userId,stage,ok:false,error_type:"local_exception",error_message:e.message||"unknown"});return NextResponse.json({error:e.message||"No se pudo generar el carrusel.",diagnosticStage:stage},{status:500})}
 }
