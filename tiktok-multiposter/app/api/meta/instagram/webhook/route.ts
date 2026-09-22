@@ -46,10 +46,66 @@ async function processComment(db:any,account:any,value:any){const commentId=Stri
  if(a.dmEnabled&&dm){const j=await ig(`${GRAPH}/${VER}/${encodeURIComponent(account.instagram_user_id)}/messages`,account.access_token,{recipient:{comment_id:commentId},message:{text:dm}});messageId=String(j.message_id||"")}
  await db.from("instagram_automation_runs").update({status:"sent",public_reply_id:publicId||null,private_message_id:messageId||null,updated_at:new Date().toISOString(),detail:{triggerMode:a.triggerMode,resource:Boolean(a.resourceUrl)}}).eq("id",runId)}catch(e:any){await db.from("instagram_automation_runs").update({status:"error",error:String(e?.message||e).slice(0,1000),updated_at:new Date().toISOString()}).eq("id",runId)}return}}
 export async function GET(req:Request){const u=new URL(req.url),mode=u.searchParams.get("hub.mode"),token=u.searchParams.get("hub.verify_token"),challenge=u.searchParams.get("hub.challenge");if(mode==="subscribe"&&token===env("META_WEBHOOK_VERIFY_TOKEN")&&challenge)return new NextResponse(challenge,{status:200,headers:{"Content-Type":"text/plain"}});return new NextResponse("Forbidden",{status:403})}
-export async function POST(req:Request){const raw=await req.text(),sig=req.headers.get("x-hub-signature-256")||"",expected="sha256="+crypto.createHmac("sha256",env("META_INSTAGRAM_APP_SECRET")).update(raw).digest("hex");if(sig.length!==expected.length||!crypto.timingSafeEqual(Buffer.from(sig),Buffer.from(expected)))return new NextResponse("Invalid signature",{status:401});let payload:any;try{payload=JSON.parse(raw)}catch{return new NextResponse("Bad request",{status:400})}const db=supabaseAdmin();await db.from("meta_webhook_events").insert({platform:"instagram",event_type:String(payload.object||"instagram"),payload});for(const entry of payload.entry||[]){const accountId=String(entry.id||"");if(!accountId)continue;let q=await db.from("meta_instagram_accounts").select("id,user_id,instagram_user_id,access_token").eq("instagram_user_id",accountId).maybeSingle();let account=q.data;
- // Instagram webhook IDs can be in a different ID namespace than the ID returned by Instagram Login.
- // If the entry ID does not match our stored account, identify the owner by checking the event media
- // with each connected Instagram token. A token can read that media only for the account it belongs to.
- if(!account){const mediaId=String((entry.changes||[]).find((x:any)=>x.field==="comments")?.value?.media?.id||"");if(mediaId){const all=await db.from("meta_instagram_accounts").select("id,user_id,instagram_user_id,access_token");for(const candidate of all.data||[]){try{const u=new URL(`${GRAPH}/${VER}/${encodeURIComponent(mediaId)}`);u.searchParams.set("fields","id");u.searchParams.set("access_token",candidate.access_token);const r=await fetch(u,{cache:"no-store"}),j=await r.json().catch(()=>({}));if(r.ok&&!j.error&&String(j.id)===mediaId){account=candidate;break}}catch{}}}}
- if(!account&&Array.isArray(entry.messaging)&&entry.messaging.length){const recipientIds=entry.messaging.map((m:any)=>String(m?.recipient?.id||"")).filter(Boolean);const senderIds=entry.messaging.map((m:any)=>String(m?.sender?.id||"")).filter(Boolean);const ids=[...new Set([...recipientIds,...senderIds])];if(ids.length){const all=await db.from("meta_instagram_accounts").select("id,user_id,instagram_user_id,access_token");account=(all.data||[]).find((x:any)=>ids.includes(String(x.instagram_user_id)))||null}if(!account){const all=await db.from("meta_instagram_accounts").select("id,user_id,instagram_user_id,access_token");const accounts=all.data||[];if(accounts.length===1)account=accounts[0]}}
- if(!account){const all=await db.from("meta_instagram_accounts").select("id,user_id,instagram_user_id,access_token,created_at");const candidates=all.data||[];const owners=new Map<string,any[]>();for(const x of candidates){const list=owners.get(String(x.user_id))||[];list.push(x);owners.set(String(x.user_id),list)}if(owners.size===1&&candidates.length){const mediaId=String((entry.changes||[]).find((x:any)=>x.field==="comments")?.value?.media?.id||"");let ranked:any[]=[];for(const candidate of candidates){let score=0;try{if(mediaId){const u=new URL(`${GRAPH}/${VER}/${encodeURIComponent(candidate.instagram_user_id)}/media`);u.searchParams.set("fields","id");u.searchParams.set("limit","50");u.searchParams.set("access_token",candidate.access_token);const r=await fetch(u,{cache:"no-store"}),j=await r.json().catch(()=>({}));if(r.ok&&!j.error&&(j.data||[]).some((m:any)=>String(m.id)===mediaId))score=100}catch{}ranked.push({candidate,score})}ranked.sort((a,b)=>b.score-a.score||String(b.candidate.created_at||"").localeCompare(String(a.candidate.created_at||"")));account=ranked[0]?.candidate||null}}if(!account)continue;for(const ch of entry.changes||[])if(ch.field==="comments")await processComment(db,account,ch.value);for(const m of entry.messaging||[])await processMessage(db,account,m)}return NextResponse.json({ok:true})}
+export async function POST(req:Request){
+ const raw=await req.text();
+ const sig=req.headers.get("x-hub-signature-256")||"";
+ const expected="sha256="+crypto.createHmac("sha256",env("META_INSTAGRAM_APP_SECRET")).update(raw).digest("hex");
+ if(sig.length!==expected.length||!crypto.timingSafeEqual(Buffer.from(sig),Buffer.from(expected))){
+  return new NextResponse("Invalid signature",{status:401});
+ }
+ let payload:any;
+ try{payload=JSON.parse(raw)}catch{return new NextResponse("Bad request",{status:400})}
+ const db=supabaseAdmin();
+ await db.from("meta_webhook_events").insert({platform:"instagram",event_type:String(payload.object||"instagram"),payload});
+
+ for(const entry of payload.entry||[]){
+  const accountId=String(entry.id||"");
+  if(!accountId)continue;
+
+  const direct=await db.from("meta_instagram_accounts")
+   .select("id,user_id,instagram_user_id,access_token")
+   .eq("instagram_user_id",accountId)
+   .maybeSingle();
+  let account=direct.data;
+
+  // Instagram Login and webhook events can expose different account-id namespaces.
+  // Resolve comment events by proving which connected token owns the event media.
+  if(!account){
+   const mediaId=String((entry.changes||[]).find((x:any)=>x.field==="comments")?.value?.media?.id||"");
+   if(mediaId){
+    const all=await db.from("meta_instagram_accounts").select("id,user_id,instagram_user_id,access_token");
+    for(const candidate of all.data||[]){
+     try{
+      const u=new URL(`${GRAPH}/${VER}/${encodeURIComponent(mediaId)}`);
+      u.searchParams.set("fields","id");
+      u.searchParams.set("access_token",candidate.access_token);
+      const r=await fetch(u,{cache:"no-store"});
+      const j=await r.json().catch(()=>({}));
+      if(r.ok&&!j.error&&String(j.id)===mediaId){account=candidate;break}
+     }catch{}
+    }
+   }
+  }
+
+  if(!account&&Array.isArray(entry.messaging)&&entry.messaging.length){
+   const ids=[...new Set(entry.messaging.flatMap((m:any)=>[
+    String(m?.recipient?.id||""),
+    String(m?.sender?.id||"")
+   ]).filter(Boolean))];
+   if(ids.length){
+    const all=await db.from("meta_instagram_accounts").select("id,user_id,instagram_user_id,access_token");
+    account=(all.data||[]).find((x:any)=>ids.includes(String(x.instagram_user_id)))||null;
+    if(!account&&(all.data||[]).length===1)account=(all.data||[])[0];
+   }
+  }
+
+  if(!account)continue;
+  for(const ch of entry.changes||[]){
+   if(ch.field==="comments")await processComment(db,account,ch.value);
+  }
+  for(const m of entry.messaging||[]){
+   await processMessage(db,account,m);
+  }
+ }
+ return NextResponse.json({ok:true});
+}
