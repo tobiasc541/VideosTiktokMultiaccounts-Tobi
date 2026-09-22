@@ -74,12 +74,13 @@ export async function saveInstagramAccount(
   let username: string | null = null;
   let displayName: string | null = null;
   let accountType: string | null = null;
+  let webhookUserId: string | null = null;
 
   // Always enrich the connected account from Instagram. OAuth gives us the
   // account id, but the token exchange does not reliably include username/name.
   // instagram_business_basic grants the profile fields used by the UI.
   const profileUrl = new URL("https://graph.instagram.com/me");
-  profileUrl.searchParams.set("fields", "id,username,name,account_type");
+  profileUrl.searchParams.set("fields", "id,user_id,username,name,account_type");
   profileUrl.searchParams.set("access_token", token);
   const { response: profileResponse, json: profileJson } = await graphJson(profileUrl);
   if (profileResponse.ok && profileJson.id) {
@@ -87,6 +88,7 @@ export async function saveInstagramAccount(
     username = typeof profileJson.username === "string" && profileJson.username.trim() ? profileJson.username.trim() : null;
     displayName = typeof profileJson.name === "string" && profileJson.name.trim() ? profileJson.name.trim() : null;
     accountType = typeof profileJson.account_type === "string" && profileJson.account_type.trim() ? profileJson.account_type.trim() : null;
+    webhookUserId = profileJson.user_id != null ? String(profileJson.user_id) : null;
   } else if (!instagramUserId) {
     throw new Error(profileJson.error?.message || "Instagram no devolvió el identificador de la cuenta.");
   }
@@ -100,6 +102,7 @@ export async function saveInstagramAccount(
         username,
         display_name: displayName,
         account_type: accountType,
+        webhook_user_id: webhookUserId,
         access_token: token,
         updated_at: new Date().toISOString(),
       },
