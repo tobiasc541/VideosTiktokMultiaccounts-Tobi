@@ -63,8 +63,8 @@ export async function POST(req:Request){
   if(!accountId)continue;
 
   const direct=await db.from("meta_instagram_accounts")
-   .select("id,user_id,instagram_user_id,access_token")
-   .eq("instagram_user_id",accountId)
+   .select("id,user_id,instagram_user_id,webhook_user_id,access_token")
+   .or(`instagram_user_id.eq.${accountId},webhook_user_id.eq.${accountId}`)
    .maybeSingle();
   let account=direct.data;
 
