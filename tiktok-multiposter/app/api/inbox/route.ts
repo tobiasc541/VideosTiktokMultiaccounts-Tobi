@@ -49,7 +49,7 @@ export async function GET(req: NextRequest) {
       total: rows.filter((x) => x.status === "open").length,
       hot: rows.filter((x) => x.status === "open" && Number(x.lead_score) >= 75).length,
       unread: rows.filter((x) => x.status === "open" && x.unread).length,
-      human: rows.filter((x) => x.status === "open" && String(x.reason || "").toLowerCase().includes("persona")).length
+      human: rows.filter((x) => x.status === "open" && (x.needs_human || String(x.reason || "").toLowerCase().includes("persona"))).length
     }
   });
 }
@@ -65,9 +65,16 @@ export async function POST(req: NextRequest) {
     if (handoff.error || !handoff.data) return NextResponse.json({ error: "Lead no encontrado" }, { status: 404 });
     const allowed = ["whatsapp","interested","payment_intent","sale","goal_completed","resource_delivered"];
     if (!allowed.includes(String(body.eventType))) return NextResponse.json({ error: "Evento inválido" }, { status: 400 });
-    await db.from("vyral_crm_events").insert({user_id:session.userId,account_id:handoff.data.account_id,contact_id:handoff.data.contact_id,event_type:String(body.eventType),source:"human",automation_id:handoff.data.automation_id});
-    if(body.eventType==="sale"||body.eventType==="goal_completed") await db.from("vyral_handoffs").update({stage:"won",updated_at:new Date().toISOString()}).eq("id",String(body.id)).eq("user_id",session.userId);
-    return NextResponse.json({ok:true});
+    const inserted=await db.from("vyral_crm_events").insert({user_id:session.userId,account_id:handoff.data.account_id,contact_id:handoff.data.contact_id,event_type:String(body.eventType),source:"human",automation_id:handoff.data.automation_id});
+    if(inserted.error)return NextResponse.json({error:inserted.error.message},{status:500});
+    const eventPatch:Record<string,unknown>={updated_at:new Date().toISOString()};
+    if(body.eventType==="interested")Object.assign(eventPatch,{stage:"qualified",lead_score:75});
+    if(body.eventType==="whatsapp")Object.assign(eventPatch,{stage:"qualified",lead_score:85});
+    if(body.eventType==="payment_intent")Object.assign(eventPatch,{stage:"qualified",lead_score:90,priority:"high"});
+    if(body.eventType==="sale"||body.eventType==="goal_completed")Object.assign(eventPatch,{stage:"won",lead_score:100,priority:"normal"});
+    const updated=await db.from("vyral_handoffs").update(eventPatch).eq("id",String(body.id)).eq("user_id",session.userId).select("*").single();
+    if(updated.error)return NextResponse.json({error:updated.error.message},{status:500});
+    return NextResponse.json({ok:true,handoff:updated.data,eventType:String(body.eventType)});
   }
 
   if (body.action === "update") {
