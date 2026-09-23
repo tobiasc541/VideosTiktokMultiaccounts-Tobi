@@ -4,16 +4,17 @@ import { supabaseAdmin } from "../../../lib/supabase-admin";
 
 export const dynamic = "force-dynamic";
 
-async function escalaSession() {
+async function inboxSession() {
   const session = await getCustomerSession();
   if (!session) return null;
   const { data } = await supabaseAdmin().auth.admin.getUserById(session.userId);
-  return String(data.user?.user_metadata?.plan || session.plan || "") === "escala" ? session : null;
+  const plan = String(data.user?.user_metadata?.plan || session.plan || "").toLowerCase();
+  return ["escala","ai"].includes(plan) ? session : null;
 }
 
 export async function GET(req: NextRequest) {
-  const session = await escalaSession();
-  if (!session) return NextResponse.json({ error: "VYRAL Inbox es exclusivo del plan Escala" }, { status: 403 });
+  const session = await inboxSession();
+  if (!session) return NextResponse.json({ error: "VYRAL Inbox no está habilitado en este plan" }, { status: 403 });
   const db = supabaseAdmin();
   const contact = req.nextUrl.searchParams.get("contact");
   const automation = req.nextUrl.searchParams.get("automation");
@@ -54,8 +55,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await escalaSession();
-  if (!session) return NextResponse.json({ error: "VYRAL Inbox es exclusivo del plan Escala" }, { status: 403 });
+  const session = await inboxSession();
+  if (!session) return NextResponse.json({ error: "VYRAL Inbox no está habilitado en este plan" }, { status: 403 });
   const body = await req.json();
   const db = supabaseAdmin();
 
