@@ -16,6 +16,7 @@ export async function GET(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "VYRAL Inbox es exclusivo del plan Escala" }, { status: 403 });
   const db = supabaseAdmin();
   const contact = req.nextUrl.searchParams.get("contact");
+  const automation = req.nextUrl.searchParams.get("automation");
   const analytics = req.nextUrl.searchParams.get("analytics");
   if (analytics === "1") {
     const days = Math.min(90, Math.max(1, Number(req.nextUrl.searchParams.get("days") || 30)));
@@ -34,11 +35,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({days,conversations,interested,hot,whatsapp,goals,human:rows.filter((x)=>String(x.reason||"").toLowerCase().includes("persona")).length,conversion:conversations?Math.round(goals/conversations*1000)/10:0,series});
   }
   if (contact) {
-    const result = await db.from("vyral_inbox_messages").select("*").eq("user_id", session.userId).eq("contact_id", contact).order("created_at", { ascending: true }).limit(200);
+    let mq = db.from("vyral_inbox_messages").select("*").eq("user_id", session.userId).eq("contact_id", contact); if(automation) mq=mq.eq("automation_id",automation); const result = await mq.order("created_at", { ascending: true }).limit(200);
     await db.from("vyral_handoffs").update({ unread: false }).eq("user_id", session.userId).eq("contact_id", contact).eq("status", "open");
     return NextResponse.json({ messages: result.data || [] });
   }
-  const result = await db.from("vyral_handoffs").select("*").eq("user_id", session.userId).order("updated_at", { ascending: false }).limit(250);
+  let hq=db.from("vyral_handoffs").select("*").eq("user_id",session.userId); if(automation) hq=hq.eq("automation_id",automation); const result=await hq.order("updated_at",{ascending:false}).limit(250);
   const rows = result.data || [];
   return NextResponse.json({
     handoffs: rows,
