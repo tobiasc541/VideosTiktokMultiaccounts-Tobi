@@ -14,3 +14,36 @@
 .viNavMain{gap:8px!important}.viNavMain a{min-height:46px!important;padding:11px 12px!important;font-size:12px!important;color:#647080!important}.viNavMain a span{color:#647080!important}.viNavMain a.active span,.viNavMain a:hover span{color:#67f3ed!important}.viNavRule{margin:0!important;background:rgba(95,243,238,.16)!important}
 .viCredits{margin-top:auto!important;padding-top:18px}.viCredits .dashboardCredits{display:block!important;margin:0!important;border:1px solid rgba(95,243,238,.13)!important;background:rgba(95,243,238,.025)!important;border-radius:11px!important;padding:10px 11px!important}.viCredits .dashboardCredits>div span{display:block;font-size:6px;letter-spacing:.13em;color:#5e6b78;font-weight:800}.viCredits .dashboardCredits>div b{display:block;margin-top:4px;font-size:10px;color:#dffefd}.viCredits .dashboardCredits small{display:block;margin-top:5px;font-size:7px;color:#65717e}.viCredits .dashboardCredits>i{display:block;height:3px;margin-top:8px;border-radius:99px;background:#11161a;overflow:hidden}.viCredits .dashboardCredits>i em{display:block;height:100%;border-radius:99px;background:#67f3ed}
 .viChart{position:relative;background:radial-gradient(circle at 70% 30%,rgba(89,243,236,.07),transparent 28%),linear-gradient(180deg,rgba(89,243,236,.028),rgba(2,8,9,.1))!important;box-shadow:inset 0 1px rgba(255,255,255,.025)}.viChartPlot{height:190px!important;cursor:crosshair}.viChartPlot:after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,transparent,rgba(89,243,236,.025),transparent);animation:viScan 4s linear infinite}.viLine{stroke-width:2.8!important;filter:drop-shadow(0 0 8px rgba(89,243,236,.55))}.viDot{transition:r .15s ease,filter .15s ease}.viChartPlot:hover .viDot{filter:drop-shadow(0 0 5px #59f3ec)}.viHoverLine{position:absolute;top:0;bottom:0;width:1px;background:linear-gradient(to bottom,transparent,#59f3ec,transparent);pointer-events:none;box-shadow:0 0 10px rgba(89,243,236,.35)}.viHoverDot{position:absolute;width:11px;height:11px;border:2px solid #bafffb;border-radius:50%;background:#071112;transform:translate(-50%,-50%);box-shadow:0 0 0 5px rgba(89,243,236,.09),0 0 18px rgba(89,243,236,.65);pointer-events:none}.viTooltip{position:absolute;z-index:5;width:128px;padding:10px 11px;border:1px solid rgba(89,243,236,.3);border-radius:10px;background:rgba(4,14,15,.96);box-shadow:0 15px 40px rgba(0,0,0,.55),0 0 25px rgba(89,243,236,.08);pointer-events:none;animation:viTip .14s ease}.viTooltip small{display:block;font-size:7px;letter-spacing:.14em;color:#5d7c7d}.viTooltip b{display:block;font-size:20px;color:#eaffff;margin:3px 0}.viTooltip span{font-size:8px;color:#6f898a}.viFunnel>div:nth-of-type(5){min-width:125px}@keyframes viScan{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}@keyframes viTip{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
+
+/* CRM density pass: optimized for 100% desktop zoom */
+@media(min-width:1160px){
+ .vi{padding:22px 28px 28px;max-width:none}
+ .viHero h1{font-size:26px;margin:4px 0}
+ .viHero p{font-size:11px}
+ .viAnalyticsHead{margin-top:14px}
+ .viAnalyticsHead h2{font-size:16px}
+ .viAnalyticsCard{display:grid;grid-template-columns:180px 1fr;column-gap:14px;align-items:start}
+ .viAnalyticsHead{grid-column:1;grid-row:1/4;display:block;margin:0;padding:12px 0}
+ .viAnalyticsHead select{margin-top:10px;width:100%}
+ .viChart{grid-column:2;min-height:128px}
+ .viChartPlot{height:112px!important}
+ .viFunnel{grid-column:1/3;margin:6px 0 8px;padding:9px 12px}
+ .viFunnel b{font-size:16px}
+ .viStats{margin:8px 0 9px;gap:8px}
+ .viStats button{padding:11px 13px;border-radius:11px}
+ .viStats b{font-size:20px;margin:3px 0}
+ .viToolbar{margin-bottom:8px}
+ .viSearch input{padding:8px}
+ .viFilters button{padding:7px 9px}
+ .viGrid{grid-template-columns:270px minmax(520px,1fr) 250px;height:calc(100vh - 365px);min-height:430px}
+ .viThreadHead{height:58px;padding:10px 14px}
+ .viMessages{height:calc(100% - 120px);padding:12px}
+ .msg{padding:8px 10px;margin:6px 0}
+ .viConversation form{height:62px;padding:8px}
+ .viCRM{padding:14px}
+ .viCRM h3{margin:5px 0 12px}
+ .viCRM label{margin:9px 0}
+ .viCRM select,.viCRM textarea{padding:8px}
+ .viCRM textarea{height:66px}
+ .viAIReason{margin-top:11px;padding-top:10px}
+}
