@@ -16,7 +16,7 @@ function resourceType(name:string){const n=String(name||"").toLowerCase();if(/\.
 async function sendAttachment(account:any,to:string,type:string,url:string){const r=await fetch(`${GRAPH}/${VER}/${encodeURIComponent(account.instagram_user_id)}/messages`,{method:"POST",headers:{Authorization:`Bearer ${account.access_token}`,"Content-Type":"application/json"},body:JSON.stringify({recipient:{id:to},message:{attachment:{type:type==="audio"?"file":type,payload:{url}}}}),cache:"no-store"});const j=await r.json().catch(()=>({}));if(!r.ok||j.error)throw new Error(j.error?.message||`Instagram HTTP ${r.status}`);return j}
 function chooseVoice(a:any,text:string){const vs=Array.isArray(a.voiceAssets)?a.voiceAssets.filter((v:any)=>v?.url):[];if(!a.voiceEnabled||!vs.length)return null;const t=String(text||"").toLowerCase();if(/\b(audio|voz|escuchar)\b/i.test(t))return vs.find((v:any)=>/audio|inicio|present|bienven|inform|venta|compr/i.test(`${v.name} ${v.purpose} ${v.when} ${v.transcript}`))||vs[0];let best:any=null,score=0;for(const v of vs){const words=String(`${v.purpose} ${v.when} ${v.transcript}`).toLowerCase().split(/\W+/).filter((x:string)=>x.length>4);const s=words.filter((w:string)=>t.includes(w)).length;if(s>score){score=s;best=v}}return score>0?best:null}
 async function send(account:any,to:string,text:string){
-  const r=await fetch(`${GRAPH}/${VER}/${encodeURIComponent(account.instagram_user_id)}/messages`,{method:"POST",headers:{Authorization:`Bearer ${account.access_token}`,"Content-Type":"application/json"},body:JSON.stringify({recipient:{id:to},message:{text}}),cache:"no-store"});
+  const r=await fetch(`${GRAPH}/${VER}/${encodeURIComponent(account.instagram_user_id)}/messages`,{method:"POST",headers:{Authorization:`Bearer ${account.access_token}`,"Content-Type":"application/json"},body:JSON.stringify({recipient:{id:to},message:{text}}),cache:"no-store",signal:AbortSignal.timeout(12000)});
   const j=await r.json().catch(()=>({}));if(!r.ok||j.error)throw new Error(j.error?.message||`Instagram HTTP ${r.status}`);return j;
 }
 function automationAccess(meta:any){const plan=String(meta?.plan||"");const end=meta?.subscription_current_period_end||meta?.current_period_end;return ["inicio","pro","escala","ai"].includes(plan)&&(!end||new Date(String(end)).getTime()>Date.now())&&!meta?.vyral_automations_paused}
@@ -26,7 +26,8 @@ async function aiReply(a:any,text:string,history:string=""){
   const r=await fetch("https://api.openai.com/v1/responses",{method:"POST",headers:{Authorization:`Bearer ${key}`,"Content-Type":"application/json"},body:JSON.stringify({model:"gpt-5.6-luna",input:prompt,max_output_tokens:250}),signal:AbortSignal.timeout(12000)}),j=await r.json().catch(()=>({}));
   if(!r.ok)return String(a.dmMessage||"Gracias por escribir. ¿En qué te puedo ayudar?");
   let out=String(j.output_text||"");if(!out)for(const x of j.output||[])for(const z of x.content||[])if(z.type==="output_text")out+=z.text||"";
-  return out.trim().slice(0,1800);
+  const clean=out.trim().slice(0,1800);
+  return clean||"Sí, te leo. Contame qué necesitás y seguimos por acá.";
 }
 export async function GET(req:Request){
   const secret=process.env.CRON_SECRET;
@@ -62,7 +63,8 @@ export async function GET(req:Request){
           const asksResource=/\b(reenvi|reenví|manda|mandá|envia|enviá|guia|guía|pdf|archivo|link|recurso|catalogo|catálogo|ficha)\b/i.test(body);
           const priorAgentMessages=(hist.data||[]).filter((x:any)=>x.direction==="out").length;
           const voice=chooseVoice(a,body)||((a.voiceEnabled&&priorAgentMessages<=1&&Array.isArray(a.voiceAssets))?a.voiceAssets.find((v:any)=>v?.url):null);
-          if(reply){
+          if(!reply)reply="Sí, te leo. Contame qué necesitás y seguimos por acá.";
+          {
             const sent=await send(account,person,reply);
             // Audio delivery is intentionally decoupled from the reply hot path.
             // Instagram's official Send API does not document arbitrary audio/file attachments.
