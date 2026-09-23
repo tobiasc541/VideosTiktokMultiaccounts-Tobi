@@ -15,7 +15,7 @@ const VER=process.env.META_GRAPH_API_VERSION||"v24.0";
 function runFfmpeg(input:string,output:string){
   return new Promise<void>((resolve,reject)=>{
     if(!ffmpegPath)return reject(new Error("ffmpeg-static unavailable"));
-    const p=spawn(ffmpegPath,["-y","-i",input,"-vn","-ac","1","-ar","44100","-c:a","aac","-b:a","96k",output]);
+    const p=spawn(ffmpegPath,["-y","-i",input,"-vn","-ac","1","-ar","48000","-c:a","aac","-b:a","128k",output]);
     let err=""; p.stderr.on("data",d=>err+=String(d));
     p.on("error",reject); p.on("close",code=>code===0?resolve():reject(new Error(`ffmpeg exited ${code}: ${err.slice(-1200)}`)));
   });
