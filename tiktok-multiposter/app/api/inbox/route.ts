@@ -82,7 +82,7 @@ export async function POST(req: NextRequest) {
     if (["new", "contacted", "qualified", "won", "lost"].includes(body.stage)) patch.stage = body.stage;
     if (["normal", "high", "urgent"].includes(body.priority)) patch.priority = body.priority;
     if (typeof body.notes === "string") patch.notes = body.notes.slice(0, 4000);
-    if (typeof body.assignedTo === "string") patch.assigned_to = body.assignedTo.slice(0, 120);
+    if (typeof body.assignedTo === "string") patch.assigned_to = body.assignedTo.slice(0, 120);\n    if (typeof body.aiPaused === "boolean") patch.ai_paused = body.aiPaused;\n    if (typeof body.needsHuman === "boolean") patch.needs_human = body.needsHuman;
     if (body.status === "resolved" || body.status === "open") patch.status = body.status;
     const result = await db.from("vyral_handoffs").update(patch).eq("id", String(body.id)).eq("user_id", session.userId).select("*").single();
     return NextResponse.json({ ok: !result.error, handoff: result.data, error: result.error?.message });
