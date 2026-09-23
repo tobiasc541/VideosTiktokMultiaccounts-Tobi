@@ -20,7 +20,7 @@ async function send(account:any,to:string,text:string){
   const j=await r.json().catch(()=>({}));if(!r.ok||j.error)throw new Error(j.error?.message||`Instagram HTTP ${r.status}`);return j;
 }
 function automationAccess(meta:any){const plan=String(meta?.plan||"");const end=meta?.subscription_current_period_end||meta?.current_period_end;return ["inicio","pro","escala","ai"].includes(plan)&&(!end||new Date(String(end)).getTime()>Date.now())&&!meta?.vyral_automations_paused}
-async function aiReply(a:any,text:string,history:string=""){
+function mediaOf(m:any){const raw=Array.isArray(m?.attachments)?m.attachments:(m?.attachments?.data||[]);const a=raw?.[0]||null;const url=String(a?.payload?.url||a?.payload?.media_url||a?.url||"");const type=String(a?.type||(/\.(png|jpe?g|webp|gif)(\?|$)/i.test(url)?"image":url?"file":""));return {type,url,raw:a};}\nasync function aiReply(a:any,text:string,history:string="",images:string[]=[]){
   const key=process.env.VYRAL_CREATOR_PRODUCTION;if(!key)return String(a.dmMessage||"Gracias por escribir. ¿En qué te puedo ayudar?");
   const whatsapp=String(a.whatsappTarget||"").trim();
   const prompt=`Sos VYRAL Intelligence, el agente de Instagram de este negocio. Tu prioridad es comprender el MENSAJE NUEVO dentro de la conversación completa y avanzar sin sonar repetitivo.
@@ -51,7 +51,7 @@ REGLAS DE INTELIGENCIA:
 8. Máximo una pregunta por respuesta. Preferí 1 a 3 frases cortas. Natural, útil y adaptado al país configurado.
 9. Nunca inventes. Si no sabés y tampoco corresponde buscarlo en internet, derivá a WhatsApp cuando esté configurado.
 10. Respondé SOLO el mensaje final que recibirá el usuario, sin JSON, sin análisis y sin encabezados.`;
-  const r=await fetch("https://api.openai.com/v1/responses",{method:"POST",headers:{Authorization:`Bearer ${key}`,"Content-Type":"application/json"},body:JSON.stringify({model:"gpt-5.6-luna",input:prompt,tools:[{type:"web_search",search_context_size:"low"}],tool_choice:"auto",max_output_tokens:350}),signal:AbortSignal.timeout(20000)}),j=await r.json().catch(()=>({}));
+  const r=await fetch("https://api.openai.com/v1/responses",{method:"POST",headers:{Authorization:`Bearer ${key}`,"Content-Type":"application/json"},body:JSON.stringify({model:"gpt-5.6-luna",input:[{role:"user",content:[{type:"input_text",text:prompt},...images.slice(0,4).map(image_url=>({type:"input_image",image_url}))]}],tools:[{type:"web_search",search_context_size:"low"}],tool_choice:"auto",max_output_tokens:350}),signal:AbortSignal.timeout(20000)}),j=await r.json().catch(()=>({}));
   if(!r.ok)return whatsapp?`Para no darte un dato incorrecto, escribinos por WhatsApp y hacé esa consulta ahí: ${whatsapp}`:String(a.dmMessage||"Gracias por escribir. ¿En qué te puedo ayudar?");
   let out=String(j.output_text||"");if(!out)for(const x of j.output||[])for(const z of x.content||[])if(z.type==="output_text")out+=z.text||"";
   const clean=out.trim().slice(0,1800);
@@ -74,11 +74,17 @@ export async function GET(req:Request){
       try{
         const cu=new URL(`${GRAPH}/${VER}/${encodeURIComponent(account.instagram_user_id)}/conversations`);cu.searchParams.set("user_id",person);
         const conv=await graph(cu.toString(),account.access_token),cid=String(conv.data?.[0]?.id||"");if(!cid)continue;
-        const mu=new URL(`${GRAPH}/${VER}/${encodeURIComponent(cid)}`);mu.searchParams.set("fields","messages{id,created_time,from,to,message}");
+        const mu=new URL(`${GRAPH}/${VER}/${encodeURIComponent(cid)}`);mu.searchParams.set("fields","messages{id,created_time,from,to,message,attachments}");
         const mj=await graph(mu.toString(),account.access_token);
-        const m=(mj.messages?.data||[]).slice(0,10).find((x:any)=>String(x.from?.id||"")===person&&String(x.message||"").trim());
-        if(!m)continue;
-        const mid=String(m.id||""),body=String(m.message||"").trim(),synthetic=`dm:${mid}`;
+        const recentMessages=(mj.messages?.data||[]).slice(0,24);
+        const burst:any[]=[];for(const x of recentMessages){if(String(x.from?.id||"")!==person)break;const media=mediaOf(x);if(String(x.message||"").trim()||media.url)burst.push(x)}
+        if(!burst.length)continue;
+        burst.reverse();
+        const m=burst[burst.length-1],mid=String(m.id||""),synthetic=`dm:${mid}`;
+        const body=burst.map((x:any)=>String(x.message||"").trim()).filter(Boolean).join("\n");
+        const burstMedia=burst.map(mediaOf).filter((x:any)=>x.url);
+        const imageUrls=burstMedia.filter((x:any)=>x.type==="image").map((x:any)=>x.url);
+        const userInput=body|| (imageUrls.length?"[El usuario envió una imagen]":"[El usuario envió un archivo]");
         const exists=await db.from("instagram_automation_runs").select("id").eq("comment_id",synthetic).maybeSingle();if(exists.data)continue;
         const prior=(recent.data||[]).find((x:any)=>String(x.commenter_id)===person);
         const a=rules.find((x:any)=>x.id===prior?.automation_id)||rules[0];if(!a)continue;
@@ -91,16 +97,16 @@ export async function GET(req:Request){
         const ins=await db.from("instagram_automation_runs").insert({user_id:account.user_id,account_id:account.id,automation_id:a.id,comment_id:synthetic,commenter_id:person,comment_text:body,status:"matched",detail:{source:"instagram_conversations_poll",continueConversation:true}}).select("id").maybeSingle();
         if(ins.error)continue;
         try{
-          let reply="";try{reply=await aiReply(a,body,history)}catch{reply=String(a.dmMessage||"Gracias por escribir. ¿En qué te puedo ayudar?")}
+          let reply="";try{reply=await aiReply(a,userInput,history,imageUrls)}catch{reply=String(a.dmMessage||"Gracias por escribir. ¿En qué te puedo ayudar?")}
           const asksResource=/\b(reenvi|reenví|manda|mandá|envia|enviá|guia|guía|pdf|archivo|link|recurso|catalogo|catálogo|ficha)\b/i.test(body);
           const priorAgentMessages=(hist.data||[]).filter((x:any)=>x.direction==="out").length;
           const voice=chooseVoice(a,body)||((a.voiceEnabled&&priorAgentMessages<=1&&Array.isArray(a.voiceAssets))?a.voiceAssets.find((v:any)=>v?.url):null);
           if(!reply)reply="Sí, te leo. Contame qué necesitás y seguimos por acá.";
-          await db.from("vyral_inbox_messages").upsert({user_id:account.user_id,account_id:account.id,contact_id:person,contact_username:username,message_id:mid,body,direction:"in",sender_type:"contact",automation_id:a.id},{onConflict:"platform,message_id",ignoreDuplicates:true});
+          for(const x of burst){const media=mediaOf(x),xbody=String(x.message||"").trim()||(media.type==="image"?"[Imagen]":"[Archivo adjunto]");await db.from("vyral_inbox_messages").upsert({user_id:account.user_id,account_id:account.id,contact_id:person,contact_username:username,message_id:String(x.id||crypto.randomUUID()),body:xbody,direction:"in",sender_type:"contact",automation_id:a.id,attachment_type:media.type||null,attachment_url:media.url||null,attachment_meta:media.raw||{}},{onConflict:"platform,message_id",ignoreDuplicates:true});}
           {
             const sent=await send(account,person,reply);
             await db.from("vyral_inbox_messages").upsert({user_id:account.user_id,account_id:account.id,contact_id:person,contact_username:username,message_id:String(sent.message_id||crypto.randomUUID()),body:reply,direction:"out",sender_type:"ai",automation_id:a.id},{onConflict:"platform,message_id",ignoreDuplicates:true});
-            const transcript=history+"\nUsuario: "+body+"\nAgente: "+reply;
+            const transcript=history+"\nUsuario: "+userInput+"\nAgente: "+reply;
             const buying=/\b(precio|cu[aá]nto|compr|contrat|presupuesto|pagar|pago|plan|quiero|me interesa)\b/i.test(transcript);
             const whatsappIntent=/\b(whatsapp|wsp|humano|persona|asesor|vendedor|equipo)\b/i.test(transcript);
             const engaged=/\b(info|sirve|c[oó]mo|consulta|necesito|quiero saber|interesa|contame|explic)\b/i.test(transcript);
@@ -110,7 +116,7 @@ export async function GET(req:Request){
             const priority=score>=90?"urgent":score>=75?"high":"normal";
             const reason=goal?"Objetivo comercial detectado":whatsappIntent?"Pidió atención humana o WhatsApp":buying?"Intención de compra detectada":engaged?"Interés detectado por VYRAL":"Conversación activa";
             const existing=await db.from("vyral_handoffs").select("id,stage,lead_score,priority").eq("user_id",account.user_id).eq("account_id",account.id).eq("contact_id",person).eq("automation_id",a.id).limit(1).maybeSingle();
-            const crmPatch={contact_username:username||undefined,last_message:body,lead_score:Math.max(Number(existing.data?.lead_score)||0,score),reason,unread:true,status:"open",stage:existing.data?.stage==="won"?"won":stage,priority:Number(existing.data?.lead_score)>=90?"urgent":priority,updated_at:new Date().toISOString()};
+            const crmPatch={contact_username:username||undefined,last_message:userInput,lead_score:Math.max(Number(existing.data?.lead_score)||0,score),reason,unread:true,status:"open",stage:existing.data?.stage==="won"?"won":stage,priority:Number(existing.data?.lead_score)>=90?"urgent":priority,updated_at:new Date().toISOString()};
             if(existing.data)await db.from("vyral_handoffs").update(crmPatch).eq("id",existing.data.id);
             else await db.from("vyral_handoffs").insert({user_id:account.user_id,account_id:account.id,contact_id:person,automation_id:a.id,...crmPatch});
             const autoEvents=[engaged&&"interested",whatsappIntent&&"whatsapp",buying&&"payment_intent",goal&&"goal_completed"].filter(Boolean) as string[];
