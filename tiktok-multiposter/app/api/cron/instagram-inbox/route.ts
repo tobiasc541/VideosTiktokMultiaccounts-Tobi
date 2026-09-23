@@ -118,7 +118,7 @@ export async function GET(req:Request){
             await db.from("vyral_inbox_messages").upsert({user_id:account.user_id,account_id:account.id,contact_id:person,contact_username:username,message_id:String(sent.message_id||crypto.randomUUID()),body:reply,direction:"out",sender_type:"ai",automation_id:a.id},{onConflict:"platform,message_id",ignoreDuplicates:true});
             const transcript=history+"\nUsuario: "+userInput+"\nAgente: "+reply;
             const buying=/\b(precio|cu[aá]nto|compr|contrat|presupuesto|pagar|pago|plan|quiero|me interesa)\b/i.test(transcript);
-            const whatsappIntent=/\b(whatsapp|wsp|humano|persona|asesor|vendedor|equipo)\b/i.test(transcript);
+            const whatsappIntent=/\b(whatsapp|wsp)\b/i.test(transcript);
             const engaged=/\b(info|sirve|c[oó]mo|consulta|necesito|quiero saber|interesa|contame|explic)\b/i.test(transcript);
             const goal=/\b(compr[eé]|contrat[eé]|ya pagu[eé]|listo.{0,20}pago|cerramos|confirmo)\b/i.test(body);
             const score=goal?100:buying&&whatsappIntent?90:buying?80:whatsappIntent?75:engaged?60:35;
