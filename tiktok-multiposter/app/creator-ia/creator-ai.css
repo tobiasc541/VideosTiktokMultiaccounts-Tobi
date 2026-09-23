@@ -73,19 +73,28 @@
 .caiViralBadge,.caiMetrics{display:none!important}
 @media(max-width:600px){.caiCardBadge{font-size:7px!important;margin:7px 7px 6px}.caiMetricsRow{gap:5px;padding:7px 8px!important}.caiMetricsRow em{font-size:8px}}
 
-/* V3 cards — strict vertical flow, zero artwork overlays */
-.caiStyleGrid>button{position:relative;display:flex!important;flex-direction:column!important;gap:10px;padding:12px!important;overflow:hidden;border:1px solid rgba(255,255,255,.10)!important;border-radius:16px!important;background:rgba(18,18,18,.58)!important;color:#f7fbfa;text-align:left;box-sizing:border-box}
-.caiStyleGrid>button:hover{transform:translateY(-2px);border-color:rgba(93,238,226,.45)!important;background:rgba(22,27,26,.72)!important}
-.caiStyleGrid>button.selected{border-color:#5ef1e6!important;box-shadow:0 0 0 1px rgba(94,241,230,.28),0 12px 34px rgba(0,0,0,.28)}
+/* Visual catalog — canonical card layout */
+.caiStylePicker{grid-column:1/-1;margin:16px 0 18px;padding:18px 20px}
+.caiStyleCatalog{display:flex;flex-direction:column;gap:28px;margin-top:14px}
+.caiStyleSection{padding:18px;border:1px solid #153632;border-radius:18px;background:linear-gradient(180deg,rgba(8,22,20,.78),rgba(2,8,8,.72))}
+.caiStyleSectionHead{display:flex;align-items:center;gap:10px;margin-bottom:16px}
+.caiStyleSectionHead>span{font-size:24px}.caiStyleSectionHead h4{margin:0;color:#f2fffd;font-size:14px;letter-spacing:.035em}.caiStyleSectionHead small{display:block;margin-top:3px;color:#66817e;font-size:9px}
+.caiStyleGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:14px;width:100%}
+.caiStyleGrid>button{position:relative;display:flex;flex-direction:column;gap:10px;min-width:0;padding:12px;overflow:hidden;border:1px solid rgba(255,255,255,.10);border-radius:16px;background:rgba(18,18,18,.58);color:#f7fbfa;cursor:pointer;text-align:left;box-sizing:border-box;transition:.18s ease}
+.caiStyleGrid>button:hover{transform:translateY(-2px);border-color:rgba(93,238,226,.45);background:rgba(22,27,26,.72)}
+.caiStyleGrid>button.selected{border-color:#5ef1e6;box-shadow:0 0 0 1px rgba(94,241,230,.28),0 12px 34px rgba(0,0,0,.28)}
 .caiCardHeader{display:flex;align-items:center;min-height:24px;width:100%}
-.caiTechBadge{display:inline-flex;align-items:center;width:max-content;max-width:100%;padding:5px 8px;border:1px solid rgba(94,241,230,.34);border-radius:999px;background:linear-gradient(135deg,rgba(94,241,230,.12),rgba(114,95,255,.10));box-shadow:inset 0 1px 0 rgba(255,255,255,.08);color:#dffdfa;font-size:8px;font-weight:850;letter-spacing:.045em;line-height:1;white-space:nowrap}
+.caiTechBadge{display:inline-flex;align-items:center;max-width:100%;padding:5px 8px;border:1px solid rgba(94,241,230,.34);border-radius:999px;background:linear-gradient(135deg,rgba(94,241,230,.12),rgba(114,95,255,.10));color:#dffdfa;font-size:8px;font-weight:850;letter-spacing:.025em;line-height:1;white-space:nowrap}
 .caiCardImage{display:flex;width:100%;aspect-ratio:4/5;align-items:center;justify-content:center;overflow:hidden;border-radius:12px;background:#080d0c}
 .caiStyleGrid .caiCardImage img{display:block;width:100%;height:100%;max-height:none;aspect-ratio:auto;object-fit:contain;object-position:center;background:transparent}
 .caiCardFooter{display:flex;flex-direction:column;gap:9px;width:100%;min-width:0}
-.caiCardStats{display:flex;flex-direction:row;align-items:center;gap:10px;width:100%;min-width:0;overflow:hidden}
-.caiCardStats span{color:#94a3a0;font-size:10px;font-weight:650;line-height:1;white-space:nowrap}
-.caiCardTitle{display:flex;flex-direction:column;gap:3px;min-width:0;padding:0!important}
+.caiCardStats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;width:100%;min-width:0}
+.caiCardStats span{min-width:0;color:#94a3a0;font-size:9px;font-weight:650;line-height:1;white-space:nowrap}
+.caiCardTitle{display:flex;flex-direction:column;gap:3px;min-width:0}
 .caiCardTitle b{color:#f5fbfa;font-size:12px;line-height:1.2}.caiCardTitle small{margin:0;color:#778b88;font-size:9px;line-height:1.2}
-.caiCardBadge,.caiMetricsRow,.caiViralBadge,.caiMetrics,.caiStyleMedia{display:none!important}
-.caiStyleGrid button>i{position:absolute;z-index:4;right:8px;top:8px}
-@media(max-width:600px){.caiStyleGrid>button{padding:9px!important;gap:8px}.caiTechBadge{font-size:6.5px;padding:4px 6px}.caiCardStats{gap:6px}.caiCardStats span{font-size:8px}.caiCardTitle b{font-size:10px}.caiCardTitle small{font-size:8px}}
+.caiStyleGrid button>i{display:none;position:absolute;z-index:4;right:8px;top:8px;width:22px;height:22px;border-radius:50%;background:#62eee4;color:#02100e;align-items:center;justify-content:center;font-style:normal;font-weight:900}
+.caiStyleGrid button.selected>i{display:flex}
+.caiCustomStyle{max-width:640px;margin-top:14px}
+@media(min-width:1400px){.caiStyleGrid{grid-template-columns:repeat(5,minmax(155px,1fr))}}
+@media(max-width:900px){.caiStyleGrid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:600px){.caiStylePicker{padding:14px}.caiStyleSection{padding:12px}.caiStyleCatalog{gap:18px}.caiStyleGrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.caiStyleGrid>button{padding:10px;gap:8px}.caiTechBadge{font-size:7px;padding:4px 6px}.caiCardStats{gap:4px}.caiCardStats span{font-size:8px}.caiCardTitle b{font-size:10px}.caiCardTitle small{font-size:8px}}
