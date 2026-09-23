@@ -20,7 +20,8 @@ async function send(account:any,to:string,text:string){
   const j=await r.json().catch(()=>({}));if(!r.ok||j.error)throw new Error(j.error?.message||`Instagram HTTP ${r.status}`);return j;
 }
 function automationAccess(meta:any){const plan=String(meta?.plan||"");const end=meta?.subscription_current_period_end||meta?.current_period_end;return ["inicio","pro","escala","ai"].includes(plan)&&(!end||new Date(String(end)).getTime()>Date.now())&&!meta?.vyral_automations_paused}
-function mediaOf(m:any){const raw=Array.isArray(m?.attachments)?m.attachments:(m?.attachments?.data||[]);const a=raw?.[0]||null;const url=String(a?.payload?.url||a?.payload?.media_url||a?.url||"");const type=String(a?.type||(/\.(png|jpe?g|webp|gif)(\?|$)/i.test(url)?"image":url?"file":""));return {type,url,raw:a};}\nasync function aiReply(a:any,text:string,history:string="",images:string[]=[]){
+function mediaOf(m:any){const raw=Array.isArray(m?.attachments)?m.attachments:(m?.attachments?.data||[]);const a=raw?.[0]||null;const url=String(a?.payload?.url||a?.payload?.media_url||a?.url||"");const type=String(a?.type||(/\.(png|jpe?g|webp|gif)(\?|$)/i.test(url)?"image":url?"file":""));return {type,url,raw:a};}
+async function aiReply(a:any,text:string,history:string="",images:string[]=[]){
   const key=process.env.VYRAL_CREATOR_PRODUCTION;if(!key)return String(a.dmMessage||"Gracias por escribir. ¿En qué te puedo ayudar?");
   const whatsapp=String(a.whatsappTarget||"").trim();
   const prompt=`Sos VYRAL Intelligence, el agente de Instagram de este negocio. Tu prioridad es comprender el MENSAJE NUEVO dentro de la conversación completa y avanzar sin sonar repetitivo.
