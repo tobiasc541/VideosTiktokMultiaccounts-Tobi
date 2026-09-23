@@ -75,28 +75,37 @@ export async function POST(req:Request){
    const s=slides[i];
    const imageStage=`image_${i+1}`;const sceneRule=`Creative run ${variationSeed}, slide ${i+1}/${slides.length}. Scene type: ${String(s.sceneType||"concept-specific")}. Background/environment: ${String(s.background||"choose a distinctive environment driven by this slide")}. Do not default to beige paper, off-white editorial grids, desks or notebook textures unless explicitly required by the concept.`;const personRule=humanMode&&personRefPaths.length?`Identity references are attached. Preserve the same person faithfully across generated scenes: facial geometry, eyes, nose, mouth, jaw, hair, skin tone and distinctive visible traits. Do not beautify, age-shift, change ethnicity, reshape the face or invent facial details. Use natural photographic variation only in pose, expression, wardrobe, lighting, lens and environment. Do not place the person in every slide unless narratively useful.`:"No person identity reference is supplied.";const logoRule=logoPath?"A brand logo reference is attached. Preserve its recognizable symbol, proportions, colors and lettering as faithfully as possible. Integrate it naturally as a small brand signature; do not redesign it, invent a replacement, or make it dominate the composition.":"No brand logo was supplied; do not invent one.";const ip=`Create a FINISHED premium Instagram carousel slide on an EXACT 4:5 canvas (1024x1280). NEVER change canvas ratio and NEVER make the inner template narrower/taller from one slide to another. ${styleLock} ${referenceSystem} Slide role: ${s.role}. Exact headline to render legibly: "${s.title}". Exact supporting copy to render legibly: "${s.copy}". ${s.visualPrompt}. SLIDE CONTENT VARIATION: preserve the exact selected template, but do not copy literal motifs or content from the reference or previous slides. Make the icon, doodle, object, photo, metaphor and micro-note semantically specific to THIS slide while keeping the same visual role, position logic and technique. ${sceneRule} Business context: ${String(body.business||"")}. Requested style: ${String(body.tone||"editorial premium")}. ${visualStylePrompt?`MANDATORY SELECTED VISUAL STYLE: ${visualStylePrompt}`:""} ${humanDirection} ${personRule} The text is part of the final design: render it clearly, correctly spelled in Spanish, with strong hierarchy and highlighted keywords. Do not add invented claims, fake logos or watermarks. IMPORTANT: when the selected style itself contains editor/browser/app interface chrome, that template UI is REQUIRED visual structure and MUST be rendered exactly as specified; the generic no-fake-UI rule does not apply to required template chrome. Maintain absolute template continuity with the carousel. Do NOT make this slide compositionally distinct when that would alter the selected template; variation belongs in content only.`;
    const refPaths=[...(logoPath?[logoPath]:[]),...(humanMode?personRefPaths:[])];const editRefs=await Promise.all(refPaths.map(async(path:string)=>{const d=await db.storage.from("scheduled-media").download(path);if(d.error||!d.data)throw new Error("No se pudo leer una imagen de referencia.");return {path,blob:d.data};}));const imageEndpoint=editRefs.length?"/images/edits":"/images/generations";
-   let imageBody:BodyInit;
-   if(editRefs.length){
-    const form=new FormData();
-    form.append("model",model);
-    form.append("prompt",ip+" "+logoRule+" "+personRule);
-    form.append("size","1024x1280");
-    form.append("quality","medium");
-    form.append("output_format","webp");
-    editRefs.forEach((ref:any,refIndex:number)=>{
-     const mime=ref.blob.type||"image/jpeg";const ext=mime==="image/jpeg"?"jpg":mime.split("/")[1]||"img";
-     form.append("image[]",ref.blob,refIndex===0&&logoPath?"brand-logo."+ext:"person-reference-"+refIndex+"."+ext);
-    });
-    imageBody=form;
-   }else{
-    imageBody=JSON.stringify({model,prompt:ip+" "+logoRule,size:"1024x1280",quality:"medium",output_format:"webp"});
-   }
+   const buildImageBody=(promptText:string):BodyInit=>{
+    if(editRefs.length){
+     const form=new FormData();
+     form.append("model",model);
+     form.append("prompt",promptText);
+     form.append("size","1024x1280");
+     form.append("quality","medium");
+     form.append("output_format","webp");
+     editRefs.forEach((ref:any,refIndex:number)=>{
+      const mime=ref.blob.type||"image/jpeg";const ext=mime==="image/jpeg"?"jpg":mime.split("/")[1]||"img";
+      form.append("image[]",ref.blob,refIndex===0&&logoPath?"brand-logo."+ext:"person-reference-"+refIndex+"."+ext);
+     });
+     return form;
+    }
+    return JSON.stringify({model,prompt:promptText,size:"1024x1280",quality:"medium",output_format:"webp"});
+   };
+   const baseImagePrompt=ip+" "+logoRule+" "+personRule;
+   let imageBody:BodyInit=buildImageBody(baseImagePrompt);
    const headers:Record<string,string>={Authorization:"Bearer "+key};
    if(!editRefs.length)headers["Content-Type"]="application/json";
-   let ir:Response;let ij:any;let irId:string|null=null;
+   let ir:Response;let ij:any;let irId:string|null=null;let safetyRetry=false;
    for(let attempt=0;;attempt++){
     ir=await fetch(OPENAI+imageEndpoint,{method:"POST",headers,body:imageBody});
     ij=await readProviderJson(ir,`La generación de la imagen ${i+1}`);irId=ir.headers.get("x-request-id");
+    const err=safeError(ij);const safetyRejected=!ir.ok&&(err.code==="safety_violations"||err.code==="safety_violation"||/safety system|safety.?violation/i.test(String(err.message||"")));
+    if(safetyRejected&&!safetyRetry){
+     safetyRetry=true;
+     const benignRetryPrompt=baseImagePrompt+" CONTENT SAFETY CLARIFICATION: This is a benign commercial/editorial social-media design. Keep the same harmless business message and visual metaphor. Do not depict weapons, drugs, criminal instructions, dangerous acts, injury, sexual content, hate, self-harm, or wrongdoing. If any optional metaphor or prop could be interpreted as unsafe, replace only that optional element with a neutral everyday object while preserving the selected visual style, exact headline, CTA and intended meaning.";
+     imageBody=buildImageBody(benignRetryPrompt);
+     continue;
+    }
     if(ir.status!==429&&ir.status!==503)break;
     if(attempt>=4)break;
     await sleep(retryDelayMs(ir,attempt));
