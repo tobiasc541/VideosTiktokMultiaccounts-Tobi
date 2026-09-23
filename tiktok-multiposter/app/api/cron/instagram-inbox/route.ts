@@ -100,11 +100,21 @@ export async function GET(req:Request){
           {
             const sent=await send(account,person,reply);
             await db.from("vyral_inbox_messages").upsert({user_id:account.user_id,account_id:account.id,contact_id:person,contact_username:username,message_id:String(sent.message_id||crypto.randomUUID()),body:reply,direction:"out",sender_type:"ai",automation_id:a.id},{onConflict:"platform,message_id",ignoreDuplicates:true});
-            const score=/precio|compr|contrat|quiero|interesa|whatsapp|wsp|presupuesto/i.test(body)?80:/info|sirve|como|cómo|consulta|necesito/i.test(body)?60:35;
-            const reason=score>=75?"Alta intención detectada por VYRAL":score>=60?"Interés detectado por VYRAL":"Conversación activa";
-            const existing=await db.from("vyral_handoffs").select("id,stage,lead_score").eq("user_id",account.user_id).eq("account_id",account.id).eq("contact_id",person).eq("automation_id",a.id).limit(1).maybeSingle();
-            if(existing.data)await db.from("vyral_handoffs").update({contact_username:username||undefined,last_message:body,lead_score:Math.max(Number(existing.data.lead_score)||0,score),reason,unread:true,status:"open",updated_at:new Date().toISOString()}).eq("id",existing.data.id);
-            else await db.from("vyral_handoffs").insert({user_id:account.user_id,account_id:account.id,contact_id:person,contact_username:username,automation_id:a.id,last_message:body,lead_score:score,reason,unread:true,status:"open",stage:score>=75?"qualified":"new",priority:score>=75?"high":"normal"});
+            const transcript=history+"\nUsuario: "+body+"\nAgente: "+reply;
+            const buying=/\b(precio|cu[aá]nto|compr|contrat|presupuesto|pagar|pago|plan|quiero|me interesa)\b/i.test(transcript);
+            const whatsappIntent=/\b(whatsapp|wsp|humano|persona|asesor|vendedor|equipo)\b/i.test(transcript);
+            const engaged=/\b(info|sirve|c[oó]mo|consulta|necesito|quiero saber|interesa|contame|explic)\b/i.test(transcript);
+            const goal=/\b(compr[eé]|contrat[eé]|ya pagu[eé]|listo.{0,20}pago|cerramos|confirmo)\b/i.test(body);
+            const score=goal?100:buying&&whatsappIntent?90:buying?80:whatsappIntent?75:engaged?60:35;
+            const stage=goal?"won":score>=75?"qualified":score>=60?"contacted":"new";
+            const priority=score>=90?"urgent":score>=75?"high":"normal";
+            const reason=goal?"Objetivo comercial detectado":whatsappIntent?"Pidió atención humana o WhatsApp":buying?"Intención de compra detectada":engaged?"Interés detectado por VYRAL":"Conversación activa";
+            const existing=await db.from("vyral_handoffs").select("id,stage,lead_score,priority").eq("user_id",account.user_id).eq("account_id",account.id).eq("contact_id",person).eq("automation_id",a.id).limit(1).maybeSingle();
+            const crmPatch={contact_username:username||undefined,last_message:body,lead_score:Math.max(Number(existing.data?.lead_score)||0,score),reason,unread:true,status:"open",stage:existing.data?.stage==="won"?"won":stage,priority:Number(existing.data?.lead_score)>=90?"urgent":priority,updated_at:new Date().toISOString()};
+            if(existing.data)await db.from("vyral_handoffs").update(crmPatch).eq("id",existing.data.id);
+            else await db.from("vyral_handoffs").insert({user_id:account.user_id,account_id:account.id,contact_id:person,automation_id:a.id,...crmPatch});
+            const autoEvents=[engaged&&"interested",whatsappIntent&&"whatsapp",buying&&"payment_intent",goal&&"goal_completed"].filter(Boolean) as string[];
+            for(const eventType of autoEvents){const priorEvent=await db.from("vyral_crm_events").select("id").eq("user_id",account.user_id).eq("account_id",account.id).eq("contact_id",person).eq("automation_id",a.id).eq("event_type",eventType).limit(1).maybeSingle();if(!priorEvent.data)await db.from("vyral_crm_events").insert({user_id:account.user_id,account_id:account.id,contact_id:person,automation_id:a.id,event_type:eventType,source:"ai"});}
             // Audio delivery is intentionally decoupled from the reply hot path.
             // Instagram's official Send API does not document arbitrary audio/file attachments.
             // Keep DM continuation reliable while audio transport is validated separately.
