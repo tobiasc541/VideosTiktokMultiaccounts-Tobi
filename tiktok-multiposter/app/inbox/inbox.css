@@ -15,41 +15,6 @@
 .viCredits{margin-top:auto!important;padding-top:18px}.viCredits .dashboardCredits{display:block!important;margin:0!important;border:1px solid rgba(95,243,238,.13)!important;background:rgba(95,243,238,.025)!important;border-radius:11px!important;padding:10px 11px!important}.viCredits .dashboardCredits>div span{display:block;font-size:6px;letter-spacing:.13em;color:#5e6b78;font-weight:800}.viCredits .dashboardCredits>div b{display:block;margin-top:4px;font-size:10px;color:#dffefd}.viCredits .dashboardCredits small{display:block;margin-top:5px;font-size:7px;color:#65717e}.viCredits .dashboardCredits>i{display:block;height:3px;margin-top:8px;border-radius:99px;background:#11161a;overflow:hidden}.viCredits .dashboardCredits>i em{display:block;height:100%;border-radius:99px;background:#67f3ed}
 .viChart{position:relative;background:radial-gradient(circle at 70% 30%,rgba(89,243,236,.07),transparent 28%),linear-gradient(180deg,rgba(89,243,236,.028),rgba(2,8,9,.1))!important;box-shadow:inset 0 1px rgba(255,255,255,.025)}.viChartPlot{height:190px!important;cursor:crosshair}.viChartPlot:after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,transparent,rgba(89,243,236,.025),transparent);animation:viScan 4s linear infinite}.viLine{stroke-width:2.8!important;filter:drop-shadow(0 0 8px rgba(89,243,236,.55))}.viDot{transition:r .15s ease,filter .15s ease}.viChartPlot:hover .viDot{filter:drop-shadow(0 0 5px #59f3ec)}.viHoverLine{position:absolute;top:0;bottom:0;width:1px;background:linear-gradient(to bottom,transparent,#59f3ec,transparent);pointer-events:none;box-shadow:0 0 10px rgba(89,243,236,.35)}.viHoverDot{position:absolute;width:11px;height:11px;border:2px solid #bafffb;border-radius:50%;background:#071112;transform:translate(-50%,-50%);box-shadow:0 0 0 5px rgba(89,243,236,.09),0 0 18px rgba(89,243,236,.65);pointer-events:none}.viTooltip{position:absolute;z-index:5;width:128px;padding:10px 11px;border:1px solid rgba(89,243,236,.3);border-radius:10px;background:rgba(4,14,15,.96);box-shadow:0 15px 40px rgba(0,0,0,.55),0 0 25px rgba(89,243,236,.08);pointer-events:none;animation:viTip .14s ease}.viTooltip small{display:block;font-size:7px;letter-spacing:.14em;color:#5d7c7d}.viTooltip b{display:block;font-size:20px;color:#eaffff;margin:3px 0}.viTooltip span{font-size:8px;color:#6f898a}.viFunnel>div:nth-of-type(5){min-width:125px}@keyframes viScan{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}@keyframes viTip{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
 
-/* CRM density pass: optimized for 100% desktop zoom */
-@media(min-width:1160px){
- .vi{padding:22px 28px 28px;max-width:none}
- .viHero h1{font-size:26px;margin:4px 0}
- .viHero p{font-size:11px}
- .viAnalyticsHead{margin-top:14px}
- .viAnalyticsHead h2{font-size:16px}
- .viAnalyticsCard{display:grid;grid-template-columns:180px 1fr;column-gap:14px;align-items:start}
- .viAnalyticsHead{grid-column:1;grid-row:1/4;display:block;margin:0;padding:12px 0}
- .viAnalyticsHead select{margin-top:10px;width:100%}
- .viChart{grid-column:2;min-height:128px}
- .viChartPlot{height:112px!important}
- .viFunnel{grid-column:1/3;margin:6px 0 8px;padding:9px 12px}
- .viFunnel b{font-size:16px}
- .viStats{margin:8px 0 9px;gap:8px}
- .viStats button{padding:11px 13px;border-radius:11px}
- .viStats b{font-size:20px;margin:3px 0}
- .viToolbar{margin-bottom:8px}
- .viSearch input{padding:8px}
- .viFilters button{padding:7px 9px}
- .viGrid{grid-template-columns:270px minmax(520px,1fr) 250px;height:calc(100vh - 365px);min-height:430px}
- .viThreadHead{height:58px;padding:10px 14px}
- .viMessages{height:calc(100% - 120px);padding:12px}
- .msg{padding:8px 10px;margin:6px 0}
- .viConversation form{height:62px;padding:8px}
- .viCRM{padding:14px}
- .viCRM h3{margin:5px 0 12px}
- .viCRM label{margin:9px 0}
- .viCRM select,.viCRM textarea{padding:8px}
- .viCRM textarea{height:66px}
- .viAIReason{margin-top:11px;padding-top:10px}
-}
-
-.viMedia{display:block;margin:2px 0 8px;max-width:420px}.viMedia img{display:block;width:100%;max-height:360px;object-fit:contain;border-radius:10px;border:1px solid #1b3939;background:#030808}.viFile{display:inline-block;margin:2px 0 8px;color:#58eee5;font-size:10px;text-decoration:none;border:1px solid #24504f;border-radius:8px;padding:7px 9px}
-
 /* 100% desktop viewport: keep the entire CRM above the fold */
 @media(min-width:1160px) and (min-height:700px){
  .viShell{height:100vh;overflow:hidden}
@@ -78,4 +43,38 @@
 @media(min-width:1160px) and (max-height:800px){
  .viAnalyticsCard{height:112px}.viChartPlot{height:52px!important}.viFunnel{height:29px}
  .viStats{height:50px}.viGrid{height:calc(100vh - 262px)}
+}
+
+/* Balanced desktop CRM: designed for Chrome 100%, no page scroll */
+@media(min-width:1160px){
+ .viShell{height:100vh;overflow:hidden}
+ .vi{height:100vh;overflow:hidden;padding:18px 24px 16px;display:flex;flex-direction:column;gap:10px}
+ .viHero{flex:0 0 58px;min-height:58px}
+ .viHero small{font-size:8px;letter-spacing:.14em}
+ .viHero h1{font-size:27px;line-height:1.08;margin:3px 0 2px}
+ .viHero p{font-size:11px;margin:0}
+ .viLive{padding:7px 11px;font-size:8px}
+ .viAnalyticsCard{flex:0 0 122px;min-height:122px;display:grid;grid-template-columns:190px minmax(0,1fr);grid-template-rows:88px 34px;gap:0 14px;padding:12px 14px}
+ .viAnalyticsHead{grid-column:1;grid-row:1;display:block;margin:0;padding:2px 0}
+ .viAnalyticsHead small{font-size:8px}.viAnalyticsHead h2{font-size:17px;line-height:1.05;margin:5px 0 8px}.viAnalyticsHead select{width:100%;padding:6px 8px;font-size:9px}
+ .viChart{grid-column:2;grid-row:1;min-height:0}.viChartTop{padding:2px 4px!important}.viChartPlot{height:66px!important;min-height:66px!important}
+ .viFunnel{grid-column:1/3;grid-row:2;height:34px;margin:0;padding:5px 8px;border-top:1px solid #123030;display:flex;align-items:center}
+ .viFunnel b{font-size:15px}.viFunnel span{font-size:7px}
+ .viStats{flex:0 0 66px;height:66px;margin:0;gap:9px}
+ .viStats button{height:66px;padding:10px 13px;border-radius:12px}
+ .viStats span{font-size:8px}.viStats b{font-size:20px;margin:2px 0}.viStats small{font-size:8px}
+ .viToolbar{flex:0 0 38px;height:38px;margin:0;align-items:center}
+ .viSearch{width:320px}.viSearch input{height:34px;padding:7px 10px;font-size:10px}
+ .viFilters button{height:30px;padding:5px 10px;font-size:8px}
+ .viGrid{flex:1 1 auto;min-height:0;height:auto;grid-template-columns:270px minmax(560px,1fr) 270px;gap:9px}
+ .viThreads,.viConversation,.viCRM{min-height:0;border-radius:12px;overflow:hidden}
+ .viThreads{overflow-y:auto}.viThreads>button{padding:11px}.viAvatar{width:34px;height:34px;flex-basis:34px}
+ .viThreadHead{height:58px;padding:10px 14px}
+ .viMessages{height:calc(100% - 118px);overflow-y:auto;padding:12px 14px}
+ .msg{font-size:10px;line-height:1.42;padding:8px 10px;margin:6px 0;max-width:80%}.msg small,.msg time{font-size:7px}
+ .viConversation form{height:60px;padding:7px 9px}.viComposer textarea{font-size:10px;padding:8px 10px}.viComposer button{padding:0 15px;font-size:8px}
+ .viCRM{padding:13px;overflow-y:auto}.viCRM>small{font-size:8px}.viCRM h3{font-size:17px;margin:4px 0 10px}
+ .viCRM label{font-size:8px;margin:8px 0}.viCRM select,.viCRM textarea{font-size:9px;padding:7px 8px;margin-top:4px}.viCRM textarea{height:58px}
+ .viLeadMeter span{font-size:8px}.viClose{padding:8px;font-size:8px}.viActions{margin-top:9px!important}.viActions button{padding:7px!important;font-size:7px!important}
+ .viAIReason{margin-top:9px;padding-top:8px}.viAIReason p{font-size:8px;line-height:1.35;margin:5px 0}
 }
