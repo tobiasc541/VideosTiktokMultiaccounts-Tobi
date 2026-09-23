@@ -35,7 +35,8 @@ export default function CreatorAIStudio({enabled,reelsEnabled}:{enabled:boolean;
  function useForPublishing(){
   try{
    const ready=slides.filter(s=>s.image&&s.storagePath);
-   if(ready.length<2){setError("El carrusel todavía no está listo para publicar.");return}
+   if(!ready.length){setError("La placa todavía no terminó de prepararse para publicar.");return}
+   if(ready.length!==slides.length){setError("Esperá a que todas las placas terminen de prepararse antes de publicar.");return}
    const payload={version:2,createdAt:Date.now(),slides:ready.map((s,i)=>({index:i,title:s.title,copy:s.copy,role:s.role,image:s.image,storagePath:s.storagePath})),caption:[slides.map(s=>s.title).filter(Boolean).join(" · "),cta].filter(Boolean).join(String.fromCharCode(10,10)),business,offer,audience,goal,cta,scheduleAt};
    sessionStorage.setItem("vyral:creator-ai-publication",JSON.stringify(payload));
    window.location.href="/?section=publish&source=creator-ai";
