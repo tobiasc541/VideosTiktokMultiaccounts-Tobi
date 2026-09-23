@@ -64,9 +64,11 @@ export async function GET(req:Request){
           const voice=chooseVoice(a,body)||((a.voiceEnabled&&priorAgentMessages<=1&&Array.isArray(a.voiceAssets))?a.voiceAssets.find((v:any)=>v?.url):null);
           if(reply){
             const sent=await send(account,person,reply);
-            if(voice){const audioUrl=await signedMedia(db,String(voice.url));if(audioUrl){try{await Promise.race([sendAttachment(account,person,"audio",audioUrl),new Promise((_,reject)=>setTimeout(()=>reject(new Error("audio_timeout")),8000))])}catch{ /* audio failure must never block the text conversation */ }}}
+            // Audio delivery is intentionally decoupled from the reply hot path.
+            // Instagram's official Send API does not document arbitrary audio/file attachments.
+            // Keep DM continuation reliable while audio transport is validated separately.
             if(asksResource&&a.resourceUrl){const resourceUrl=await signedMedia(db,String(a.resourceUrl),604800);if(resourceUrl)await sendAttachment(account,person,resourceType(String(a.resourceName||a.resourceUrl)),resourceUrl)}
-            await db.from("instagram_automation_runs").update({status:"sent",private_message_id:String(sent.message_id||"")||null,updated_at:new Date().toISOString(),detail:{source:"instagram_conversations_poll",continueConversation:true,resourceResent:Boolean(asksResource&&a.resourceUrl),voiceSent:voice?.id||null}}).eq("id",ins.data?.id);
+            await db.from("instagram_automation_runs").update({status:"sent",private_message_id:String(sent.message_id||"")||null,updated_at:new Date().toISOString(),detail:{source:"instagram_conversations_poll",continueConversation:true,resourceResent:Boolean(asksResource&&a.resourceUrl),voiceSelected:voice?.id||null,voiceSent:null}}).eq("id",ins.data?.id);
             results.push({account:account.id,person,status:"sent"});
           }
         }catch(e:any){
