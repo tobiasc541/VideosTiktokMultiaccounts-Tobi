@@ -53,18 +53,14 @@ export async function GET(req:Request){
         const exists=await db.from("instagram_automation_runs").select("id").eq("comment_id",synthetic).maybeSingle();if(exists.data)continue;
         const prior=(recent.data||[]).find((x:any)=>String(x.commenter_id)===person);
         const a=rules.find((x:any)=>x.id===prior?.automation_id)||rules[0];if(!a)continue;
-        const hist=await db.from("instagram_automation_runs").select("comment_text,created_at").eq("account_id",account.id).eq("commenter_id",person).order("created_at",{ascending:false}).limit(8);
-        const history=(hist.data||[]).slice().reverse().map((x:any)=>`Usuario: ${String(x.comment_text||"")}`).join("\n").slice(-4000);
+        const hist=await db.from("vyral_inbox_messages").select("body,direction,created_at").eq("account_id",account.id).eq("contact_id",person).order("created_at",{ascending:false}).limit(16);
+        const history=(hist.data||[]).slice().reverse().map((x:any)=>`${x.direction==="in"?"Usuario":"Agente"}: ${String(x.body||"")}`).join("\n").slice(-7000);
         const ins=await db.from("instagram_automation_runs").insert({user_id:account.user_id,account_id:account.id,automation_id:a.id,comment_id:synthetic,commenter_id:person,comment_text:body,status:"matched",detail:{source:"instagram_conversations_poll",continueConversation:true}}).select("id").maybeSingle();
         if(ins.error)continue;
         try{
           let reply=await aiReply(a,body,history);
-          const asksResource=/\b(reenvi|reenví|manda|mandá|envia|enviá|guia|guía|pdf|archivo|link|recurso)\b/i.test(body);
-          if(asksResource&&a.resourceUrl){
-            let url=String(a.resourceUrl);
-            if(url.startsWith("automation-resource/")){const signed=await db.storage.from("scheduled-media").createSignedUrl(url,604800);url=String(signed.data?.signedUrl||"")}
-            if(url)reply=`${reply}\n\n${a.resourceName||"Recurso"}: ${url}`.trim();
-          }
+          const asksResource=/\b(reenvi|reenví|manda|mandá|envia|enviá|guia|guía|pdf|archivo|link|recurso|catalogo|catálogo|ficha)\b/i.test(body);
+          const voice=chooseVoice(a,body);
           if(reply){
             const sent=await send(account,person,reply);
             if(voice){const audioUrl=await signedMedia(db,String(voice.url));if(audioUrl)await sendAttachment(account,person,"audio",audioUrl)}
