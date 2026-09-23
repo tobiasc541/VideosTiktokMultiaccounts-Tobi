@@ -63,7 +63,7 @@ export async function GET(req:Request){
           const voice=chooseVoice(a,body);
           if(reply){
             const sent=await send(account,person,reply);
-            if(voice){const audioUrl=await signedMedia(db,String(voice.url));if(audioUrl)await sendAttachment(account,person,"audio",audioUrl)}
+            if(voice){const audioUrl=await signedMedia(db,String(voice.url));if(audioUrl){try{await sendAttachment(account,person,"audio",audioUrl)}catch{ /* audio failure must not fail the text reply */ }}}
             if(asksResource&&a.resourceUrl){const resourceUrl=await signedMedia(db,String(a.resourceUrl),604800);if(resourceUrl)await sendAttachment(account,person,resourceType(String(a.resourceName||a.resourceUrl)),resourceUrl)}
             await db.from("instagram_automation_runs").update({status:"sent",private_message_id:String(sent.message_id||"")||null,updated_at:new Date().toISOString(),detail:{source:"instagram_conversations_poll",continueConversation:true,resourceResent:Boolean(asksResource&&a.resourceUrl),voiceSent:voice?.id||null}}).eq("id",ins.data?.id);
             results.push({account:account.id,person,status:"sent"});
