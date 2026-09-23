@@ -23,7 +23,7 @@ function automationAccess(meta:any){const plan=String(meta?.plan||"");const end=
 async function aiReply(a:any,text:string,history:string=""){
   const key=process.env.VYRAL_CREATOR_PRODUCTION;if(!key)return String(a.dmMessage||"Gracias por escribir. ¿En qué te puedo ayudar?");
   const prompt=`Sos el agente de Instagram de este negocio. Continuá la conversación por DM de forma breve, natural y útil. Conversación reciente REAL (Usuario y Agente): ${history||"Sin historial adicional"}. No repitas ofertas, promesas ni preguntas ya hechas. Adaptate a lo último que pidió el cliente. Si pide WhatsApp y está configurado, dáselo. Si pide audio, no prometas enviarlo: el sistema adjunta un audio grabado por separado. Mensaje nuevo: ${text}. Contexto: ${String(a.contentLabel||"")}. Objetivo: ${String(a.conversationGoal||"lead")}. Tono: ${String(a.aiTone||"natural")}. País: ${String(a.aiCountry||"")}. WhatsApp configurado: ${String(a.whatsappTarget||"No configurado")}. CTA: ${String(a.ctaText||"")}. Reglas: ${String(a.aiInstructions||"")}. Recordá lo ya dicho y no repitas respuestas ni instrucciones. Si pide que vuelvas a enviar el recurso, confirmalo brevemente y no le pidas que vuelva a comentar. No inventes precios, condiciones ni datos. Hacé como máximo una pregunta. Respondé SOLO el texto a enviar.`;
-  const r=await fetch("https://api.openai.com/v1/responses",{method:"POST",headers:{Authorization:`Bearer ${key}`,"Content-Type":"application/json"},body:JSON.stringify({model:"gpt-5.6-luna",input:prompt,max_output_tokens:250})}),j=await r.json().catch(()=>({}));
+  const r=await fetch("https://api.openai.com/v1/responses",{method:"POST",headers:{Authorization:`Bearer ${key}`,"Content-Type":"application/json"},body:JSON.stringify({model:"gpt-5.6-luna",input:prompt,max_output_tokens:250}),signal:AbortSignal.timeout(12000)}),j=await r.json().catch(()=>({}));
   if(!r.ok)return String(a.dmMessage||"Gracias por escribir. ¿En qué te puedo ayudar?");
   let out=String(j.output_text||"");if(!out)for(const x of j.output||[])for(const z of x.content||[])if(z.type==="output_text")out+=z.text||"";
   return out.trim().slice(0,1800);
@@ -58,13 +58,13 @@ export async function GET(req:Request){
         const ins=await db.from("instagram_automation_runs").insert({user_id:account.user_id,account_id:account.id,automation_id:a.id,comment_id:synthetic,commenter_id:person,comment_text:body,status:"matched",detail:{source:"instagram_conversations_poll",continueConversation:true}}).select("id").maybeSingle();
         if(ins.error)continue;
         try{
-          let reply=await aiReply(a,body,history);
+          let reply="";try{reply=await aiReply(a,body,history)}catch{reply=String(a.dmMessage||"Gracias por escribir. ¿En qué te puedo ayudar?")}
           const asksResource=/\b(reenvi|reenví|manda|mandá|envia|enviá|guia|guía|pdf|archivo|link|recurso|catalogo|catálogo|ficha)\b/i.test(body);
           const priorAgentMessages=(hist.data||[]).filter((x:any)=>x.direction==="out").length;
           const voice=chooseVoice(a,body)||((a.voiceEnabled&&priorAgentMessages<=1&&Array.isArray(a.voiceAssets))?a.voiceAssets.find((v:any)=>v?.url):null);
           if(reply){
             const sent=await send(account,person,reply);
-            if(voice){const audioUrl=await signedMedia(db,String(voice.url));if(audioUrl){try{await sendAttachment(account,person,"audio",audioUrl)}catch{ /* audio failure must not fail the text reply */ }}}
+            if(voice){const audioUrl=await signedMedia(db,String(voice.url));if(audioUrl){try{await Promise.race([sendAttachment(account,person,"audio",audioUrl),new Promise((_,reject)=>setTimeout(()=>reject(new Error("audio_timeout")),8000))])}catch{ /* audio failure must never block the text conversation */ }}}
             if(asksResource&&a.resourceUrl){const resourceUrl=await signedMedia(db,String(a.resourceUrl),604800);if(resourceUrl)await sendAttachment(account,person,resourceType(String(a.resourceName||a.resourceUrl)),resourceUrl)}
             await db.from("instagram_automation_runs").update({status:"sent",private_message_id:String(sent.message_id||"")||null,updated_at:new Date().toISOString(),detail:{source:"instagram_conversations_poll",continueConversation:true,resourceResent:Boolean(asksResource&&a.resourceUrl),voiceSent:voice?.id||null}}).eq("id",ins.data?.id);
             results.push({account:account.id,person,status:"sent"});
