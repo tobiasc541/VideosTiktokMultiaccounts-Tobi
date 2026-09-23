@@ -3,6 +3,7 @@ import VyralSidebar from "../ui/VyralSidebar";
 import "../ui/dashboard.css";
 import "../ui/dashboard-addons.css";
 import { FormEvent, MouseEvent, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 type Handoff={id:string;contact_id:string;contact_username?:string|null;reason?:string|null;lead_score:number;last_message?:string|null;status:string;stage?:string;priority?:string;assigned_to?:string|null;notes?:string|null;unread?:boolean;updated_at?:string};
 type Message={id:string;body:string;direction:"in"|"out";sender_type:"contact"|"ai"|"human"|"system";created_at?:string};
@@ -11,12 +12,13 @@ const stages:Record<string,string>={new:"Nuevo",contacted:"Contactado",qualified
 const fallbackSeries=[8,18,13,31,24,46,38,61,51,76,68,91];
 
 export default function Inbox(){
- const automation=typeof window!=="undefined"?new URLSearchParams(window.location.search).get("automation")||"":"";
+ const searchParams=useSearchParams();
+ const automation=searchParams.get("automation")||"";
  const[handoffs,setHandoffs]=useState<Handoff[]>([]),[selected,setSelected]=useState<Handoff|null>(null),[messages,setMessages]=useState<Message[]>([]),[message,setMessage]=useState(""),[search,setSearch]=useState(""),[filter,setFilter]=useState("open"),[sending,setSending]=useState(false),[stats,setStats]=useState<Stats>({total:0,hot:0,unread:0,human:0}),[notes,setNotes]=useState(""),[analytics,setAnalytics]=useState<Analytics>({conversations:0,interested:0,hot:0,whatsapp:0,goals:0,human:0,conversion:0,series:[]}),[days,setDays]=useState(30),[hover,setHover]=useState<{x:number;y:number;value:number;index:number}|null>(null);
  async function loadAnalytics(period=days){const r=await fetch("/api/inbox?analytics=1&days="+period+(automation?"&automation="+encodeURIComponent(automation):""),{cache:"no-store"});if(r.ok)setAnalytics(await r.json())}
  async function load(){const r=await fetch("/api/inbox"+(automation?"?automation="+encodeURIComponent(automation):""),{cache:"no-store"});if(!r.ok)return;const d=await r.json();setHandoffs(d.handoffs||[]);setStats(d.stats||{total:0,hot:0,unread:0,human:0})}
  async function thread(h:Handoff){setSelected(h);setNotes(h.notes||"");const r=await fetch("/api/inbox?contact="+encodeURIComponent(h.contact_id)+(automation?"&automation="+encodeURIComponent(automation):""),{cache:"no-store"});if(r.ok){const d=await r.json();setMessages(d.messages||[])}}
- useEffect(()=>{void load();void loadAnalytics();const t=window.setInterval(()=>void load(),8000);return()=>window.clearInterval(t)},[]);
+ useEffect(()=>{void load();void loadAnalytics();const t=window.setInterval(()=>void load(),8000);return()=>window.clearInterval(t)},[automation]);
  const visible=useMemo(()=>handoffs.filter(h=>{const q=search.toLowerCase();const matches=!q||String(h.contact_username||h.contact_id).toLowerCase().includes(q)||String(h.last_message||"").toLowerCase().includes(q);const f=filter==="all"||filter==="hot"?h.status==="open"&&h.lead_score>=75:filter==="unread"?h.status==="open"&&h.unread:filter==="resolved"?h.status==="resolved":h.status==="open";return matches&&f}),[handoffs,search,filter]);
  async function send(e:FormEvent){e.preventDefault();if(!selected||!message.trim()||sending)return;setSending(true);try{const r=await fetch("/api/inbox",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({handoffId:selected.id,message:message.trim()})});if(r.ok){setMessage("");await thread(selected);await load()}}finally{setSending(false)}}
  async function event(eventType:string){if(!selected)return;const r=await fetch("/api/inbox",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"event",id:selected.id,eventType})});if(r.ok){await load();await loadAnalytics()}}
