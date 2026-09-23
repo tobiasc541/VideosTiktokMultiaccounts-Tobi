@@ -27,6 +27,7 @@ export default function MetaInstagramAccounts() {
   const [selectedInstagram, setSelectedInstagram] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [limit, setLimit] = useState(0);
+  const [repairing, setRepairing] = useState<string | null>(null);
 
   async function loadAccounts() {
     setLoading(true);
@@ -114,6 +115,25 @@ export default function MetaInstagramAccounts() {
     if (response.ok) setAccounts((current) => current.filter((account) => account.id !== id));
   }
 
+  async function repairInstagram(id: string) {
+    setRepairing(id);
+    try {
+      const response = await fetch("/api/meta/instagram/accounts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "repair_webhook", id }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || "No se pudo reparar la recepción de mensajes.");
+      window.alert("Mensajería de Instagram resincronizada con Meta. Ya podés probar un DM.");
+      await loadAccounts();
+    } catch (error: any) {
+      window.alert(error?.message || "No se pudo reparar la recepción de mensajes.");
+    } finally {
+      setRepairing(null);
+    }
+  }
+
   function toggleInstagram(id: string) {
     setSelectedInstagram((current) => {
       const next = current.includes(id)
@@ -164,9 +184,19 @@ export default function MetaInstagramAccounts() {
                         CONECTADA
                       </small>
                     </div>
-                    <button onClick={() => void removeInstagram(account.id)} aria-label="Desconectar">
-                      ×
-                    </button>
+                    <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                      <button
+                        onClick={() => void repairInstagram(account.id)}
+                        disabled={repairing === account.id}
+                        title="Reconstruir la suscripción de mensajes con Meta sin desconectar la cuenta"
+                        aria-label="Reparar mensajería"
+                      >
+                        {repairing === account.id ? "…" : "↻"}
+                      </button>
+                      <button onClick={() => void removeInstagram(account.id)} aria-label="Desconectar">
+                        ×
+                      </button>
+                    </div>
                   </article>
                 ))
               ) : (
