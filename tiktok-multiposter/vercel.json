@@ -12,10 +12,5 @@
       "path": "/api/cron/instagram-token-refresh",
       "schedule": "17 3 * * *"
     }
-  ],
-  "functions": {
-    "app/api/meta/instagram/test-audio/route.ts": {
-      "includeFiles": "node_modules/ffmpeg-static/ffmpeg"
-    }
-  }
+  ]
 }
