@@ -62,3 +62,13 @@
 .caiMetrics{position:absolute!important;left:7px;right:7px;bottom:7px;z-index:3;display:flex!important;flex-direction:row!important;gap:4px;padding:0!important}.caiMetrics em{padding:4px 5px;border:1px solid rgba(255,255,255,.13);border-radius:999px;background:rgba(0,0,0,.68);backdrop-filter:blur(8px);color:#fff;font-size:6.5px;font-style:normal;font-weight:750;white-space:nowrap}
 .caiStyleGrid button>i{z-index:5}
 @media(max-width:600px){.caiStyleSection{padding:11px}.caiStyleCatalog{gap:18px}.caiViralBadge{font-size:6.5px!important}.caiMetrics em{font-size:6px}}
+
+/* Metrics live outside artwork: image remains 100% unobstructed */
+.caiStyleGrid>button{overflow:hidden}
+.caiCardBadge{display:block;align-self:flex-start;margin:9px 9px 7px;padding:5px 8px;border:1px solid #244640;border-radius:999px;background:#0b1715;color:#dffbf7!important;font-size:8px!important;font-weight:800;line-height:1;white-space:nowrap}
+.caiStyleMedia{position:relative;width:100%;aspect-ratio:4/5;overflow:hidden;background:#0a0f0f}
+.caiStyleGrid .caiStyleMedia>img{display:block;width:100%;height:100%;object-fit:contain;object-position:center;background:#0a0f0f}
+.caiMetricsRow{display:flex!important;flex-direction:row!important;align-items:center;justify-content:flex-start;gap:8px;padding:8px 10px!important;border-top:1px solid #102421;border-bottom:1px solid #102421;background:#050b0a;overflow:hidden}
+.caiMetricsRow em{min-width:0;color:#829491;font-size:10px;font-style:normal;font-weight:650;line-height:1;white-space:nowrap}
+.caiViralBadge,.caiMetrics{display:none!important}
+@media(max-width:600px){.caiCardBadge{font-size:7px!important;margin:7px 7px 6px}.caiMetricsRow{gap:5px;padding:7px 8px!important}.caiMetricsRow em{font-size:8px}}
