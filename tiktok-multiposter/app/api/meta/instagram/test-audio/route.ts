@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../../../lib/supabase-admin";
+import { getCustomerSession } from "../../../../../lib/auth";
 import ffmpegPath from "ffmpeg-static";
 import { spawn } from "node:child_process";
 import { promises as fs } from "node:fs";
@@ -22,15 +23,18 @@ function runFfmpeg(input:string,output:string){
 }
 
 export async function POST(req:Request){
-  const secret=process.env.CRON_SECRET;
-  if(!secret||req.headers.get("authorization")!==`Bearer ${secret}`)return NextResponse.json({error:"No autorizado"},{status:401});
+  const session=await getCustomerSession();
+  if(!session)return NextResponse.json({error:"No autorizado"},{status:401});
   const body=await req.json().catch(()=>({}));
-  const accountId=String(body.accountId||""),recipient=String(body.recipient||""),storagePath=String(body.storagePath||"");
-  if(!accountId||!recipient||!storagePath)return NextResponse.json({error:"accountId, recipient y storagePath son obligatorios"},{status:400});
+  const automationId=String(body.automationId||""),storagePath=String(body.storagePath||"");
+  if(!automationId||!storagePath)return NextResponse.json({error:"automationId y storagePath son obligatorios"},{status:400});
 
   const db=supabaseAdmin();
-  const q=await db.from("meta_instagram_accounts").select("instagram_user_id,access_token,user_id").eq("id",accountId).maybeSingle();
-  if(q.error||!q.data)return NextResponse.json({error:"Cuenta no encontrada"},{status:404});
+  const q=await db.from("meta_instagram_accounts").select("id,instagram_user_id,access_token,user_id").eq("user_id",session.userId).limit(1).maybeSingle();
+  if(q.error||!q.data)return NextResponse.json({error:"Cuenta de Instagram no encontrada"},{status:404});
+  const last=await db.from("instagram_automation_runs").select("commenter_id").eq("user_id",session.userId).eq("automation_id",automationId).not("commenter_id","is",null).order("created_at",{ascending:false}).limit(1).maybeSingle();
+  const recipient=String(last.data?.commenter_id||"");
+  if(!recipient)return NextResponse.json({error:"Todavía no hay una conversación de Instagram para probar este agente."},{status:400});
 
   const dl=await db.storage.from("scheduled-media").download(storagePath);
   if(dl.error||!dl.data)return NextResponse.json({error:"No se pudo leer el audio",detail:dl.error?.message},{status:400});
