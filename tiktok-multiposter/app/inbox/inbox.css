@@ -49,3 +49,33 @@
 }
 
 .viMedia{display:block;margin:2px 0 8px;max-width:420px}.viMedia img{display:block;width:100%;max-height:360px;object-fit:contain;border-radius:10px;border:1px solid #1b3939;background:#030808}.viFile{display:inline-block;margin:2px 0 8px;color:#58eee5;font-size:10px;text-decoration:none;border:1px solid #24504f;border-radius:8px;padding:7px 9px}
+
+/* 100% desktop viewport: keep the entire CRM above the fold */
+@media(min-width:1160px) and (min-height:700px){
+ .viShell{height:100vh;overflow:hidden}
+ .vi{height:100vh;overflow:hidden;padding:12px 22px 14px}
+ .viHero{height:44px}
+ .viHero small{font-size:7px}.viHero h1{font-size:21px;line-height:1.05;margin:2px 0}.viHero p{font-size:9px}
+ .viLive{padding:5px 9px;font-size:7px}
+ .viAnalyticsCard{height:142px;grid-template-columns:150px 1fr;column-gap:10px}
+ .viAnalyticsHead{padding:6px 0}.viAnalyticsHead small{font-size:7px}.viAnalyticsHead h2{font-size:14px}.viAnalyticsHead select{padding:5px 7px;font-size:8px}
+ .viChart{min-height:92px}.viChartTop{padding:7px 10px!important}.viChartPlot{height:72px!important}
+ .viFunnel{height:34px;margin:3px 0 4px;padding:5px 9px;border-radius:9px}.viFunnel b{font-size:14px}.viFunnel span{font-size:6px}
+ .viStats{height:58px;margin:6px 0;gap:7px}.viStats button{padding:7px 10px}.viStats span{font-size:7px}.viStats b{font-size:17px;margin:1px 0}.viStats small{font-size:7px}
+ .viToolbar{height:34px;margin-bottom:6px}.viSearch{width:300px}.viSearch input{padding:6px;font-size:9px}.viFilters button{padding:5px 8px;font-size:8px}
+ .viGrid{height:calc(100vh - 304px);min-height:0;gap:7px;grid-template-columns:260px minmax(500px,1fr) 245px}
+ .viThreads,.viConversation,.viCRM{border-radius:11px}
+ .viThreads>button{padding:10px}.viAvatar{width:30px;height:30px;flex-basis:30px}
+ .viThreadHead{height:48px;padding:8px 12px}.viMessages{height:calc(100% - 102px);padding:9px 12px}
+ .msg{font-size:10px;padding:7px 9px;margin:5px 0;max-width:78%}.msg small,.msg time{font-size:6px}
+ .viConversation form{height:54px;padding:6px}.viComposer textarea{padding:7px;font-size:10px}.viComposer button{padding:0 13px;font-size:8px}
+ .viCRM{padding:11px}.viCRM>small{font-size:7px}.viCRM h3{font-size:15px;margin:3px 0 8px}
+ .viCRM label{font-size:7px;margin:6px 0}.viCRM select,.viCRM textarea{padding:6px;font-size:9px;margin-top:3px}.viCRM textarea{height:48px}
+ .viLeadMeter span{font-size:8px}.viLeadMeter>div{margin-top:4px}
+ .viClose{padding:8px;font-size:7px}.viActions{margin-top:8px!important}.viActions button{padding:6px!important;font-size:7px!important}
+ .viAIReason{margin-top:7px;padding-top:7px}.viAIReason p{font-size:8px;line-height:1.3;margin:5px 0}
+}
+@media(min-width:1160px) and (max-height:800px){
+ .viAnalyticsCard{height:112px}.viChartPlot{height:52px!important}.viFunnel{height:29px}
+ .viStats{height:50px}.viGrid{height:calc(100vh - 262px)}
+}
