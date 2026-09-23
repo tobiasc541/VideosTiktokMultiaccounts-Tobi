@@ -1,6 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCustomerSession } from "../../../lib/auth";
 import { supabaseAdmin } from "../../../lib/supabase-admin";
+import ffmpegPath from "ffmpeg-static";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+export const runtime = "nodejs";
+const execFileAsync = promisify(execFile);
+const GRAPH = "https://graph.instagram.com";
+const VER = process.env.META_GRAPH_API_VERSION || "v24.0";
+
+async function convertVoiceToM4a(input:Buffer, ext="webm") {
+  if (!ffmpegPath) throw new Error("FFmpeg no disponible en el servidor");
+  const dir=await mkdtemp(join(tmpdir(),"vyral-voice-"));
+  const src=join(dir,`input.${ext.replace(/[^a-z0-9]/gi,"")||"webm"}`),out=join(dir,"voice.m4a");
+  try{await writeFile(src,input);await execFileAsync(ffmpegPath,["-y","-i",src,"-vn","-c:a","aac","-b:a","96k","-ar","44100","-ac","1",out],{timeout:25000});return await readFile(out)}finally{await rm(dir,{recursive:true,force:true})}
+}
+async function sendAudio(account:any,to:string,url:string){
+  const r=await fetch(`${GRAPH}/${VER}/${encodeURIComponent(account.instagram_user_id)}/messages`,{method:"POST",headers:{Authorization:`Bearer ${account.access_token}`,"Content-Type":"application/json"},body:JSON.stringify({recipient:{id:to},message:{attachment:{type:"audio",payload:{url,is_reusable:true}}}}),cache:"no-store"});
+  const j=await r.json().catch(()=>({}));if(!r.ok||j.error)throw new Error(j.error?.message||`Instagram HTTP ${r.status}`);return j;
+}
 
 export const dynamic = "force-dynamic";
 
@@ -57,8 +79,31 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const session = await inboxSession();
   if (!session) return NextResponse.json({ error: "VYRAL Inbox no está habilitado en este plan" }, { status: 403 });
-  const body = await req.json();
+  const contentType=req.headers.get("content-type")||"";
   const db = supabaseAdmin();
+  if(contentType.includes("multipart/form-data")){
+    const form=await req.formData(),action=String(form.get("action")||"");
+    if(action!=="audio")return NextResponse.json({error:"Acción inválida"},{status:400});
+    const handoffId=String(form.get("handoffId")||""),file=form.get("audio");
+    if(!(file instanceof File)||!handoffId)return NextResponse.json({error:"Audio o conversación faltante"},{status:400});
+    const handoff=await db.from("vyral_handoffs").select("*").eq("id",handoffId).eq("user_id",session.userId).single();
+    if(handoff.error||!handoff.data)return NextResponse.json({error:"Conversación no encontrada"},{status:404});
+    const account=await db.from("meta_instagram_accounts").select("instagram_user_id,access_token").eq("id",handoff.data.account_id).eq("user_id",session.userId).single();
+    if(account.error||!account.data)return NextResponse.json({error:"Cuenta no disponible"},{status:404});
+    try{
+      const ext=(file.name.split(".").pop()||file.type.split("/").pop()||"webm").replace("x-m4a","m4a");
+      const converted=await convertVoiceToM4a(Buffer.from(await file.arrayBuffer()),ext);
+      const path=`${session.userId}/${handoff.data.account_id}/${Date.now()}-${crypto.randomUUID()}.m4a`;
+      const upload=await db.storage.from("voice-notes").upload(path,converted,{contentType:"audio/mp4",cacheControl:"3600",upsert:false});
+      if(upload.error)throw new Error(upload.error.message);
+      const publicUrl=db.storage.from("voice-notes").getPublicUrl(path).data.publicUrl;
+      const sent=await sendAudio(account.data,handoff.data.contact_id,publicUrl);
+      await db.from("vyral_inbox_messages").insert({user_id:session.userId,account_id:handoff.data.account_id,contact_id:handoff.data.contact_id,contact_username:handoff.data.contact_username,message_id:String(sent.message_id||crypto.randomUUID()),body:"[Audio]",direction:"out",sender_type:"human",automation_id:handoff.data.automation_id,attachment_type:"audio",attachment_url:publicUrl,attachment_meta:{mime:"audio/mp4"}});
+      await db.from("vyral_handoffs").update({last_message:"[Audio]",unread:false,updated_at:new Date().toISOString()}).eq("id",handoff.data.id);
+      return NextResponse.json({ok:true,messageId:sent.message_id||null});
+    }catch(e:any){return NextResponse.json({error:String(e?.message||e)},{status:400})}
+  }
+  const body = await req.json();
 
   if (body.action === "event") {
     const handoff = await db.from("vyral_handoffs").select("account_id,contact_id,automation_id").eq("id", String(body.id)).eq("user_id", session.userId).single();
