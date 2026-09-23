@@ -118,3 +118,42 @@ export async function DELETE(req:Request){
   if(!q.data)return NextResponse.json({error:"Cuenta no encontrada."},{status:404});
   return NextResponse.json({ok:true});
 }
+
+
+export async function POST(req:Request){
+  const session=await getCustomerSession();
+  if(!session)return NextResponse.json({error:"No autorizado"},{status:401});
+  const body=await req.json().catch(()=>({}));
+  if(body?.action!=="repair_webhook"||!body?.id)return NextResponse.json({error:"Acción inválida."},{status:400});
+  const db=supabaseAdmin();
+  const q=await db.from("meta_instagram_accounts").select("id,user_id,instagram_user_id,access_token").eq("id",String(body.id)).eq("user_id",session.userId).maybeSingle();
+  if(q.error)return NextResponse.json({error:q.error.message},{status:500});
+  if(!q.data)return NextResponse.json({error:"Cuenta no encontrada."},{status:404});
+  const a=q.data;
+  try{
+    // Meta can retain a stale messaging delivery subscription even while GET
+    // reports the expected subscribed_fields. Rebuild the account subscription
+    // with the SAME long-lived token; this does not revoke OAuth or reconnect IG.
+    const delUrl=new URL(`https://graph.instagram.com/${VER}/${a.instagram_user_id}/subscribed_apps`);
+    delUrl.searchParams.set("access_token",a.access_token);
+    const {r:del,j:delJson}=await jsonFetch(delUrl,{method:"DELETE"});
+    if(!del.ok||delJson.error)throw new Error(delJson?.error?.message||`Instagram HTTP ${del.status}`);
+
+    const postUrl=new URL(`https://graph.instagram.com/${VER}/${a.instagram_user_id}/subscribed_apps`);
+    postUrl.searchParams.set("subscribed_fields",REQUIRED_FIELDS.join(","));
+    postUrl.searchParams.set("access_token",a.access_token);
+    const {r:post,j:postJson}=await jsonFetch(postUrl,{method:"POST"});
+    if(!post.ok||postJson.success!==true)throw new Error(postJson?.error?.message||`Instagram HTTP ${post.status}`);
+
+    const verify=await ensureWebhookSubscription(a);
+    await db.from("instagram_webhook_diagnostics").upsert({
+      account_id:a.id,user_id:a.user_id,checked_at:new Date().toISOString(),graph_version:VER,
+      subscription_ok:verify.ok,subscribed_fields:verify.fields,missing_fields:verify.missing,
+      subscription_error:verify.error
+    },{onConflict:"account_id"});
+    if(!verify.ok)throw new Error(verify.error||"Meta no confirmó la nueva suscripción.");
+    return NextResponse.json({ok:true,fields:verify.fields,repaired:true},{headers:{"Cache-Control":"private, no-store"}});
+  }catch(e:any){
+    return NextResponse.json({error:String(e?.message||e)},{status:502});
+  }
+}
