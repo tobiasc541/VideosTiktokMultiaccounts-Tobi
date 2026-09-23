@@ -98,3 +98,25 @@
 @media(min-width:1400px){.caiStyleGrid{grid-template-columns:repeat(4,minmax(165px,1fr))}}
 @media(max-width:900px){.caiStyleGrid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:600px){.caiStylePicker{padding:14px}.caiStyleSection{padding:12px}.caiStyleCatalog{gap:18px}.caiStyleGrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.caiStyleGrid>button{padding:10px;gap:8px}.caiTechBadge{font-size:7px;padding:4px 6px}.caiCardStats{gap:4px}.caiCardStats span{font-size:8px}.caiCardTitle b{font-size:10px}.caiCardTitle small{font-size:8px}}
+
+/* Wide creator studio composition — based on approved visual reference */
+.caiGrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;align-items:start;width:100%;max-width:none}
+.caiForm{display:contents}
+.caiForm>.caiPanelTitle,.caiForm>label,.caiForm>.caiTwo{grid-column:1}
+.caiForm>.caiPanelTitle{align-self:start}
+.caiForm>.caiStylePicker{grid-column:1/-1}
+.caiPanelTitle{display:flex;align-items:flex-start;gap:12px;padding:18px 20px 0}
+.caiPanelTitle h2{margin:0;color:#f7fbfa}.caiPanelTitle p{margin:5px 0 0;color:#7e9491;font-size:11px}
+.caiBrainIcon{display:flex;align-items:center;justify-content:center;width:30px;height:30px;font-size:22px;filter:saturate(.8)}
+.caiStylePicker{width:100%;max-width:none;padding:20px 22px;border:1px solid #17453f;border-radius:18px;background:linear-gradient(180deg,rgba(4,19,18,.72),rgba(2,10,9,.68));box-sizing:border-box;overflow:hidden}
+.caiStyleHead{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;width:100%;padding-bottom:14px}
+.caiStyleCount{display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex:0 0 auto}.caiStyleCount b{color:#eafffc;font-size:12px}.caiStyleCount small{color:#738b87;font-size:9px}
+.caiStyleCatalog{width:100%;max-width:none}
+.caiStyleSection{width:100%;max-width:none;padding:16px;box-sizing:border-box}
+.caiStyleGrid{grid-template-columns:repeat(8,minmax(0,1fr));gap:12px;width:100%;max-width:none}
+.caiStyleGrid>button{width:100%;min-width:0}
+.caiTechBadge{font-size:7px;letter-spacing:0;overflow:hidden;text-overflow:ellipsis}
+.caiCardStats{gap:4px}.caiCardStats span{font-size:8px}
+@media(max-width:1500px){.caiStyleGrid{grid-template-columns:repeat(6,minmax(0,1fr))}}
+@media(max-width:1180px){.caiGrid{grid-template-columns:1fr}.caiForm>.caiPanelTitle,.caiForm>label,.caiForm>.caiTwo,.caiForm>.caiStylePicker{grid-column:1}.caiStyleGrid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(max-width:760px){.caiStyleHead{align-items:flex-start;flex-direction:column}.caiStyleCount{align-items:flex-start}.caiStyleGrid{grid-template-columns:repeat(2,minmax(0,1fr))}.caiStylePicker{padding:14px}.caiPanelTitle{padding:14px 14px 0}}
