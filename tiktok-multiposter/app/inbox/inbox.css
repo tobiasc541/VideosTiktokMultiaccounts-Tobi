@@ -39,3 +39,7 @@
  .viHero h1{font-size:27px!important}.viAnalyticsCard{grid-template-rows:108px 36px}.viChartPlot{height:65px!important;min-height:65px!important}.viFunnel{height:36px}.viStats button{height:68px}.viToolbar{height:36px}
  .viConversation{grid-template-rows:52px minmax(0,1fr) 56px}
 }
+
+.viHumanBadge{display:inline-flex;align-items:center;width:max-content;margin-top:6px;padding:4px 7px;border:1px solid rgba(89,243,236,.24);border-radius:999px;background:rgba(89,243,236,.055);color:#8ff7f2;font-size:6.5px;font-style:normal;font-weight:800;letter-spacing:.09em}
+.viAudioSoon{flex:0 0 38px!important;width:38px!important;height:100%!important;padding:0!important;border:1px solid #214142!important;background:#0a191a!important;color:#6e8f90!important;border-radius:10px!important;font-size:15px!important;cursor:not-allowed!important;opacity:.75}
+.viAudioSoon:hover{color:#8aa9aa!important;border-color:#2b5051!important}
