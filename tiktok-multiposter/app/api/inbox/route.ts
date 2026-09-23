@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCustomerSession } from "../../../lib/auth";
 import { supabaseAdmin } from "../../../lib/supabase-admin";
 import ffmpegPath from "ffmpeg-static";
+import { existsSync } from "node:fs";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
@@ -15,6 +16,7 @@ const VER = process.env.META_GRAPH_API_VERSION || "v24.0";
 
 async function convertVoiceToM4a(input:Buffer, ext="webm") {
   if (!ffmpegPath) throw new Error("FFmpeg no disponible en el servidor");
+  if (!existsSync(ffmpegPath)) throw new Error(`FFmpeg no fue empaquetado en el deployment: ${ffmpegPath}`);
   const dir=await mkdtemp(join(tmpdir(),"vyral-voice-"));
   const src=join(dir,`input.${ext.replace(/[^a-z0-9]/gi,"")||"webm"}`),out=join(dir,"voice.m4a");
   try{await writeFile(src,input);await execFileAsync(ffmpegPath,["-y","-i",src,"-vn","-c:a","aac","-b:a","96k","-ar","44100","-ac","1",out],{timeout:25000});return await readFile(out)}finally{await rm(dir,{recursive:true,force:true})}
