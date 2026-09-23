@@ -18,11 +18,12 @@ export async function GET(req: NextRequest) {
   const contact = req.nextUrl.searchParams.get("contact");
   const automation = req.nextUrl.searchParams.get("automation");
   const analytics = req.nextUrl.searchParams.get("analytics");
+  const scopedAutomation = automation ? decodeURIComponent(automation).trim() : "";
   if (analytics === "1") {
     const days = Math.min(90, Math.max(1, Number(req.nextUrl.searchParams.get("days") || 30)));
     const since = new Date(Date.now() - days * 86400000).toISOString();
-    const leads = await db.from("vyral_handoffs").select("id,stage,lead_score,reason,created_at,updated_at").eq("user_id", session.userId).gte("created_at", since);
-    const events = await db.from("vyral_crm_events").select("event_type,created_at").eq("user_id", session.userId).gte("created_at", since);
+    let leadsQ = db.from("vyral_handoffs").select("id,stage,lead_score,reason,created_at,updated_at").eq("user_id", session.userId).gte("created_at", since); if(scopedAutomation) leadsQ=leadsQ.eq("automation_id",scopedAutomation); const leads=await leadsQ;
+    let eventsQ = db.from("vyral_crm_events").select("event_type,created_at").eq("user_id", session.userId).gte("created_at", since); if(scopedAutomation) eventsQ=eventsQ.eq("automation_id",scopedAutomation); const events=await eventsQ;
     const rows = leads.data || [], ev = events.data || [];
     const count = (type:string) => ev.filter((x) => x.event_type === type).length;
     const conversations = rows.length;
@@ -35,11 +36,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({days,conversations,interested,hot,whatsapp,goals,human:rows.filter((x)=>String(x.reason||"").toLowerCase().includes("persona")).length,conversion:conversations?Math.round(goals/conversations*1000)/10:0,series});
   }
   if (contact) {
-    let mq = db.from("vyral_inbox_messages").select("*").eq("user_id", session.userId).eq("contact_id", contact); if(automation) mq=mq.eq("automation_id",automation); const result = await mq.order("created_at", { ascending: true }).limit(200);
+    let mq = db.from("vyral_inbox_messages").select("*").eq("user_id", session.userId).eq("contact_id", contact); if(scopedAutomation) mq=mq.eq("automation_id",scopedAutomation); const result = await mq.order("created_at", { ascending: true }).limit(200);
     await db.from("vyral_handoffs").update({ unread: false }).eq("user_id", session.userId).eq("contact_id", contact).eq("status", "open");
     return NextResponse.json({ messages: result.data || [] });
   }
-  let hq=db.from("vyral_handoffs").select("*").eq("user_id",session.userId); if(automation) hq=hq.eq("automation_id",automation); const result=await hq.order("updated_at",{ascending:false}).limit(250);
+  let hq=db.from("vyral_handoffs").select("*").eq("user_id",session.userId); if(scopedAutomation) hq=hq.eq("automation_id",scopedAutomation); const result=await hq.order("updated_at",{ascending:false}).limit(250);
   const rows = result.data || [];
   return NextResponse.json({
     handoffs: rows,
