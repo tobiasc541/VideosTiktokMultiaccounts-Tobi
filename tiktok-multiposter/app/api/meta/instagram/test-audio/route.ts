@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../../../lib/supabase-admin";
 import { getCustomerSession } from "../../../../../lib/auth";
-import ffmpegPath from "ffmpeg-static";
+import ffmpegStatic from "ffmpeg-static";
 import { spawn } from "node:child_process";
 import { promises as fs } from "node:fs";
 import path from "node:path";
@@ -13,12 +13,16 @@ export const maxDuration = 60;
 const GRAPH="https://graph.instagram.com";
 const VER=process.env.META_GRAPH_API_VERSION||"v24.0";
 
+function resolveFfmpeg(){
+  const candidates=[ffmpegStatic,process.env.FFMPEG_PATH,"/usr/bin/ffmpeg","/usr/local/bin/ffmpeg"].filter(Boolean) as string[];
+  return candidates[0]||"ffmpeg";
+}
 function runFfmpeg(input:string,output:string){
   return new Promise<void>((resolve,reject)=>{
-    if(!ffmpegPath)return reject(new Error("ffmpeg-static unavailable"));
-    const p=spawn(ffmpegPath,["-y","-i",input,"-vn","-ac","1","-ar","48000","-c:a","aac","-b:a","128k",output]);
+    const bin=resolveFfmpeg();
+    const p=spawn(bin,["-y","-i",input,"-vn","-ac","1","-ar","48000","-c:a","aac","-b:a","128k","-movflags","+faststart",output]);
     let err=""; p.stderr.on("data",d=>err+=String(d));
-    p.on("error",reject); p.on("close",code=>code===0?resolve():reject(new Error(`ffmpeg exited ${code}: ${err.slice(-1200)}`)));
+    p.on("error",e=>reject(new Error(`No se pudo ejecutar FFmpeg (${bin}): ${e.message}`))); p.on("close",code=>code===0?resolve():reject(new Error(`ffmpeg exited ${code}: ${err.slice(-1200)}`)));
   });
 }
 
