@@ -33,7 +33,7 @@ export async function POST(req:Request){
   const accountId=String(body.accountId||"");
   const caption=String(body.caption||"").trim();
   const storagePaths=Array.isArray(body.storagePaths)?body.storagePaths.map(String).filter(Boolean):[];
-  if(!accountId||!caption||storagePaths.length<2||storagePaths.length>10)return NextResponse.json({error:"El carrusel necesita entre 2 y 10 imágenes y una descripción."},{status:400});
+  if(!accountId||!caption||storagePaths.length<1||storagePaths.length>10)return NextResponse.json({error:"La publicación necesita entre 1 y 10 imágenes y una descripción."},{status:400});
   const prefix=`${session.userId}/creator-ai/`;
   if(storagePaths.some((path:string)=>!path.startsWith(prefix)))return NextResponse.json({error:"Una o más placas no pertenecen a tu usuario."},{status:403});
 
@@ -49,25 +49,37 @@ export async function POST(req:Request){
    urls.push(signed.data.signedUrl);
   }
 
-  const children:string[]=[];
-  for(const imageUrl of urls){
-   const params=new URLSearchParams({image_url:imageUrl,is_carousel_item:"true",access_token:account.data.access_token});
-   const child=await graphJson(`${GRAPH}/${account.data.instagram_user_id}/media?${params}`,{method:"POST"});
-   if(!child.id)throw new Error("Instagram no devolvió un contenedor de imagen.");
-   const childId=String(child.id);
-   await waitForContainer(childId,account.data.access_token);
-   children.push(childId);
+  let creationId:string;
+  let kind:"image"|"carousel";
+  if(urls.length===1){
+   const params=new URLSearchParams({image_url:urls[0],caption,access_token:account.data.access_token});
+   const single=await graphJson(`${GRAPH}/${account.data.instagram_user_id}/media?${params}`,{method:"POST"});
+   if(!single.id)throw new Error("Instagram no devolvió un contenedor de imagen.");
+   creationId=String(single.id);
+   kind="image";
+   await waitForContainer(creationId,account.data.access_token);
+  }else{
+   const children:string[]=[];
+   for(const imageUrl of urls){
+    const params=new URLSearchParams({image_url:imageUrl,is_carousel_item:"true",access_token:account.data.access_token});
+    const child=await graphJson(`${GRAPH}/${account.data.instagram_user_id}/media?${params}`,{method:"POST"});
+    if(!child.id)throw new Error("Instagram no devolvió un contenedor de imagen.");
+    const childId=String(child.id);
+    await waitForContainer(childId,account.data.access_token);
+    children.push(childId);
+   }
+   const parentParams=new URLSearchParams({media_type:"CAROUSEL",children:children.join(","),caption,access_token:account.data.access_token});
+   const parent=await graphJson(`${GRAPH}/${account.data.instagram_user_id}/media?${parentParams}`,{method:"POST"});
+   if(!parent.id)throw new Error("Instagram no devolvió el contenedor del carrusel.");
+   creationId=String(parent.id);
+   kind="carousel";
+   await waitForContainer(creationId,account.data.access_token);
   }
 
-  const parentParams=new URLSearchParams({media_type:"CAROUSEL",children:children.join(","),caption,access_token:account.data.access_token});
-  const parent=await graphJson(`${GRAPH}/${account.data.instagram_user_id}/media?${parentParams}`,{method:"POST"});
-  if(!parent.id)throw new Error("Instagram no devolvió el contenedor del carrusel.");
-  await waitForContainer(String(parent.id),account.data.access_token);
-
-  const published=await graphJson(`${GRAPH}/${account.data.instagram_user_id}/media_publish?creation_id=${encodeURIComponent(parent.id)}&access_token=${encodeURIComponent(account.data.access_token)}`,{method:"POST"});
+  const published=await graphJson(`${GRAPH}/${account.data.instagram_user_id}/media_publish?creation_id=${encodeURIComponent(creationId)}&access_token=${encodeURIComponent(account.data.access_token)}`,{method:"POST"});
   const historyId=crypto.randomUUID();
-  await db.from("scheduled_publications").insert({id:historyId,user_id:session.userId,scheduled_at:new Date().toISOString(),timezone:"UTC",caption,privacy_level:"PUBLIC_TO_EVERYONE",platforms:["instagram"],targets:[{platform:"instagram",accountId,name:account.data.username}],storage_bucket:BUCKET,storage_path:storagePaths[0],mime_type:"image/webp",file_name:`Carrusel · ${storagePaths.length} imágenes`,file_size:0,status:"published",platform_results:{instagram:{mediaId:published.id||null,containerId:parent.id,kind:"carousel",storagePaths}}});
-  return NextResponse.json({ok:true,mediaId:published.id||null,containerId:parent.id,username:account.data.username,historyId});
+  await db.from("scheduled_publications").insert({id:historyId,user_id:session.userId,scheduled_at:new Date().toISOString(),timezone:"UTC",caption,privacy_level:"PUBLIC_TO_EVERYONE",platforms:["instagram"],targets:[{platform:"instagram",accountId,name:account.data.username}],storage_bucket:BUCKET,storage_path:storagePaths[0],mime_type:"image/webp",file_name:storagePaths.length===1?"Creator IA · 1 imagen":`Carrusel · ${storagePaths.length} imágenes`,file_size:0,status:"published",platform_results:{instagram:{mediaId:published.id||null,containerId:creationId,kind,storagePaths}}});
+  return NextResponse.json({ok:true,mediaId:published.id||null,containerId:creationId,kind,username:account.data.username,historyId});
  }catch(e:any){
   return NextResponse.json({error:e?.message||"No se pudo publicar el carrusel en Instagram."},{status:500});
  }
