@@ -16,14 +16,8 @@ async function jsonFetch(url:URL,init?:RequestInit){
 
 async function ensureWebhookSubscription(a:any){
   try{
-    const postUrl=new URL(`https://graph.instagram.com/${VER}/${a.instagram_user_id}/subscribed_apps`);
-    postUrl.searchParams.set("subscribed_fields",REQUIRED_FIELDS.join(","));
-    postUrl.searchParams.set("access_token",a.access_token);
-    const {r:post,j:postJson}=await jsonFetch(postUrl,{method:"POST"});
-    if(!post.ok||postJson.success!==true){
-      return {ok:false,fields:[],missing:REQUIRED_FIELDS,error:String(postJson?.error?.message||`Instagram HTTP ${post.status}`)};
-    }
-
+    // Diagnostics must be read-only. Subscriptions are created on OAuth connect
+    // and can be rebuilt explicitly with the repair action below.
     const getUrl=new URL(`https://graph.instagram.com/${VER}/${a.instagram_user_id}/subscribed_apps`);
     getUrl.searchParams.set("access_token",a.access_token);
     const {r:get,j:getJson}=await jsonFetch(getUrl);
@@ -145,6 +139,7 @@ export async function POST(req:Request){
     const {r:post,j:postJson}=await jsonFetch(postUrl,{method:"POST"});
     if(!post.ok||postJson.success!==true)throw new Error(postJson?.error?.message||`Instagram HTTP ${post.status}`);
 
+    // Verify with a single read after the explicit rebuild; don't POST again.
     const verify=await ensureWebhookSubscription(a);
     await db.from("instagram_webhook_diagnostics").upsert({
       account_id:a.id,user_id:a.user_id,checked_at:new Date().toISOString(),graph_version:VER,
