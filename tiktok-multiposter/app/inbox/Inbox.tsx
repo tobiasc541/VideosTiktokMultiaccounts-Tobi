@@ -31,8 +31,10 @@ export default function Inbox(){
   const code=await ffmpeg.exec(["-i","input.webm","-vn","-c:a","aac","-b:a","96k","-ar","44100","-ac","1","output.m4a"]);
   if(code!==0)throw new Error("No se pudo convertir el audio.");
   const data=await ffmpeg.readFile("output.m4a");
-  const u8=typeof data==="string"?new TextEncoder().encode(data):new Uint8Array(data.buffer,data.byteOffset,data.byteLength);
-  return new Blob([u8.buffer],{type:"audio/mp4"});
+  const source=typeof data==="string"?new TextEncoder().encode(data):data;
+  const bytes=new Uint8Array(source.byteLength);
+  bytes.set(source);
+  return new Blob([bytes.buffer as ArrayBuffer],{type:"audio/mp4"});
  }
  async function toggleAudio(){if(!selected||sending)return;if(recording){recorderRef.current?.stop();return}try{const stream=await navigator.mediaDevices.getUserMedia({audio:true});const rec=new MediaRecorder(stream);chunksRef.current=[];recorderRef.current=rec;rec.ondataavailable=e=>{if(e.data.size)chunksRef.current.push(e.data)};rec.onstop=async()=>{setRecording(false);stream.getTracks().forEach(t=>t.stop());const blob=new Blob(chunksRef.current,{type:rec.mimeType||"audio/webm"});if(!blob.size)return;setSending(true);try{const converted=await transcodeAudioInBrowser(blob);const fd=new FormData();fd.append("action","audio");fd.append("handoffId",selected.id);fd.append("audio",converted,"voice.m4a");const r=await fetch("/api/inbox",{method:"POST",body:fd});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||"No se pudo enviar el audio");await thread(selected);await load()}catch(e:any){window.alert(e?.message||"No se pudo enviar el audio")}finally{setSending(false)}};rec.start();setRecording(true)}catch{window.alert("No se pudo acceder al micrófono.")}}
  async function event(eventType:string){if(!selected)return;const r=await fetch("/api/inbox",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"event",id:selected.id,eventType})});if(r.ok){const d=await r.json();if(d.handoff)setSelected(d.handoff);await load();await loadAnalytics()}}
