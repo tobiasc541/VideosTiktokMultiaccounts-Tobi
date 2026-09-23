@@ -41,7 +41,13 @@ const STYLE_IDEA_FORBIDDEN:Record<string,string>={
 
 function parseIdeas(value:string){
  const raw=value.trim().replace(/^\`\`\`(?:json)?\s*/i,"").replace(/\s*\`\`\`$/,"");
- const parsed=JSON.parse(raw);
+ if(!raw)throw new Error("La IA devolvió una respuesta vacía.");
+ let parsed:any;
+ try{parsed=JSON.parse(raw)}catch{
+  const start=raw.indexOf("{"),end=raw.lastIndexOf("}");
+  if(start<0||end<=start)throw new Error("La IA devolvió ideas en un formato incompleto.");
+  parsed=JSON.parse(raw.slice(start,end+1));
+ }
  const ideas=Array.isArray(parsed)?parsed:parsed?.ideas;
  if(!Array.isArray(ideas))throw new Error("La IA no devolvió una lista de ideas válida.");
  return ideas.slice(0,8);
@@ -87,7 +93,7 @@ No inventes precio, métricas, testimonios ni características ausentes. Prioriz
      model:process.env.VYRAL_TEXT_MODEL||"gpt-5.6-sol",
      messages:[{role:"user",content:prompt}],
      response_format:{type:"json_object"},
-     max_completion_tokens:3000
+     max_completion_tokens:6000
     })
    });
   }finally{clearTimeout(timer)}
@@ -97,7 +103,14 @@ No inventes precio, métricas, testimonios ni características ausentes. Prioriz
   try{j=JSON.parse(raw)}catch{throw new Error(`El proveedor de IA respondió en un formato inválido (HTTP ${r.status}).`)}
   if(!r.ok)throw new Error(j.error?.message||`No se pudieron crear ideas (HTTP ${r.status}).`);
   const content=String(j.choices?.[0]?.message?.content||"");
-  return NextResponse.json({ideas:parseIdeas(content)});
+  let ideas:any[];
+  try{ideas=parseIdeas(content)}catch(firstError:any){
+   const retry=await fetch("https://api.openai.com/v1/chat/completions",{method:"POST",headers:{Authorization:`Bearer ${key}`,"Content-Type":"application/json"},body:JSON.stringify({model:process.env.VYRAL_TEXT_MODEL||"gpt-5.6-sol",messages:[{role:"user",content:prompt+"\\n\\nIMPORTANTE: devolvé JSON válido y compacto. No agregues explicaciones fuera del JSON."}],response_format:{type:"json_object"},max_completion_tokens:6000})});
+   const retryRaw=await retry.text();let retryJson:any;try{retryJson=JSON.parse(retryRaw)}catch{throw firstError}
+   if(!retry.ok)throw firstError;
+   ideas=parseIdeas(String(retryJson.choices?.[0]?.message?.content||""));
+  }
+  return NextResponse.json({ideas});
  }catch(e:any){
   const message=e?.name==="AbortError"?"La IA tardó demasiado en responder. Intentá nuevamente; la solicitud anterior fue cancelada.":e?.message||"No se pudieron crear ideas.";
   return NextResponse.json({error:message},{status:e?.name==="AbortError"?504:500});
