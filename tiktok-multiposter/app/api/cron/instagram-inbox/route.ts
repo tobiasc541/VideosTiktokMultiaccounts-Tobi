@@ -82,6 +82,8 @@ export async function GET(req:Request){
         const exists=await db.from("instagram_automation_runs").select("id").eq("comment_id",synthetic).maybeSingle();if(exists.data)continue;
         const prior=(recent.data||[]).find((x:any)=>String(x.commenter_id)===person);
         const a=rules.find((x:any)=>x.id===prior?.automation_id)||rules[0];if(!a)continue;
+        const origin=await db.from("instagram_automation_runs").select("media_id,commenter_username").eq("account_id",account.id).eq("automation_id",a.id).eq("commenter_id",person).not("media_id","is",null).order("created_at",{ascending:false}).limit(1).maybeSingle();
+        const mediaId=String(origin.data?.media_id||""),username=String(origin.data?.commenter_username||"")||null;
         const hist=await db.from("vyral_inbox_messages").select("body,direction,created_at").eq("account_id",account.id).eq("contact_id",person).order("created_at",{ascending:false}).limit(16);
         const history=(hist.data||[]).slice().reverse().map((x:any)=>`${x.direction==="in"?"Usuario":"Agente"}: ${String(x.body||"")}`).join("\n").slice(-7000);
         const ins=await db.from("instagram_automation_runs").insert({user_id:account.user_id,account_id:account.id,automation_id:a.id,comment_id:synthetic,commenter_id:person,comment_text:body,status:"matched",detail:{source:"instagram_conversations_poll",continueConversation:true}}).select("id").maybeSingle();
@@ -92,8 +94,15 @@ export async function GET(req:Request){
           const priorAgentMessages=(hist.data||[]).filter((x:any)=>x.direction==="out").length;
           const voice=chooseVoice(a,body)||((a.voiceEnabled&&priorAgentMessages<=1&&Array.isArray(a.voiceAssets))?a.voiceAssets.find((v:any)=>v?.url):null);
           if(!reply)reply="Sí, te leo. Contame qué necesitás y seguimos por acá.";
+          await db.from("vyral_inbox_messages").upsert({user_id:account.user_id,account_id:account.id,contact_id:person,contact_username:username,message_id:mid,body,direction:"in",sender_type:"contact",automation_id:a.id},{onConflict:"message_id",ignoreDuplicates:true});
           {
             const sent=await send(account,person,reply);
+            await db.from("vyral_inbox_messages").upsert({user_id:account.user_id,account_id:account.id,contact_id:person,contact_username:username,message_id:String(sent.message_id||crypto.randomUUID()),body:reply,direction:"out",sender_type:"ai",automation_id:a.id},{onConflict:"message_id",ignoreDuplicates:true});
+            const score=/precio|compr|contrat|quiero|interesa|whatsapp|wsp|presupuesto/i.test(body)?80:/info|sirve|como|cómo|consulta|necesito/i.test(body)?60:35;
+            const reason=score>=75?"Alta intención detectada por VYRAL":score>=60?"Interés detectado por VYRAL":"Conversación activa";
+            const existing=await db.from("vyral_handoffs").select("id,stage,lead_score").eq("user_id",account.user_id).eq("account_id",account.id).eq("contact_id",person).eq("automation_id",a.id).limit(1).maybeSingle();
+            if(existing.data)await db.from("vyral_handoffs").update({contact_username:username||undefined,last_message:body,lead_score:Math.max(Number(existing.data.lead_score)||0,score),reason,unread:true,status:"open",updated_at:new Date().toISOString()}).eq("id",existing.data.id);
+            else await db.from("vyral_handoffs").insert({user_id:account.user_id,account_id:account.id,contact_id:person,contact_username:username,automation_id:a.id,last_message:body,lead_score:score,reason,unread:true,status:"open",stage:score>=75?"qualified":"new",priority:score>=75?"high":"normal"});
             // Audio delivery is intentionally decoupled from the reply hot path.
             // Instagram's official Send API does not document arbitrary audio/file attachments.
             // Keep DM continuation reliable while audio transport is validated separately.
