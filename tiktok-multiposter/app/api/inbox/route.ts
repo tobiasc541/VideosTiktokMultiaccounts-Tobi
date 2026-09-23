@@ -1,26 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCustomerSession } from "../../../lib/auth";
 import { supabaseAdmin } from "../../../lib/supabase-admin";
-import ffmpegPath from "ffmpeg-static";
-import { existsSync } from "node:fs";
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 
 export const runtime = "nodejs";
-const execFileAsync = promisify(execFile);
 const GRAPH = "https://graph.instagram.com";
 const VER = process.env.META_GRAPH_API_VERSION || "v24.0";
 
-async function convertVoiceToM4a(input:Buffer, ext="webm") {
-  if (!ffmpegPath) throw new Error("FFmpeg no disponible en el servidor");
-  if (!existsSync(ffmpegPath)) throw new Error(`FFmpeg no fue empaquetado en el deployment: ${ffmpegPath}`);
-  const dir=await mkdtemp(join(tmpdir(),"vyral-voice-"));
-  const src=join(dir,`input.${ext.replace(/[^a-z0-9]/gi,"")||"webm"}`),out=join(dir,"voice.m4a");
-  try{await writeFile(src,input);await execFileAsync(ffmpegPath,["-y","-i",src,"-vn","-c:a","aac","-b:a","96k","-ar","44100","-ac","1",out],{timeout:25000});return await readFile(out)}finally{await rm(dir,{recursive:true,force:true})}
-}
 async function sendAudio(account:any,to:string,url:string){
   const r=await fetch(`${GRAPH}/${VER}/${encodeURIComponent(account.instagram_user_id)}/messages`,{method:"POST",headers:{Authorization:`Bearer ${account.access_token}`,"Content-Type":"application/json"},body:JSON.stringify({recipient:{id:to},message:{attachment:{type:"audio",payload:{url,is_reusable:true}}}}),cache:"no-store"});
   const j=await r.json().catch(()=>({}));if(!r.ok||j.error)throw new Error(j.error?.message||`Instagram HTTP ${r.status}`);return j;
@@ -93,8 +78,9 @@ export async function POST(req: NextRequest) {
     const account=await db.from("meta_instagram_accounts").select("instagram_user_id,access_token").eq("id",handoff.data.account_id).eq("user_id",session.userId).single();
     if(account.error||!account.data)return NextResponse.json({error:"Cuenta no disponible"},{status:404});
     try{
-      const ext=(file.name.split(".").pop()||file.type.split("/").pop()||"webm").replace("x-m4a","m4a");
-      const converted=await convertVoiceToM4a(Buffer.from(await file.arrayBuffer()),ext);
+      const mime=String(file.type||"").toLowerCase();
+      if(!["audio/mp4","audio/x-m4a","audio/m4a","audio/aac"].includes(mime))throw new Error("El audio debe convertirse a M4A/AAC antes de subirlo.");
+      const converted=Buffer.from(await file.arrayBuffer());
       const path=`${session.userId}/${handoff.data.account_id}/${Date.now()}-${crypto.randomUUID()}.m4a`;
       const upload=await db.storage.from("voice-notes").upload(path,converted,{contentType:"audio/mp4",cacheControl:"3600",upsert:false});
       if(upload.error)throw new Error(upload.error.message);
