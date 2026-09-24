@@ -18,7 +18,7 @@ export async function GET(req: Request) {
   url.searchParams.set("response_type", "code");
   url.searchParams.set("scope", "user.info.basic,video.publish");
   url.searchParams.set("redirect_uri", redirectUri);
-  url.searchParams.set("state", createOAuthState({provider:"tiktok",userId:ctx.session.userId,email:ctx.session.email,plan:ctx.plan}));
+  url.searchParams.set("state", await createOAuthState({provider:"tiktok",userId:ctx.session.userId,email:ctx.session.email,plan:ctx.plan}));
 
   return NextResponse.redirect(url);
 }
