@@ -1,14 +1,8 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-import { env } from "../../../../lib/env";
+import { supabaseAdmin } from "../../../../lib/supabase-admin";
 
 const VYRAL_PRODUCTION_URL = "https://vyralvideos.com";
 
-function supabaseAdmin() {
-  return createClient(env("SUPABASE_URL"), env("SUPABASE_SERVICE_ROLE_KEY"), {
-    auth: { persistSession: false, autoRefreshToken: false }
-  });
-}
 
 export async function POST(req: Request) {
   const form = await req.formData();
