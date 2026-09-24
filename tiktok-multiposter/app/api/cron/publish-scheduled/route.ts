@@ -4,6 +4,27 @@ import { publishToTarget, type PublishTarget } from "../../../../lib/publishing/
 
 export const maxDuration = 300;
 
+const PLATFORM_GAP_MS: Record<PublishTarget["platform"], number> = {
+  tiktok: 12_000,
+  instagram: 8_000,
+  facebook: 6_000,
+};
+const RETRYABLE = /429|rate.?limit|too many|temporar|timeout|5\d\d|internal/i;
+const sleep=(ms:number)=>new Promise(r=>setTimeout(r,ms));
+
+async function publishSafely(target:PublishTarget,payload:any){
+  let last:unknown;
+  for(let attempt=0;attempt<3;attempt++){
+    try{return await publishToTarget(target,payload)}
+    catch(e:any){
+      last=e;
+      if(!RETRYABLE.test(String(e?.message||e))||attempt===2)throw e;
+      await sleep(5_000*Math.pow(2,attempt));
+    }
+  }
+  throw last;
+}
+
 export async function GET(req: Request) {
   const secret = process.env.CRON_SECRET;
   if (!secret || req.headers.get("authorization") !== `Bearer ${secret}`) {
@@ -34,18 +55,24 @@ export async function GET(req: Request) {
       const results: Record<string, unknown> = {};
       let waiting = false;
       let failed = false;
+      const lastPlatformRun:Partial<Record<PublishTarget["platform"],number>>={};
 
       for (const target of targets) {
         const key = `${target.platform}:${target.accountId}`;
+        const gap=PLATFORM_GAP_MS[target.platform]||8_000;
+        const wait=Math.max(0,gap-(Date.now()-(lastPlatformRun[target.platform]||0)));
+        if(wait)await sleep(wait);
         try {
-          const result = await publishToTarget(target, {
+          const result = await publishSafely(target, {
             caption: job.caption,
             privacyLevel: job.privacy_level,
             video: { bytes, size: bytes.byteLength, mimeType: job.mime_type || "video/mp4" }
           });
+          lastPlatformRun[target.platform]=Date.now();
           results[key] = result;
           if ((result as any).awaitingApi) waiting = true;
         } catch (e: any) {
+          lastPlatformRun[target.platform]=Date.now();
           failed = true;
           results[key] = { ok: false, error: e?.message || "Error de publicación" };
         }
