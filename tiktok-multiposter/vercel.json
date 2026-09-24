@@ -5,10 +5,6 @@
       "schedule": "* * * * *"
     },
     {
-      "path": "/api/cron/instagram-inbox",
-      "schedule": "* * * * *"
-    },
-    {
       "path": "/api/cron/instagram-token-refresh",
       "schedule": "17 3 * * *"
     }
