@@ -14,7 +14,7 @@ export async function POST(req: Request) {
   if (!name || !email || !password) {
     return NextResponse.redirect(new URL("/registro?error=campos", req.url), 303);
   }
-  if (password.length < 8) {
+  if (password.length < 12 || !/[a-z]/.test(password) || !/[A-Z]/.test(password) || !/[0-9]/.test(password) || !/[^A-Za-z0-9]/.test(password)) {
     return NextResponse.redirect(new URL("/registro?error=password", req.url), 303);
   }
   if (password !== confirmPassword) {
