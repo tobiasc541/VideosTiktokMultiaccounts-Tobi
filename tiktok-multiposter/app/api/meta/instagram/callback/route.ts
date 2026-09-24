@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
-import { getCustomerSession } from "../../../../../lib/auth";
+import { getCustomerSession, setCustomerSession } from "../../../../../lib/auth";
+import { readOAuthState } from "../../../../../lib/oauth-state";
 import { env } from "../../../../../lib/env";
 import {
   exchangeInstagramLongLivedToken,
-  readMetaState,
   redirectUri,
   saveInstagramAccount,
 } from "../../../../../lib/meta-instagram";
@@ -21,7 +21,12 @@ export async function GET(req: Request) {
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
   const oauthError = url.searchParams.get("error_description") || url.searchParams.get("error");
-  const session = await getCustomerSession();
+  let session = await getCustomerSession();
+  const parsedState = readOAuthState(state,"instagram");
+  if(parsedState && (!session || session.userId!==parsedState.userId)){
+    await setCustomerSession(parsedState.userId,parsedState.email,parsedState.plan);
+    session = await getCustomerSession();
+  }
   const ctx = session ? await socialAccountContext() : null;
 
   const diagnostic = async (
@@ -50,10 +55,7 @@ export async function GET(req: Request) {
     return redirectHome(url, { meta_error: oauthError });
   }
 
-  const parsedState = state ? readMetaState(state) : null;
-  const stateMatches = Boolean(
-    session && parsedState && parsedState.userId === session.userId,
-  );
+  const stateMatches = Boolean(session && parsedState && parsedState.userId === session.userId);
 
   if (!session || !ctx || !parsedState || !stateMatches || !code) {
     await diagnostic("state_session_validation", false, {
