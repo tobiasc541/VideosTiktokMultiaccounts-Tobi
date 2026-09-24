@@ -8,10 +8,11 @@ export async function POST(req:Request){
  const form=await req.formData();
  const email=String(form.get("email")||"").trim().toLowerCase();
  const password=String(form.get("password")||"");
- if(!email||!password)return NextResponse.redirect(new URL("/login?error=account",req.url),303);
+ const captchaToken=String(form.get("captchaToken")||"");
+ if(!email||!password||!captchaToken)return NextResponse.redirect(new URL("/login?error=security",req.url),303);
 
  const client=supabaseAdmin();
- const {data,error}=await client.auth.signInWithPassword({email,password});
+ const {data,error}=await client.auth.signInWithPassword({email,password,options:{captchaToken}});
  if(error||!data.user){
   const reason=(error?.message||"").toLowerCase().includes("confirm")?"unverified":"account";
   return NextResponse.redirect(new URL(`/login?error=${reason}`,req.url),303);
