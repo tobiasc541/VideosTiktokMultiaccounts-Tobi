@@ -19,7 +19,6 @@ export type CustomerSession = {
 };
 
 type AdminSession = {
-  userId: string;
   email: string;
   role: "admin";
   iat: number;
@@ -56,7 +55,7 @@ function decodeCustomerSession(value: string): CustomerSession | null {
 
 function decodeAdminSession(value: string): AdminSession | null {
   const parsed = decodeSigned<AdminSession>(value, ADMIN_PREFIX);
-  if (!parsed?.userId || !parsed?.email || parsed.role !== "admin" || !parsed.iat || Date.now()-parsed.iat>ADMIN_MAX_AGE*1000) return null;
+  if (!parsed?.email || parsed.role !== "admin" || !parsed.iat || Date.now()-parsed.iat>ADMIN_MAX_AGE*1000) return null;
   return parsed;
 }
 
@@ -71,8 +70,9 @@ export async function getAdminSession() {
   const parsed = actual ? decodeAdminSession(actual) : null;
   if (!parsed) return null;
   try {
-    const { data, error } = await supabaseAdmin().auth.admin.getUserById(parsed.userId);
-    if (error || !data.user || data.user.email?.toLowerCase() !== parsed.email.toLowerCase() || data.user.user_metadata?.vyral_admin !== true) return null;
+    const { data, error } = await supabaseAdmin().auth.admin.listUsers({ page: 1, perPage: 100 });
+    const user = data?.users?.find(u => u.email?.toLowerCase() === parsed.email.toLowerCase());
+    if (error || !user || user.user_metadata?.vyral_admin !== true) return null;
     return parsed;
   } catch { return null; }
 }
@@ -91,9 +91,9 @@ export async function setCustomerSession(userId: string, email: string, plan?: s
   store.set(COOKIE, encodeSession(USER_PREFIX, { userId, email, plan, iat: Date.now() }), cookieOptions());
 }
 
-export async function setAdminSession(userId: string, email: string) {
+export async function setAdminSession(email: string) {
   const store = await cookies();
-  store.set(COOKIE, encodeSession(ADMIN_PREFIX, { userId, email, role:"admin", iat:Date.now() }), cookieOptions(ADMIN_MAX_AGE));
+  store.set(COOKIE, encodeSession(ADMIN_PREFIX, { email, role:"admin", iat:Date.now() }), cookieOptions(ADMIN_MAX_AGE));
 }
 
 export async function clearSession() {
