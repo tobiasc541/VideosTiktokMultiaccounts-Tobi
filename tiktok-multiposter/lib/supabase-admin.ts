@@ -25,7 +25,8 @@ function normalizeSupabaseUrl(raw: string) {
 
 export function supabaseAdmin() {
   const url = normalizeSupabaseUrl(env("SUPABASE_URL"));
-  const serviceRoleKey = env("SUPABASE_SERVICE_ROLE_KEY").trim();
+  const serviceRoleKey = (process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
+  if (!serviceRoleKey) throw new Error("Falta SUPABASE_SECRET_KEY (o SUPABASE_SERVICE_ROLE_KEY durante la migración)");
 
   return createClient(url, serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false }
