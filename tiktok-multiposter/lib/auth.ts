@@ -98,5 +98,26 @@ export async function setAdminSession(email: string) {
 
 export async function clearSession() {
   const store = await cookies();
-  store.delete(COOKIE);
+
+  // Delete every variant VYRAL has used. A host-only cookie and a
+  // .vyralvideos.com cookie can coexist; deleting only one makes logout
+  // appear to succeed while the browser keeps sending the other.
+  store.set(COOKIE, "", {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: 0
+  });
+
+  if (SESSION_DOMAIN) {
+    store.set(COOKIE, "", {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: true,
+      path: "/",
+      domain: SESSION_DOMAIN,
+      maxAge: 0
+    });
+  }
 }
