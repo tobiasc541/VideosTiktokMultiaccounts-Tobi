@@ -127,13 +127,14 @@ export async function POST(req:Request){
 
   if(!account&&Array.isArray(entry.messaging)&&entry.messaging.length){
    const ids=[...new Set(entry.messaging.flatMap((m:any)=>[
-    String(m?.recipient?.id||""),
-    String(m?.sender?.id||"")
-   ]).filter(Boolean))];
+    String(m?.recipient?.id||""),String(m?.sender?.id||"")
+   ]).filter((x:string)=>/^\\d+$/.test(x)))];
    if(ids.length){
-    const all=await db.from("meta_instagram_accounts").select("id,user_id,instagram_user_id,webhook_user_id,access_token");
-    account=(all.data||[]).find((x:any)=>ids.includes(String(x.instagram_user_id)))||null;
-    if(!account&&(all.data||[]).length===1)account=(all.data||[])[0];
+    const csv=ids.join(",");
+    const matched=await db.from("meta_instagram_accounts")
+      .select("id,user_id,instagram_user_id,webhook_user_id,access_token")
+      .or(`instagram_user_id.in.(${csv}),webhook_user_id.in.(${csv})`).limit(2);
+    account=(matched.data||[])[0]||null;
    }
   }
 
