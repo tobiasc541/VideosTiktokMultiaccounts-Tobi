@@ -23,12 +23,13 @@ type AdminSession = {
   iat: number;
 };
 
-function legacySessionValue() {
-  return crypto.createHmac("sha256", env("APP_PASSWORD")).update("tiktok-multiposter-session-v1").digest("hex");
+function sessionSecret() {
+  // Dedicated signing key; APP_PASSWORD is a temporary zero-downtime fallback.
+  return (process.env.SESSION_SECRET || env("APP_PASSWORD")).trim();
 }
 
 function signPayload(payload: string) {
-  return crypto.createHmac("sha256", env("APP_PASSWORD")).update(payload).digest("hex");
+  return crypto.createHmac("sha256", sessionSecret()).update(payload).digest("hex");
 }
 
 function encodeSession(prefix: string, data: unknown) {
@@ -75,15 +76,7 @@ export async function isLoggedIn() {
   const store = await cookies();
   const actual = store.get(COOKIE)?.value;
   if (!actual) return false;
-  if (decodeCustomerSession(actual) || decodeAdminSession(actual)) return true;
-  const expected = legacySessionValue();
-  if (actual.length !== expected.length) return false;
-  return crypto.timingSafeEqual(Buffer.from(actual), Buffer.from(expected));
-}
-
-export async function setSession() {
-  const store = await cookies();
-  store.set(COOKIE, legacySessionValue(), cookieOptions());
+  return Boolean(decodeCustomerSession(actual) || decodeAdminSession(actual));
 }
 
 export async function setCustomerSession(userId: string, email: string, plan?: string) {
