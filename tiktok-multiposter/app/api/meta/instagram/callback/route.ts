@@ -22,7 +22,7 @@ export async function GET(req: Request) {
   const state = url.searchParams.get("state");
   const oauthError = url.searchParams.get("error_description") || url.searchParams.get("error");
   let session = await getCustomerSession();
-  const parsedState = readOAuthState(state,"instagram");
+  const parsedState = await readOAuthState(state,"instagram");
   if(parsedState && (!session || session.userId!==parsedState.userId)){
     await setCustomerSession(parsedState.userId,parsedState.email,parsedState.plan);
     session = await getCustomerSession();
