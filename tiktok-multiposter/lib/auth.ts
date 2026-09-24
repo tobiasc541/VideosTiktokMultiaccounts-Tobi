@@ -5,6 +5,8 @@ import { env } from "./env";
 const COOKIE = "mp_session";
 const USER_PREFIX = "u";
 const ADMIN_PREFIX = "a";
+const SESSION_DOMAIN = process.env.NODE_ENV==="production" ? ".vyralvideos.com" : undefined;
+const cookieOptions = () => ({ httpOnly:true, sameSite:"lax" as const, secure:process.env.NODE_ENV==="production", path:"/", maxAge:60*60*24*30, ...(SESSION_DOMAIN?{domain:SESSION_DOMAIN}:{}) });
 
 export type CustomerSession = {
   userId: string;
@@ -79,17 +81,17 @@ export async function isLoggedIn() {
 
 export async function setSession() {
   const store = await cookies();
-  store.set(COOKIE, legacySessionValue(), { httpOnly:true, sameSite:"lax", secure:process.env.NODE_ENV==="production", path:"/", maxAge:60*60*24*30 });
+  store.set(COOKIE, legacySessionValue(), cookieOptions());
 }
 
 export async function setCustomerSession(userId: string, email: string, plan?: string) {
   const store = await cookies();
-  store.set(COOKIE, encodeSession(USER_PREFIX, { userId, email, plan, iat: Date.now() }), { httpOnly:true, sameSite:"lax", secure:process.env.NODE_ENV==="production", path:"/", maxAge:60*60*24*30 });
+  store.set(COOKIE, encodeSession(USER_PREFIX, { userId, email, plan, iat: Date.now() }), cookieOptions());
 }
 
 export async function setAdminSession(email: string) {
   const store = await cookies();
-  store.set(COOKIE, encodeSession(ADMIN_PREFIX, { email, role:"admin", iat:Date.now() }), { httpOnly:true, sameSite:"lax", secure:process.env.NODE_ENV==="production", path:"/", maxAge:60*60*24*30 });
+  store.set(COOKIE, encodeSession(ADMIN_PREFIX, { email, role:"admin", iat:Date.now() }), cookieOptions());
 }
 
 export async function clearSession() {
