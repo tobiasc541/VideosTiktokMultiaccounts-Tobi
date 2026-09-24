@@ -47,17 +47,38 @@ export default function BillingToggle() {
           background:#53eee1;
           color:#031012;
         }
-        .vyralBillingToggle b {
+        .vyralBillingToggle .annualOption { display:inline-flex; align-items:center; gap:7px; }
+        .vyralBillingToggle .annualOption b {
           color:#53eee1;
           font-size:9px;
-          padding-right:10px;
           letter-spacing:.04em;
+          padding:4px 7px;
+          border-radius:999px;
+          border:1px solid rgba(83,238,225,.24);
+          background:rgba(83,238,225,.07);
+          white-space:nowrap;
+        }
+        .vyralPlansPage .vyralBestSellerBadge {
+          background:#ef4444 !important;
+          color:#fff !important;
+          border-color:#ff6b6b !important;
+          box-shadow:0 0 24px rgba(239,68,68,.28);
+        }
+        .vyralPlansPage .vyralPlanCheckout {
+          transition:transform .18s ease, background .18s ease, color .18s ease, border-color .18s ease, box-shadow .18s ease;
+        }
+        .vyralPlansPage .vyralPlanCheckout.primaryCheckout,
+        .vyralPlansPage .vyralPlanCheckout:hover {
+          background:#53eee1 !important;
+          color:#031012 !important;
+          border-color:#53eee1 !important;
+          box-shadow:0 8px 26px rgba(83,238,225,.16);
+          transform:translateY(-1px);
         }
       `}</style>
       <div className="vyralBillingToggle" aria-label="Frecuencia de facturación">
         <button type="button" className={!annual ? "active" : ""} onClick={() => setAnnual(false)}>Mensual</button>
-        <button type="button" className={annual ? "active" : ""} onClick={() => setAnnual(true)}>Anual</button>
-        <b>2 MESES GRATIS</b>
+        <span className="annualOption"><button type="button" className={annual ? "active" : ""} onClick={() => setAnnual(true)}>Anual</button><b>2 MESES GRATIS</b></span>
       </div>
     </div>
   );
