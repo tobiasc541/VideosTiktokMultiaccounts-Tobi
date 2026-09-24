@@ -13,7 +13,7 @@ export async function GET(req: Request) {
   const state = url.searchParams.get("state");
   const error = url.searchParams.get("error");
   if (error) return NextResponse.redirect(`${appUrl}/?oauth_error=${encodeURIComponent(error)}`);
-  const parsedState=readOAuthState(state,"tiktok");
+  const parsedState=await readOAuthState(state,"tiktok");
   if (!code || !parsedState) return NextResponse.redirect(`${appUrl}/?oauth_error=state_mismatch`);
 
   let session = await getCustomerSession();
