@@ -1,23 +1,10 @@
-import crypto from "crypto";
 import { NextResponse } from "next/server";
 import { env } from "../../../../lib/env";
-import { getCustomerSession } from "../../../../lib/auth";
+import { getCustomerSession, setCustomerSession } from "../../../../lib/auth";
+import { readOAuthState } from "../../../../lib/oauth-state";
 import { exchangeCode, saveAccount } from "../../../../lib/tiktok";
 import { assignTikTokAccountOwner } from "../../../../lib/tiktok-ownership";
 import { socialAccountContext } from "../../../../lib/social-account-limits";
-
-function isValidSignedState(state: string | null) {
-  if (!state) return false;
-  const parts = state.split(".");
-  if (parts.length !== 3) return false;
-  const [issuedAt, nonce, signature] = parts;
-  if (!/^\d+$/.test(issuedAt) || !/^[a-f0-9]{48}$/.test(nonce) || !/^[a-f0-9]{64}$/.test(signature)) return false;
-  const age = Math.floor(Date.now() / 1000) - Number(issuedAt);
-  if (age < 0 || age > 10 * 60) return false;
-  const payload = `${issuedAt}.${nonce}`;
-  const expected = crypto.createHmac("sha256", env("APP_PASSWORD")).update(payload).digest("hex");
-  return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
-}
 
 export async function GET(req: Request) {
   const appUrl = env("APP_URL").replace(/\/$/, "");
@@ -26,10 +13,15 @@ export async function GET(req: Request) {
   const state = url.searchParams.get("state");
   const error = url.searchParams.get("error");
   if (error) return NextResponse.redirect(`${appUrl}/?oauth_error=${encodeURIComponent(error)}`);
-  if (!code || !isValidSignedState(state)) return NextResponse.redirect(`${appUrl}/?oauth_error=state_mismatch`);
+  const parsedState=readOAuthState(state,"tiktok");
+  if (!code || !parsedState) return NextResponse.redirect(`${appUrl}/?oauth_error=state_mismatch`);
 
-  const session = await getCustomerSession();
-  if (!session) return NextResponse.redirect(`${appUrl}/login?oauth_error=session_expired`);
+  let session = await getCustomerSession();
+  if(!session || session.userId!==parsedState.userId){
+    await setCustomerSession(parsedState.userId,parsedState.email,parsedState.plan);
+    session=await getCustomerSession();
+  }
+  if (!session || session.userId!==parsedState.userId) return NextResponse.redirect(`${appUrl}/login?oauth_error=session_expired`);
 
   try {
     const ctx=await socialAccountContext(); if(!ctx||ctx.total>=ctx.limit)throw new Error("Límite de cuentas alcanzado para tu plan.");
