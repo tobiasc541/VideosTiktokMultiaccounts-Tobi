@@ -27,23 +27,15 @@ export async function POST(req: Request) {
     return NextResponse.redirect(new URL("/registro?error=coincidencia", req.url), 303);
   }
 
-  const isOwner = email === "ayuda.importadosbaires@gmail.com";
   const admin = supabaseAdmin();
-  const { data, error } = isOwner
-    ? await admin.auth.admin.createUser({
-        email,
-        password,
-        email_confirm: true,
-        user_metadata: { full_name: name, plan: "ai" }
-      })
-    : await admin.auth.signUp({
-        email,
-        password,
-        options: {
-          data: { full_name: name },
-          emailRedirectTo: `${VYRAL_PRODUCTION_URL}/login?verified=1`
-        }
-      });
+  const { data, error } = await admin.auth.signUp({
+    email,
+    password,
+    options: {
+      data: { full_name: name },
+      emailRedirectTo: `${VYRAL_PRODUCTION_URL}/login?verified=1`
+    }
+  });
 
   if (error) {
     const code = encodeURIComponent(error.message.toLowerCase().includes("already") ? "existe" : "registro");
