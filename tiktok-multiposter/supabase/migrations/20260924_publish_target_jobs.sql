@@ -37,4 +37,5 @@ begin
  )
  select * from claimed;
 end $$;
-revoke all on function public.claim_publish_target_jobs(integer,text,integer) from public;
+revoke all on function public.claim_publish_target_jobs(integer,text,integer) from public, anon, authenticated;
+grant execute on function public.claim_publish_target_jobs(integer,text,integer) to service_role;
