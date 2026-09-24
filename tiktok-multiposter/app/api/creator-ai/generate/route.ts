@@ -10,7 +10,7 @@ function retryDelayMs(r:Response,attempt:number){
  return Math.min(90000,12000*Math.pow(2,attempt)+750);
 }
 function cleanJson(s:string){const a=s.indexOf("[");const b=s.lastIndexOf("]");if(a<0||b<a)throw new Error("La IA no devolvió una estructura válida.");return JSON.parse(s.slice(a,b+1))}
-async function readProviderJson(r:Response,label:string){const raw=await r.text();try{return JSON.parse(raw)}catch{throw new Error(`${label} respondió con un formato inválido (HTTP ${r.status}). Reintentá la generación.`)}}
+async function readProviderJson(r:Response,label:string){const raw=await r.text();try{return JSON.parse(raw)}catch{return {error:{type:"invalid_provider_response",code:"invalid_provider_response",message:`${label} respondió temporalmente con un formato inválido (HTTP ${r.status}).`},_raw:raw.slice(0,500)}}}
 function safeError(j:any){return {type:j?.error?.type||null,code:j?.error?.code||null,message:j?.error?.message||null,param:j?.error?.param||null}}
 async function diag(db:any,row:any){try{await db.from("creator_ai_diagnostics").insert(row)}catch{}}
 export async function POST(req:Request){
@@ -70,56 +70,47 @@ export async function POST(req:Request){
   if(!tr.ok)return NextResponse.json({error:tj.error?.message||"Falló la estrategia de IA.",diagnosticStage:stage,requestId:trId},{status:tr.status});
   let slides=cleanJson(tj.choices?.[0]?.message?.content||""); slides=single?slides.slice(0,1):slides.slice(0,count);
   const model=process.env.VYRAL_IMAGE_MODEL||"gpt-image-2";
-  const generated=[];
-  for(let i=0;i<slides.length;i++){
+  const generated:any[]=new Array(slides.length);const uploadedPaths:string[]=[];
+  const generateSlide=async(i:number)=>{
    const s=slides[i];
    const imageStage=`image_${i+1}`;const sceneRule=`Creative run ${variationSeed}, slide ${i+1}/${slides.length}. Scene type: ${String(s.sceneType||"concept-specific")}. Background/environment: ${String(s.background||"choose a distinctive environment driven by this slide")}. Do not default to beige paper, off-white editorial grids, desks or notebook textures unless explicitly required by the concept.`;const personRule=humanMode&&personRefPaths.length?`Identity references are attached. Preserve the same person faithfully across generated scenes: facial geometry, eyes, nose, mouth, jaw, hair, skin tone and distinctive visible traits. Do not beautify, age-shift, change ethnicity, reshape the face or invent facial details. Use natural photographic variation only in pose, expression, wardrobe, lighting, lens and environment. Do not place the person in every slide unless narratively useful.`:"No person identity reference is supplied.";const logoRule=logoPath?"A brand logo reference is attached. Preserve its recognizable symbol, proportions, colors and lettering as faithfully as possible. Integrate it naturally as a small brand signature; do not redesign it, invent a replacement, or make it dominate the composition.":"No brand logo was supplied; do not invent one.";const ip=`Create a FINISHED premium Instagram carousel slide on an EXACT 4:5 canvas (1024x1280). NEVER change canvas ratio and NEVER make the inner template narrower/taller from one slide to another. ${styleLock} ${referenceSystem} Slide role: ${s.role}. Exact headline to render legibly: "${s.title}". Exact supporting copy to render legibly: "${s.copy}". ${s.visualPrompt}. SLIDE CONTENT VARIATION: preserve the exact selected template, but do not copy literal motifs or content from the reference or previous slides. Make the icon, doodle, object, photo, metaphor and micro-note semantically specific to THIS slide while keeping the same visual role, position logic and technique. ${sceneRule} Business context: ${String(body.business||"")}. Requested style: ${String(body.tone||"editorial premium")}. ${visualStylePrompt?`MANDATORY SELECTED VISUAL STYLE: ${visualStylePrompt}`:""} ${humanDirection} ${personRule} The text is part of the final design: render it clearly, correctly spelled in Spanish, with strong hierarchy and highlighted keywords. Do not add invented claims, fake logos or watermarks. IMPORTANT: when the selected style itself contains editor/browser/app interface chrome, that template UI is REQUIRED visual structure and MUST be rendered exactly as specified; the generic no-fake-UI rule does not apply to required template chrome. Maintain absolute template continuity with the carousel. Do NOT make this slide compositionally distinct when that would alter the selected template; variation belongs in content only.`;
    const refPaths=[...(logoPath?[logoPath]:[]),...(humanMode?personRefPaths:[])];const editRefs=await Promise.all(refPaths.map(async(path:string)=>{const d=await db.storage.from("scheduled-media").download(path);if(d.error||!d.data)throw new Error("No se pudo leer una imagen de referencia.");return {path,blob:d.data};}));const imageEndpoint=editRefs.length?"/images/edits":"/images/generations";
+   const baseImagePrompt=ip+" "+logoRule+" "+personRule;
    const buildImageBody=(promptText:string):BodyInit=>{
     if(editRefs.length){
-     const form=new FormData();
-     form.append("model",model);
-     form.append("prompt",promptText);
-     form.append("size","1024x1280");
-     form.append("quality","medium");
-     form.append("output_format","webp");
-     editRefs.forEach((ref:any,refIndex:number)=>{
-      const mime=ref.blob.type||"image/jpeg";const ext=mime==="image/jpeg"?"jpg":mime.split("/")[1]||"img";
-      form.append("image[]",ref.blob,refIndex===0&&logoPath?"brand-logo."+ext:"person-reference-"+refIndex+"."+ext);
-     });
+     const form=new FormData();form.append("model",model);form.append("prompt",promptText);form.append("size","1024x1280");form.append("quality","medium");form.append("output_format","webp");
+     editRefs.forEach((ref:any,refIndex:number)=>{const mime=ref.blob.type||"image/jpeg";const ext=mime==="image/jpeg"?"jpg":mime.split("/")[1]||"img";form.append("image[]",ref.blob,refIndex===0&&logoPath?"brand-logo."+ext:"person-reference-"+refIndex+"."+ext);});
      return form;
     }
     return JSON.stringify({model,prompt:promptText,size:"1024x1280",quality:"medium",output_format:"webp"});
    };
-   const baseImagePrompt=ip+" "+logoRule+" "+personRule;
-   let imageBody:BodyInit=buildImageBody(baseImagePrompt);
-   const headers:Record<string,string>={Authorization:"Bearer "+key};
-   if(!editRefs.length)headers["Content-Type"]="application/json";
-   let ir:Response;let ij:any;let irId:string|null=null;let safetyRetry=false;
-   for(let attempt=0;;attempt++){
-    ir=await fetch(OPENAI+imageEndpoint,{method:"POST",headers,body:imageBody});
-    ij=await readProviderJson(ir,`La generación de la imagen ${i+1}`);irId=ir.headers.get("x-request-id");
+   const headers:Record<string,string>={Authorization:"Bearer "+key};if(!editRefs.length)headers["Content-Type"]="application/json";
+   let ir:Response|null=null;let ij:any=null;let irId:string|null=null;let safetyRetry=false;let activePrompt=baseImagePrompt;
+   for(let attempt=0;attempt<5;attempt++){
+    const imageBody=buildImageBody(activePrompt);
+    try{ir=await fetch(OPENAI+imageEndpoint,{method:"POST",headers,body:imageBody});ij=await readProviderJson(ir,`La generación de la imagen ${i+1}`);irId=ir.headers.get("x-request-id");}
+    catch(fetchErr:any){if(attempt<4){await sleep(Math.min(30000,3000*Math.pow(2,attempt)));continue;}throw new Error(`No se pudo conectar con el generador de imágenes: ${fetchErr?.message||"error de red"}`);}
     const err=safeError(ij);const safetyRejected=!ir.ok&&(err.code==="safety_violations"||err.code==="safety_violation"||/safety system|safety.?violation/i.test(String(err.message||"")));
-    if(safetyRejected&&!safetyRetry){
-     safetyRetry=true;
-     const benignRetryPrompt=baseImagePrompt+" CONTENT SAFETY CLARIFICATION: This is a benign commercial/editorial social-media design. Keep the same harmless business message and visual metaphor. Do not depict weapons, drugs, criminal instructions, dangerous acts, injury, sexual content, hate, self-harm, or wrongdoing. If any optional metaphor or prop could be interpreted as unsafe, replace only that optional element with a neutral everyday object while preserving the selected visual style, exact headline, CTA and intended meaning.";
-     imageBody=buildImageBody(benignRetryPrompt);
-     continue;
-    }
-    if(ir.status!==429&&ir.status!==503)break;
-    if(attempt>=4)break;
-    await sleep(retryDelayMs(ir,attempt));
+    if(safetyRejected&&!safetyRetry){safetyRetry=true;activePrompt=baseImagePrompt+" CONTENT SAFETY CLARIFICATION: This is a benign commercial/editorial social-media design. Keep the same harmless business message and visual metaphor. Do not depict weapons, drugs, criminal instructions, dangerous acts, injury, sexual content, hate, self-harm, or wrongdoing. If any optional metaphor or prop could be interpreted as unsafe, replace only that optional element with a neutral everyday object while preserving the selected visual style, exact headline, CTA and intended meaning.";continue;}
+    const transient=ir.status===408||ir.status===409||ir.status===429||ir.status===500||ir.status===502||ir.status===503||ir.status===504||err.code==="invalid_provider_response";
+    if(transient&&attempt<4){await sleep(retryDelayMs(ir,attempt));continue;}
+    break;
    }
+   if(!ir)throw new Error(`No se pudo generar la imagen ${i+1}.`);
    await diag(db,{user_id:session.userId,stage:imageStage,ok:ir.ok,http_status:ir.status,model,request_id:irId,error_type:safeError(ij).type,error_code:safeError(ij).code,error_message:safeError(ij).message,details:{key_source:keySource,endpoint:editRefs.length?"images/edits":"images/generations",slide:i+1,logo_used:!!logoPath,human_mode:humanMode,person_refs:personRefPaths.length,param:safeError(ij).param}});
-   if(!ir.ok)throw new Error(ij.error?.message||`Falló la generación de la imagen ${i+1}.`);
-   const b64=ij.data?.[0]?.b64_json;if(!b64)throw new Error(`OpenAI no devolvió la imagen ${i+1}.`);
-   const imageBytes=Uint8Array.from(atob(b64),ch=>ch.charCodeAt(0));
-   const storagePath=`${session.userId}/creator-ai/${crypto.randomUUID()}-${i+1}.webp`;
-   const uploaded=await db.storage.from("scheduled-media").upload(storagePath,imageBytes,{contentType:"image/webp",upsert:false});
-   if(uploaded.error)throw new Error(`No se pudo guardar la placa ${i+1}: ${uploaded.error.message}`);
-   const signed=await db.storage.from("scheduled-media").createSignedUrl(storagePath,86400);
-   if(signed.error||!signed.data?.signedUrl)throw new Error(`No se pudo preparar la placa ${i+1}.`);
-   generated.push({role:s.role,title:s.title,copy:s.copy,image:signed.data.signedUrl,storagePath});
+   if(!ir.ok)throw new Error(ij?.error?.message||`Falló la generación de la imagen ${i+1} (HTTP ${ir.status}).`);
+   const b64=ij?.data?.[0]?.b64_json;if(!b64)throw new Error(`El generador no devolvió datos válidos para la imagen ${i+1}. Reintentá.`);
+   const imageBytes=Uint8Array.from(atob(b64),ch=>ch.charCodeAt(0));const storagePath=`${session.userId}/creator-ai/${crypto.randomUUID()}-${i+1}.webp`;
+   const uploaded=await db.storage.from("scheduled-media").upload(storagePath,imageBytes,{contentType:"image/webp",upsert:false});if(uploaded.error)throw new Error(`No se pudo guardar la placa ${i+1}: ${uploaded.error.message}`);uploadedPaths.push(storagePath);
+   const signed=await db.storage.from("scheduled-media").createSignedUrl(storagePath,86400);if(signed.error||!signed.data?.signedUrl)throw new Error(`No se pudo preparar la placa ${i+1}.`);
+   generated[i]={role:s.role,title:s.title,copy:s.copy,image:signed.data.signedUrl,storagePath};
+  };
+  try{
+   const concurrency=Math.min(3,slides.length);let nextIndex=0;
+   await Promise.all(Array.from({length:concurrency},async()=>{while(true){const i=nextIndex++;if(i>=slides.length)return;await generateSlide(i);}}));
+  }catch(imageError){
+   await Promise.all(uploadedPaths.map(async p=>{try{await db.storage.from("scheduled-media").remove([p])}catch{}}));
+   throw imageError;
   }
   return NextResponse.json({slides:generated,model});
  }catch(e:any){await diag(db,{user_id:session.userId,stage,ok:false,error_type:"local_exception",error_message:e.message||"unknown"});return NextResponse.json({error:e.message||"No se pudo generar el carrusel.",diagnosticStage:stage},{status:500})}
