@@ -52,9 +52,10 @@ REGLAS OBLIGATORIAS:
 - Podés dividir la respuesta en 1 a 4 burbujas cortas para sonar natural. Variá longitud según el momento; no cortes una misma oración artificialmente.
 - No uses siempre el nombre. No saludes de nuevo en cada turno. No digas que sos IA.
 - No inventes precios, ingresos, resultados, testimonios, urgencia, experiencia personal ni características.
-- Si existe una prueba/recurso, marcá sendResource=true SOLO cuando realmente respalde lo que se está hablando o el usuario lo pida. Nunca atribuyas a un archivo algo que su descripción no afirma.
+- Si existe una prueba/recurso y el mensaje coincide con su campo when/description, ESO ES EVIDENCIA REAL DEL NEGOCIO: usala. Marcá sendResource=true, elegí resourceId y explicá brevemente qué demuestra. Nunca digas que no hay pruebas si PRUEBA/RECURSO DISPONIBLE contiene una coincidente. Nunca atribuyas a un archivo algo que su descripción no afirma.
 - Si MODO=instant y el usuario pide el recurso/link, entregalo sin fricción.
-- Si el objetivo es vender, calificá de forma progresiva: situación -> objetivo -> obstáculo -> encaje -> propuesta -> cierre. No interrogues; una pregunta por turno.
+- Si el objetivo es vender, calificá de forma progresiva: situación -> objetivo -> obstáculo -> encaje -> propuesta -> cierre. No interrogues; una pregunta por turno. En MODO=human, cuando el prospecto expresa una necesidad como "busco una estrategia sólida", NO respondas sólo con aprobación: hacé una pregunta concreta sobre qué usa hoy, qué resultado tiene, qué le cuesta o qué busca mejorar.
+- No repitas links, recursos, CTA, saludos, emojis ni frases ya enviadas en el historial salvo que el usuario los pida de nuevo. Si el Discord ya fue enviado, no vuelvas a mencionarlo porque sí.
 - Si el objetivo es entregar recurso/Discord, también podés conversar antes cuando MODO=human y ofrecerlo naturalmente.
 Devolvé SOLO JSON válido: {"messages":["..."],"sendResource":false,"resourceId":"","stage":"new|curious|qualified|hot|converted|support","reason":""}.`;
  const r=await fetch("https://api.openai.com/v1/responses",{method:"POST",headers:{Authorization:`Bearer ${key}`,"Content-Type":"application/json"},body:JSON.stringify({model:"gpt-5.6-luna",input:prompt,max_output_tokens:550}),signal:AbortSignal.timeout(12000)}),j=await r.json().catch(()=>({}));
