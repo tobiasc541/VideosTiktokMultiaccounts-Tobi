@@ -107,15 +107,15 @@ export async function GET(req:Request){
         try{
           const asksHuman=/\b(humano|persona|asesor|vendedor|representante|equipo|agente real|hablar con alguien)\b/i.test(userInput)&&!/\b(whatsapp|wsp)\b/i.test(userInput);
           const currentHandoff=await db.from("vyral_handoffs").select("id,ai_paused,needs_human").eq("user_id",account.user_id).eq("account_id",account.id).eq("contact_id",person).eq("automation_id",a.id).limit(1).maybeSingle();
+          let resourcePool:any[]=[];
+          if(a.resourceMode!=="specific"){const rq=await db.from("vyral_business_resources").select("id,name,kind,storage_path,external_url,mime_type,purpose,send_when").eq("user_id",account.user_id).eq("enabled",true);resourcePool=(rq.data||[]).filter((r:any)=>!Array.isArray(a.businessResourceIds)||!a.businessResourceIds.length||a.businessResourceIds.includes(r.id))}
+          if(a.resourceMode==="specific"&&a.resourceUrl)resourcePool=[{id:"specific",name:String(a.resourceName||"recurso"),kind:/^https?:/i.test(String(a.resourceUrl))?"url":"file",storage_path:/^https?:/i.test(String(a.resourceUrl))?null:String(a.resourceUrl),external_url:/^https?:/i.test(String(a.resourceUrl))?String(a.resourceUrl):null,purpose:String(a.resourcePurpose||""),send_when:String(a.resourceWhen||"")}];
           let reply="";
           if(asksHuman)reply="Perfecto. Ya te derivo con una persona del equipo por este mismo chat. En cuanto esté disponible te responde por acá.";
           else if(!currentHandoff.data?.ai_paused){try{reply=await aiReply(a,userInput,history,imageUrls,resourcePool)}catch{reply=String(a.dmMessage||"Gracias por escribir. ¿En qué te puedo ayudar?")}}
           const asksResource=/\b(reenvi|reenví|manda|mandá|envia|enviá|guia|guía|pdf|archivo|link|recurso|catalogo|catálogo|ficha|prueba|pruebas|resultado|resultados|evidencia|backtest|win ?rate|winrate|estrategia s[oó]lida)\b/i.test(body);
           const priorAgentMessages=(hist.data||[]).filter((x:any)=>x.direction==="out").length;
-          let resourcePool:any[]=[];
-          if(a.resourceMode!=="specific"){const rq=await db.from("vyral_business_resources").select("id,name,kind,storage_path,external_url,mime_type,purpose,send_when").eq("user_id",account.user_id).eq("enabled",true);resourcePool=(rq.data||[]).filter((r:any)=>!Array.isArray(a.businessResourceIds)||!a.businessResourceIds.length||a.businessResourceIds.includes(r.id))}
-          if(a.resourceMode==="specific"&&a.resourceUrl)resourcePool=[{id:"specific",name:String(a.resourceName||"recurso"),kind:/^https?:/i.test(String(a.resourceUrl))?"url":"file",storage_path:/^https?:/i.test(String(a.resourceUrl))?null:String(a.resourceUrl),external_url:/^https?:/i.test(String(a.resourceUrl))?String(a.resourceUrl):null,purpose:String(a.resourcePurpose||""),send_when:String(a.resourceWhen||"")}];
-          const voice=chooseVoice(a,userInput,priorAgentMessages===0);
+                    const voice=chooseVoice(a,userInput,priorAgentMessages===0);
           if(!reply)reply="Sí, te leo. Contame qué necesitás y seguimos por acá.";
           for(const x of burst){const media=mediaOf(x),xbody=String(x.message||"").trim()||(media.type==="image"?"[Imagen]":"[Archivo adjunto]");await db.from("vyral_inbox_messages").upsert({user_id:account.user_id,account_id:account.id,contact_id:person,contact_username:username,message_id:String(x.id||crypto.randomUUID()),body:xbody,direction:"in",sender_type:"contact",automation_id:a.id,attachment_type:media.type||null,attachment_url:media.url||null,attachment_meta:media.raw||{}},{onConflict:"platform,message_id",ignoreDuplicates:true});}
           if(currentHandoff.data?.ai_paused&&!asksHuman){
