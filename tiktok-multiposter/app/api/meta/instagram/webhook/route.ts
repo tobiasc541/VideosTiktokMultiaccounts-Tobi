@@ -87,7 +87,8 @@ async function processMessage(db:any,account:any,m:any){
  const asksResource=/\b(reenvi|reenví|manda|mandá|envia|enviá|guia|guía|pdf|archivo|link|recurso|catalogo|catálogo|ficha|prueba|resultado|resultados|evidencia|backtest|win rate)\b/i.test(text);
  const priorAgentMessages=(inbox.data||[]).filter((x:any)=>x.direction==="out").length,voice=chooseVoice(a,text,false)||((a.voiceEnabled&&priorAgentMessages<=1&&Array.isArray(a.voiceAssets))?a.voiceAssets.find((v:any)=>v?.url):null);
  const voiceResource=voice&&voiceResourceIntent(voice)?pickResourceForVoice(decision.resourcePool||[],voice):null;
- const textResource=asksResource?pickResourceForText(decision.resourcePool||[],text):null;\n const chosen=voiceResource||textResource||(decision.resourcePool||[]).find((r:any)=>String(r.id)===String(decision.resourceId))||((a.conversationMode==="instant"&&asksResource)?(decision.resourcePool||[])[0]:null),shouldResource=Boolean(chosen&&(voiceResource||textResource||decision.sendResource||(a.conversationMode==="instant"&&asksResource)));
+ const textResource=asksResource?pickResourceForText(decision.resourcePool||[],text):null;
+ const chosen=voiceResource||textResource||(decision.resourcePool||[]).find((r:any)=>String(r.id)===String(decision.resourceId))||((a.conversationMode==="instant"&&asksResource)?(decision.resourcePool||[])[0]:null),shouldResource=Boolean(chosen&&(voiceResource||textResource||decision.sendResource||(a.conversationMode==="instant"&&asksResource)));
  const syntheticId=`dm:${mid}`,ins=await db.from("instagram_automation_runs").insert({user_id:account.user_id,account_id:account.id,automation_id:a.id,comment_id:syntheticId,commenter_id:senderId,commenter_username:display||null,comment_text:text,status:"matched",detail:{source:"instagram_dm",continueConversation:true}}).select("id").maybeSingle();if(ins.error){if(String(ins.error.code)==="23505")return;throw ins.error}
  try{
   let last:any=null;
