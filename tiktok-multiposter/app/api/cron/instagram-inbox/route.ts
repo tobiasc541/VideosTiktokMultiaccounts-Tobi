@@ -113,7 +113,8 @@ export async function GET(req:Request){
           let reply="";
           if(asksHuman)reply="Perfecto. Ya te derivo con una persona del equipo por este mismo chat. En cuanto esté disponible te responde por acá.";
           else if(!currentHandoff.data?.ai_paused){try{reply=await aiReply(a,userInput,history,imageUrls,resourcePool)}catch{reply=String(a.dmMessage||"Gracias por escribir. ¿En qué te puedo ayudar?")}}
-          const explicitResend=/\b(reenvi|reenví|reenviame|reenviáme|reenvialo|reenviálo|reenviala|reenviála|mandamelo|mandámelo|mandamela|mandámela|pasamelo|pasámelo|pasamela|pasámela|envialo|enviálo|enviala|enviála|de nuevo|otra vez)\b/i.test(body);\n          const asksResource=explicitResend||/\b(manda|mandá|envia|enviá|pasame|pasáme|guia|guía|pdf|archivo|foto|imagen|video|vídeo|link|recurso|catalogo|catálogo|ficha|prueba|pruebas|resultado|resultados|evidencia|backtest|win ?rate|winrate|estrategia s[oó]lida)\b/i.test(body);
+          const explicitResend=/\b(reenvi|reenví|reenviame|reenviáme|reenvialo|reenviálo|reenviala|reenviála|mandamelo|mandámelo|mandamela|mandámela|pasamelo|pasámelo|pasamela|pasámela|envialo|enviálo|enviala|enviála|de nuevo|otra vez)\b/i.test(body);
+          const asksResource=explicitResend||/\b(manda|mandá|envia|enviá|pasame|pasáme|guia|guía|pdf|archivo|foto|imagen|video|vídeo|link|recurso|catalogo|catálogo|ficha|prueba|pruebas|resultado|resultados|evidencia|backtest|win ?rate|winrate|estrategia s[oó]lida)\b/i.test(body);
           const priorAgentMessages=(hist.data||[]).filter((x:any)=>x.direction==="out").length;
                     const voice=chooseVoice(a,userInput,priorAgentMessages===0);
           if(!reply)reply="Sí, te leo. Contame qué necesitás y seguimos por acá.";
