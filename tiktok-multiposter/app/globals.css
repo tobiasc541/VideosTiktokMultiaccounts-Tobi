@@ -105,3 +105,98 @@ textarea { min-height:128px; resize:vertical; }
 @media (max-width:900px) { .loginExperience { grid-template-columns:1fr; }.loginHero { display:none; }.loginAccess { min-height:100vh; padding:34px 22px; }.loginMobileBrand { display:block; margin-bottom:62px; font-size:23px; font-weight:900; letter-spacing:.22em; color:#f5f7f8; }.vyralApp { grid-template-columns:1fr; }.vyralSidebar { position:relative; height:auto; flex-direction:row; align-items:center; gap:15px; padding:18px 20px; overflow:auto; }.vyralSideBrand { padding:0 14px 0 0; }.vyralNav { flex-direction:row; }.vyralNav button { white-space:nowrap; }.vyralSideBottom { display:none; }.vyralMain { padding:30px 20px 60px; } }
 @media (max-width:680px) { .vyralTopbar { flex-direction:column; }.vyralMetrics { grid-template-columns:1fr 1fr; }.vyralMetric { min-height:120px; }.vyralMetric>strong { font-size:28px; }.vyralMain { padding-left:14px; padding-right:14px; }.vyralCard { padding:16px; } }
 @media (max-width:780px) { .grid { grid-template-columns:1fr; }.topbar { align-items:flex-start; flex-direction:column; } }
+
+
+/* =====================================================================
+   VYRAL MOBILE SYSTEM — global responsive hardening
+   Keeps desktop intact and makes every app surface usable on phones.
+   ===================================================================== */
+html { -webkit-text-size-adjust:100%; text-size-adjust:100%; overflow-x:hidden; }
+body { overflow-x:hidden; }
+img,video,canvas,svg { max-width:100%; }
+input,textarea,select,button { max-width:100%; }
+@media (max-width: 767px) {
+  html,body { width:100%; max-width:100%; overflow-x:hidden; }
+  body { min-width:0; }
+  .shell { width:100%; padding:18px 14px 88px; }
+  .panel { padding:15px; border-radius:17px; }
+  .grid { grid-template-columns:minmax(0,1fr)!important; gap:12px; }
+  .row { width:100%; }
+  .row > * { min-width:0; }
+  .topbar { gap:12px; margin-bottom:18px; }
+  .brand { font-size:19px; }
+  .logo { width:42px; height:42px; flex-basis:42px; border-radius:12px; }
+  .btn { min-height:46px; padding:12px 14px; touch-action:manipulation; }
+  .field,textarea,select { font-size:16px; } /* prevents iOS focus zoom */
+  textarea { min-height:110px; }
+  .drop { padding:20px 14px; }
+  .status { flex-direction:column; align-items:flex-start; }
+
+  /* Authentication */
+  .loginExperience { display:block; min-height:100dvh; }
+  .loginHero { display:none!important; }
+  .loginAccess { min-height:100dvh; width:100%; padding:calc(24px + env(safe-area-inset-top)) 18px calc(28px + env(safe-area-inset-bottom)); align-items:flex-start; }
+  .loginAccessInner { width:100%; max-width:440px; margin:0 auto; }
+  .loginMobileBrand { display:block; margin:10px 0 38px; }
+  .loginCardHeading { margin-bottom:25px; }
+  .loginCardHeading h2 { font-size:34px; }
+  .loginForm { gap:15px; }
+  .loginField,.loginButton { min-height:54px; font-size:16px; }
+  .loginLegal { flex-wrap:wrap; text-align:center; line-height:1.6; }
+
+  /* Main dashboard: compact mobile app shell */
+  .vyralApp { display:block; width:100%; min-height:100dvh; padding-bottom:calc(78px + env(safe-area-inset-bottom)); }
+  .vyralSidebar {
+    position:fixed!important; z-index:1000; left:0; right:0; top:auto!important; bottom:0;
+    width:100%; height:auto!important; min-height:64px; padding:7px 8px calc(7px + env(safe-area-inset-bottom));
+    border:0; border-top:1px solid rgba(255,255,255,.09); background:rgba(8,10,14,.94);
+    backdrop-filter:blur(22px); -webkit-backdrop-filter:blur(22px); overflow-x:auto; overflow-y:hidden;
+    display:block;
+  }
+  .vyralSideBrand,.vyralSideBottom { display:none!important; }
+  .vyralNav { display:flex!important; flex-direction:row!important; gap:4px; width:max-content; min-width:100%; justify-content:space-around; }
+  .vyralNav button {
+    width:auto!important; min-width:64px; min-height:50px; padding:7px 9px!important; flex-direction:column; justify-content:center;
+    gap:3px!important; text-align:center!important; white-space:nowrap; border-radius:10px!important; font-size:9px!important;
+  }
+  .vyralNav button b { width:auto!important; font-size:17px!important; line-height:1; }
+  .vyralNav button small { display:none; }
+  .vyralMain { width:100%; min-width:0; padding:calc(22px + env(safe-area-inset-top)) 12px 28px!important; background-size:auto,44px 44px,44px 44px; }
+  .vyralTopbar { margin-bottom:18px; gap:14px; }
+  .vyralTopbar h1 { margin-top:7px; font-size:clamp(28px,9vw,38px); line-height:1.02; }
+  .vyralTopbar p { font-size:12px; line-height:1.5; }
+  .vyralConnect { width:100%; min-height:46px; display:flex; align-items:center; justify-content:center; }
+  .vyralMetrics { grid-template-columns:repeat(2,minmax(0,1fr))!important; gap:9px; }
+  .vyralMetric { min-width:0; min-height:108px; padding:13px; }
+  .vyralMetricTop { font-size:8px; gap:5px; }
+  .vyralMetric>strong { margin-top:16px; font-size:27px; }
+  .vyralDashboardGrid,.vyralLowerGrid { grid-template-columns:minmax(0,1fr)!important; gap:12px; }
+  .vyralLowerGrid { margin-top:12px; }
+  .vyralCard { min-width:0; padding:14px; border-radius:15px; overflow:hidden; }
+  .vyralCardHead { gap:10px; margin-bottom:13px; }
+  .vyralCardHead h2 { font-size:18px; }
+  .vyralDrop { min-height:118px; padding:14px; }
+  .vyralPublisher textarea,.vyralPublisher select { font-size:16px; }
+  .vyralAccount { min-width:0; padding:10px; }
+  .vyralChartPlaceholder { height:160px; }
+
+  /* Generic protection for legacy/custom feature pages */
+  main,section,article,header,footer,nav,aside,form { max-width:100%; }
+  [class*="container"],[class*="Container"],[class*="wrapper"],[class*="Wrapper"],
+  [class*="content"],[class*="Content"],[class*="studio"],[class*="Studio"] { max-width:100%; min-width:0; }
+  [class*="grid"],[class*="Grid"] { min-width:0; }
+  table { max-width:100%; }
+}
+
+@media (max-width: 430px) {
+  .vyralMain { padding-left:10px!important; padding-right:10px!important; }
+  .vyralMetrics { gap:7px; }
+  .vyralMetric { padding:11px; }
+  .vyralMetric>strong { font-size:24px; }
+  .vyralCard { padding:12px; }
+  .loginAccess { padding-left:15px; padding-right:15px; }
+}
+
+@media (max-width: 350px) {
+  .vyralMetrics { grid-template-columns:1fr!important; }
+}
