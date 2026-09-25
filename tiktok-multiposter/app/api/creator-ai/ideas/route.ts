@@ -74,7 +74,44 @@ export async function POST(req:Request){
   if(brief.length<3)return NextResponse.json({error:"Contame brevemente qué querés vender o comunicar."},{status:400});
   if(!visualStyle||!styleGuide)return NextResponse.json({error:"Primero elegí un estilo visual válido. Las ideas se generan desde ese molde."},{status:400});
 
-  const prompt=`Sos director creativo senior de performance para VYRAL. Brief: "${brief}". ESTILO VISUAL YA SELECCIONADO: "${visualStyle}". MOLDE SEMÁNTICO OBLIGATORIO: ${styleGuide}\nRESTRICCIONES ESPECÍFICAS DEL ESTILO: ${forbidden}\n\nOBJETIVO CENTRAL: todo contenido de VYRAL debe detener el scroll, hacerse notar, ser recordado y cumplir el objetivo del usuario. No generes ideas meramente correctas: generá conceptos con una imagen mental instantánea y un hook que invite a leer, compartir, guardar, comentar o comprar según corresponda.
+  const [{data:businessRow},{data:authUser}]=await Promise.all([
+   db.from("vyral_business_profiles").select("*").eq("user_id",session.userId).maybeSingle(),
+   db.auth.admin.getUserById(session.userId)
+  ]);
+  const legacyBusiness=(authUser.user?.user_metadata?.vyral_business||{}) as Record<string,unknown>;
+  const brandBrain={
+   business_name:String(businessRow?.business_name||legacyBusiness.name||"").trim(),
+   industry:String(businessRow?.industry||legacyBusiness.industry||"").trim(),
+   offer:String(businessRow?.offer||legacyBusiness.offer||"").trim(),
+   audience:String(businessRow?.audience||legacyBusiness.audience||"").trim(),
+   tone:String(businessRow?.tone||legacyBusiness.tone||"").trim(),
+   goals:String(businessRow?.goals||legacyBusiness.objective||"").trim(),
+   cta:String(businessRow?.cta||legacyBusiness.cta||"").trim(),
+   country:String(businessRow?.country||legacyBusiness.location||"").trim(),
+   extra_context:String(businessRow?.extra_context||legacyBusiness.notes||"").trim(),
+   differentiator:String(legacyBusiness.differentiator||"").trim()
+  };
+  const brainText=Object.entries(brandBrain).filter(([,v])=>v).map(([k,v])=>`${k}: ${v}`).join("\n");
+
+  const prompt=`Sos director creativo senior de performance para VYRAL.
+
+BRAND BRAIN PERMANENTE DEL USUARIO (FUENTE DE VERDAD):
+${brainText||"El usuario todavía no completó suficiente información en Mi negocio."}
+
+PEDIDO ACTUAL DEL USUARIO:
+"${brief}"
+
+REGLAS DE MEMORIA:
+- Cruzá SIEMPRE el pedido actual con el Brand Brain antes de idear.
+- El pedido actual define QUÉ quiere comunicar/vender hoy; el Brand Brain define QUIÉN es, qué hace, qué vende, a quién, dónde y con qué contexto.
+- Priorizá datos concretos del Brand Brain cuando sean relevantes: identidad, rubro, ubicación, oferta, público, resultados, precios, trayectoria, equipo, tono, diferenciadores y objetivos.
+- Nunca inventes facturación, edad, clientes, resultados, precios, trayectoria, equipo, ubicaciones ni credenciales que no estén en el Brand Brain o en el pedido actual.
+- Si un dato no existe, construí la idea sin ese dato; no rellenes huecos con suposiciones.
+- No repitas todo el perfil: seleccioná únicamente los datos que hagan el concepto más específico, creíble y potente.
+- Si el pedido actual contradice explícitamente un dato del Brand Brain, para ESTA pieza prevalece el pedido actual.
+- Las ideas deben sentirse escritas para ESTE negocio, no para un negocio genérico del mismo rubro.
+
+ESTILO VISUAL YA SELECCIONADO: "${visualStyle}". MOLDE SEMÁNTICO OBLIGATORIO: ${styleGuide}\nRESTRICCIONES ESPECÍFICAS DEL ESTILO: ${forbidden}\n\nOBJETIVO CENTRAL: todo contenido de VYRAL debe detener el scroll, hacerse notar, ser recordado y cumplir el objetivo del usuario. No generes ideas meramente correctas: generá conceptos con una imagen mental instantánea y un hook que invite a leer, compartir, guardar, comentar o comprar según corresponda.
 
 RAZONÁ INTERNAMENTE EN ESTE ORDEN OBLIGATORIO:
 1) MENSAJE REAL DEL BRIEF: interpretá qué quiere decir el usuario; no te obsesiones con sustantivos literales.
