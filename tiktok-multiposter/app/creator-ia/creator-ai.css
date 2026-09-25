@@ -156,3 +156,13 @@
 @keyframes creatorOrbit{0%,100%{transform:translate3d(0,0,0) rotate(-18deg)}50%{transform:translate3d(-18px,12px,0) rotate(-12deg)}}
 @media(max-width:650px){.creatorComingTabs{grid-template-columns:1fr!important}.creatorComingTabs button{min-height:76px!important}}
 @media(prefers-reduced-motion:reduce){.creatorComingTabs button:before,.creatorComingTabs button:after,.creatorComingTabs .creatorOrbit{animation:none!important}}
+
+
+/* Creator mode availability: Images live, Reels cinematic coming soon */
+.creatorComingTabs .creatorImageMode{cursor:pointer!important;border-color:rgba(103,243,236,.48)!important;background:linear-gradient(145deg,rgba(7,24,23,.96),rgba(3,10,11,.98))!important;color:#effffd!important;box-shadow:inset 0 0 30px rgba(77,241,232,.055),0 12px 34px rgba(0,0,0,.38)!important}
+.creatorComingTabs .creatorImageMode:before,.creatorComingTabs .creatorImageMode:after{display:none!important}
+.creatorComingTabs .creatorImageMode:hover{transform:translateY(-2px);border-color:#68f4ed!important;box-shadow:inset 0 0 34px rgba(77,241,232,.08),0 16px 40px rgba(0,0,0,.42)!important}
+.creatorComingTabs .creatorImageMode.active{border-color:#6ef5ef!important;background:linear-gradient(135deg,rgba(13,47,44,.98),rgba(4,16,17,.98))!important}
+.creatorComingTabs .creatorImageMode .creatorLock{color:#05100f!important;background:linear-gradient(135deg,#e8fffd,#69f3ec)!important;border-color:transparent!important;box-shadow:0 0 20px rgba(91,243,234,.18)}
+.creatorComingTabs .creatorLive{align-self:start!important;margin:5px 0 0!important;color:#8efff8!important;font-size:8px!important;font-weight:900!important;letter-spacing:.17em!important}
+.creatorComingTabs .creatorReelsComing{cursor:not-allowed!important;filter:saturate(.82)}
