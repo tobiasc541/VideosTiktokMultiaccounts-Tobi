@@ -75,7 +75,7 @@ export async function POST(req:Request){
   if(!visualStyle||!styleGuide)return NextResponse.json({error:"Primero elegí un estilo visual válido. Las ideas se generan desde ese molde."},{status:400});
 
   const [{data:businessRow},{data:authUser}]=await Promise.all([
-   db.from("vyral_business_profiles").select("*").eq("user_id",session.userId).maybeSingle(),
+   db.from("vyral_bussines_profile").select("*").eq("user_id",session.userId).maybeSingle(),
    db.auth.admin.getUserById(session.userId)
   ]);
   const legacyBusiness=(authUser.user?.user_metadata?.vyral_business||{}) as Record<string,unknown>;
@@ -89,7 +89,24 @@ export async function POST(req:Request){
    cta:String(businessRow?.cta||legacyBusiness.cta||"").trim(),
    country:String(businessRow?.country||legacyBusiness.location||"").trim(),
    extra_context:String(businessRow?.extra_context||legacyBusiness.notes||"").trim(),
-   differentiator:String(legacyBusiness.differentiator||"").trim()
+   founder_role:String(businessRow?.founder_role||"").trim(),
+   founder_story:String(businessRow?.founder_story||"").trim(),
+   service_area:String(businessRow?.service_area||"").trim(),
+   products_services:String(businessRow?.products_services||"").trim(),
+   pricing:String(businessRow?.pricing||"").trim(),
+   revenue_context:String(businessRow?.revenue_context||"").trim(),
+   team_context:String(businessRow?.team_context||"").trim(),
+   experience:String(businessRow?.experience||"").trim(),
+   customer_pains:String(businessRow?.customer_pains||"").trim(),
+   customer_desires:String(businessRow?.customer_desires||"").trim(),
+   objections:String(businessRow?.objections||"").trim(),
+   differentiators:String(businessRow?.differentiators||legacyBusiness.differentiator||"").trim(),
+   proof_results:String(businessRow?.proof_results||"").trim(),
+   brand_voice:String(businessRow?.brand_voice||"").trim(),
+   words_to_use:String(businessRow?.words_to_use||"").trim(),
+   words_to_avoid:String(businessRow?.words_to_avoid||"").trim(),
+   social_context:String(businessRow?.social_context||"").trim(),
+   current_priority:String(businessRow?.current_priority||"").trim()
   };
   const brainText=Object.entries(brandBrain).filter(([,v])=>v).map(([k,v])=>`${k}: ${v}`).join("\n");
 
