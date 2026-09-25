@@ -98,7 +98,9 @@ async function processMessage(db:any,account:any,m:any){
  const priorAgentMessages=(inbox.data||[]).filter((x:any)=>x.direction==="out").length,voice=chooseVoice(a,text,false)||((a.voiceEnabled&&priorAgentMessages<=1&&Array.isArray(a.voiceAssets))?a.voiceAssets.find((v:any)=>v?.url):null);
  const voiceResource=voice&&voiceResourceIntent(voice)?pickResourceForVoice(decision.resourcePool||[],voice):null;
  const contextualResource=asksResource?pickResourceForText(decision.resourcePool||[],`${text} ${history.slice(-2500)}`):null;
- const textResource=asksResource?(pickResourceForText(decision.resourcePool||[],text)||contextualResource):null;
+ const directResource=asksResource?pickResourceForText(decision.resourcePool||[],text):null;
+ const genericRequest=/^(?:si\s+)?(?:dale|perfecto|genial|listo|ok|bueno)?[\s,!.]*(?:por\s*fa(?:vor)?\s*)?(?:enviame|enviáme|mandame|mandáme|pasame|pasáme|envialo|enviálo|mandalo|mandálo|pasalo|pasálo)?[\s,!.]*$/i.test(text.trim());
+ const textResource=asksResource?(genericRequest?(contextualResource||directResource):(directResource||contextualResource)):null;
  const resendFallback=explicitResend&&!textResource&&!voiceResource?(decision.resourcePool||[]).find((r:any)=>r.kind!=="url")||(decision.resourcePool||[])[0]:null;
  const chosen=voiceResource||textResource||resendFallback||(decision.resourcePool||[]).find((r:any)=>String(r.id)===String(decision.resourceId))||((a.conversationMode==="instant"&&asksResource)?(decision.resourcePool||[])[0]:null),shouldResource=Boolean(chosen&&(explicitResend||voiceResource||textResource||decision.sendResource||(a.conversationMode==="instant"&&asksResource)));
  const syntheticId=`dm:${mid}`,ins=await db.from("instagram_automation_runs").insert({user_id:account.user_id,account_id:account.id,automation_id:a.id,comment_id:syntheticId,commenter_id:senderId,commenter_username:display||null,comment_text:text,status:"matched",detail:{source:"instagram_dm",continueConversation:true}}).select("id").maybeSingle();if(ins.error){if(String(ins.error.code)==="23505")return;throw ins.error}
