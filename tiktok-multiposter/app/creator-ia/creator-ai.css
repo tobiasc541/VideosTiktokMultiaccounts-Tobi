@@ -138,3 +138,21 @@
  input,textarea,select{font-size:16px}
 }
 @media(max-width:360px){.caiStyleGrid{grid-template-columns:1fr!important}}
+
+
+/* Creator IA launch lock — cinematic coming-soon controls */
+.creatorComingTabs{position:relative;display:grid!important;grid-template-columns:repeat(2,minmax(190px,1fr));width:min(620px,100%)!important;gap:14px!important;padding:0!important;margin:18px 0 34px!important;border:0!important;background:transparent!important;overflow:visible}
+.creatorComingTabs button{position:relative!important;isolation:isolate;min-height:82px!important;display:grid!important;grid-template-columns:auto 1fr!important;grid-template-rows:1fr 1fr!important;column-gap:12px!important;align-items:center!important;justify-items:start!important;padding:14px 20px!important;overflow:hidden!important;border:1px solid rgba(73,231,224,.34)!important;border-radius:17px!important;background:linear-gradient(145deg,rgba(5,13,15,.94),rgba(2,6,8,.98))!important;color:#b8c7ca!important;box-shadow:inset 0 0 24px rgba(64,239,230,.025),0 12px 34px rgba(0,0,0,.38)!important;cursor:not-allowed!important;opacity:1!important}
+.creatorComingTabs button:before{content:"";position:absolute;z-index:-2;inset:-1px;background:radial-gradient(circle at 18% 25%,rgba(105,255,248,.14),transparent 34%),linear-gradient(115deg,transparent 15%,rgba(81,242,234,.08) 48%,transparent 70%);animation:creatorPulse 3.2s ease-in-out infinite}
+.creatorComingTabs button:after{content:"";position:absolute;z-index:3;width:155%;height:1px;left:-30%;top:48%;background:linear-gradient(90deg,transparent,#8bfff8,transparent);filter:drop-shadow(0 0 5px #49eee6);transform:rotate(-10deg);opacity:.58;animation:creatorScan 3.8s linear infinite}
+.creatorComingTabs button:nth-child(2):after{animation-delay:-1.8s}
+.creatorComingTabs .creatorLock{grid-row:1/3;display:grid;place-items:center;width:34px;height:34px;border:1px solid rgba(110,245,239,.2);border-radius:10px;background:rgba(104,244,237,.06);color:#91aaa9;font-size:15px}
+.creatorComingTabs strong{align-self:end;color:#c8d4d5;font-size:15px;line-height:1}
+.creatorComingTabs .creatorSoon{align-self:start!important;margin:5px 0 0!important;color:#69f2eb!important;font-size:8px!important;font-weight:900!important;letter-spacing:.17em!important;opacity:.85!important}
+.creatorComingTabs .creatorOrbit{position:absolute;z-index:-1;right:-34px;top:-48px;width:170px;height:100px;border:1px solid rgba(91,248,239,.32);border-radius:50%;transform:rotate(-18deg);filter:drop-shadow(0 0 5px rgba(74,238,230,.45));animation:creatorOrbit 5.4s ease-in-out infinite}
+.creatorComingTabs .creatorOrbit:after{content:"";position:absolute;width:5px;height:5px;border-radius:50%;left:22px;top:8px;background:#a5fff9;box-shadow:0 0 10px 3px #42e8df}
+@keyframes creatorScan{0%{transform:translateX(-65%) rotate(-10deg);opacity:0}15%{opacity:.7}65%{opacity:.35}100%{transform:translateX(70%) rotate(-10deg);opacity:0}}
+@keyframes creatorPulse{0%,100%{opacity:.45}50%{opacity:1}}
+@keyframes creatorOrbit{0%,100%{transform:translate3d(0,0,0) rotate(-18deg)}50%{transform:translate3d(-18px,12px,0) rotate(-12deg)}}
+@media(max-width:650px){.creatorComingTabs{grid-template-columns:1fr!important}.creatorComingTabs button{min-height:76px!important}}
+@media(prefers-reduced-motion:reduce){.creatorComingTabs button:before,.creatorComingTabs button:after,.creatorComingTabs .creatorOrbit{animation:none!important}}
