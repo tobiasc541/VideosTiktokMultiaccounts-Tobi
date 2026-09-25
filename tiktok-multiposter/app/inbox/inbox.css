@@ -45,3 +45,29 @@
 .viAudioSoon:hover{color:#8aa9aa!important;border-color:#2b5051!important}
 
 .viAudioSoon{cursor:pointer!important;color:#77f3ed!important;opacity:1!important}.viAudioSoon.recording{color:#fff!important;background:rgba(255,70,70,.16)!important;border-color:rgba(255,100,100,.55)!important;box-shadow:0 0 16px rgba(255,70,70,.16)}
+
+
+/* Mobile CRM: one usable column, no desktop clipping */
+@media(max-width:760px){
+ .viShell{width:100%!important;min-height:100dvh!important;overflow-x:hidden!important}
+ .viNav{position:relative!important;width:100%!important;height:auto!important;padding:12px!important;overflow-x:auto!important;overflow-y:hidden!important}
+ .viBrand{margin:4px 6px 12px!important}.viNavMain{display:flex!important;flex-direction:row!important;width:max-content!important;gap:5px!important}
+ .viNavMain a{min-height:42px!important;white-space:nowrap!important;padding:9px 10px!important}
+ .viCredits{display:none!important}
+ .vi{width:100%!important;margin:0!important;padding:16px 10px 84px!important;display:block!important;overflow:visible!important}
+ .viHero{display:block!important}.viHero h1{font-size:30px!important}
+ .viAnalyticsCard{display:block!important;height:auto!important;margin-top:12px!important;padding:12px!important}
+ .viChart{margin-top:12px!important}.viChartPlot{height:145px!important;min-height:145px!important}
+ .viFunnel{display:flex!important;overflow-x:auto!important;gap:14px!important;padding-bottom:6px!important}
+ .viStats{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;height:auto!important;gap:8px!important}
+ .viStats button{height:auto!important;min-height:82px!important}
+ .viToolbar{height:auto!important;display:flex!important;flex-direction:column!important;align-items:stretch!important;gap:8px!important}
+ .viSearch{width:100%!important}.viFilters{display:flex!important;overflow-x:auto!important}
+ .viGrid{display:flex!important;flex-direction:column!important;height:auto!important;overflow:visible!important;gap:10px!important}
+ .viThreads,.viConversation,.viCRM{width:100%!important;height:auto!important;min-height:0!important}
+ .viThreads{max-height:340px!important;overflow-y:auto!important}
+ .viConversation{min-height:560px!important;display:grid!important;grid-template-rows:auto minmax(340px,1fr) auto!important}
+ .viMessages{height:auto!important;min-height:340px!important;max-height:60vh!important;overflow-y:auto!important}
+ .viConversation form{height:auto!important}.viComposer textarea{font-size:16px!important}
+ .viCRM{padding:13px!important}.viCRM select,.viCRM textarea{font-size:16px!important}
+}
