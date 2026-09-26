@@ -99,8 +99,8 @@ export async function processInstagramConversationEvent(event:InstagramConversat
  const found=await db.from("instagram_conversation_state").select("*").match(key).maybeSingle();
  const isFirstTouch=!found.data;
  let state:any=found.data||{...key,user_id:event.account.user_id,thread_id:event.threadId||null,current_stage:"opening",origin:event.origin||"direct_dm",context_payload:event.contextPayload||{},last_question_asked:null,last_audio_id:null,voice_assets_sent:[],resources_offered:[],resources_sent:[],pending_resource_id:null,last_intent:null};
- const intent=classifyIntent(event.text);
  const resources=await loadResources(event.account.user_id,a);
+ const intent=classifyIntent(event.text,resources);
  const profileQ=await db.from("vyral_bussines_profile").select("*").eq("user_id",String(event.account.user_id)).maybeSingle();const profile=profileQ.data||{};
  const previousStage=state.current_stage as ConversationStage;
  let resource=chooseResource(resources,event.text,state.pending_resource_id,event.history||"");
@@ -136,7 +136,22 @@ export async function processInstagramConversationEvent(event:InstagramConversat
  }
 
  let textMessageId="",reply="";
- if(attachmentConfirmed){\n  reply=await generateText(a,event,state,intent,true,resource,resources,profile);\n }else if(!voiceSent){\n  reply=await generateText(a,event,state,intent,false,resource,resources,profile);\n }\n if(reply){const recentQ=await db.from("vyral_inbox_messages").select("body").eq("account_id",event.account.id).eq("contact_id",event.contactId).eq("direction","out").order("created_at",{ascending:false}).limit(8);const recent=(recentQ.data||[]).map((x:any)=>norm(x.body));const candidate=norm(reply);const duplicate=recent.some((x:string)=>x===candidate||(candidate.length>24&&x.length>24&&(x.includes(candidate)||candidate.includes(x))));if(!duplicate){const j=await metaSend(event.account,event.contactId,{message:{text:reply}});textMessageId=String(j.message_id||"");await db.from("vyral_inbox_messages").insert({user_id:event.account.user_id,account_id:event.account.id,platform:"instagram",contact_id:event.contactId,message_id:textMessageId||crypto.randomUUID(),body:reply,direction:"out",sender_type:"ai",automation_id:automationId})}}
+ if(attachmentConfirmed){
+  reply=await generateText(a,event,state,intent,true,resource,resources,profile);
+ }else if(!voiceSent){
+  reply=await generateText(a,event,state,intent,false,resource,resources,profile);
+ }
+ if(reply){
+  const recentQ=await db.from("vyral_inbox_messages").select("body").eq("account_id",event.account.id).eq("contact_id",event.contactId).eq("direction","out").order("created_at",{ascending:false}).limit(8);
+  const recent=(recentQ.data||[]).map((x:any)=>norm(x.body));
+  const candidate=norm(reply);
+  const duplicate=recent.some((x:string)=>x===candidate||(candidate.length>24&&x.length>24&&(x.includes(candidate)||candidate.includes(x))));
+  if(!duplicate){
+   const j=await metaSend(event.account,event.contactId,{message:{text:reply}});
+   textMessageId=String(j.message_id||"");
+   await db.from("vyral_inbox_messages").insert({user_id:event.account.user_id,account_id:event.account.id,platform:"instagram",contact_id:event.contactId,message_id:textMessageId||crypto.randomUUID(),body:reply,direction:"out",sender_type:"ai",automation_id:automationId});
+  }
+ }
  await db.from("instagram_conversation_state").upsert({...state,updated_at:new Date().toISOString()},{onConflict:"account_id,contact_id,automation_id"});
  return{ok:true,intent,stage:state.current_stage,voiceSent,voiceId:voice?.id||null,attachmentConfirmed,resourceId:resource?.id||null,pendingResourceId:state.pending_resource_id||null,messageId:textMessageId||resourceMessageId||null};
 }
