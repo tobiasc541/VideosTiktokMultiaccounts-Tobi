@@ -102,7 +102,7 @@ async function loadResources(userId:string,a:any){
 }
 async function generateText(a:any,event:InstagramConversationEvent,state:any,intent:string,attachmentConfirmed:boolean,resource:any,resources:any[],profile:any){
  const key=process.env.VYRAL_CREATOR_PRODUCTION;if(!key)return{text:"",sendResourceId:null as string|null};
- const catalog=(resources||[]).map((r:any)=>({id:String(r.id),name:r.name,purpose:r.purpose,send_when:r.send_when,kind:r.kind}));
+ const catalog=(resources||[]).map((r:any)=>({id:String(r.id),name:r.name,purpose:r.purpose,send_when:r.send_when,kind:r.kind,already_sent:Boolean(state.resources_sent?.includes(String(r.id))),already_offered:Boolean(state.resources_offered?.includes(String(r.id)))}));
  const prompt=`Sos el cerebro conversacional multirrubro de VYRAL para Instagram DM. Razoná por significado, no por coincidencia literal.
 Etapa: ${state.current_stage}. Intención: ${intent}. Origen: ${state.origin}.
 Contexto/publicación: ${JSON.stringify(state.context_payload||{})} ${String(a.contentLabel||"")}
@@ -112,7 +112,7 @@ BUSINESS BRAIN: ${JSON.stringify(profile||{})}
 RECURSOS REALES: ${JSON.stringify(catalog)}
 Recurso relacionado: ${resource?JSON.stringify({id:String(resource.id),name:resource.name,purpose:resource.purpose,send_when:resource.send_when}):"ninguno"}
 attachment_confirmed=${attachmentConfirmed}
-REGLAS: respondé breve, humana y coherentemente usando sólo estas fuentes. Relacioná la necesidad real con name, purpose y send_when aunque el usuario no nombre literalmente el recurso. Si un recurso satisface claramente lo que busca o pide, recomendalo y devolvé su id en send_resource_id. Si prometés o insinuás que vas a mandar, dejar o compartir un recurso ahora, send_resource_id es obligatorio. Si no hay correspondencia clara, usá null. Nunca elijas el primer recurso, inventes o sustituyas recursos. No escribas URLs en text. Si attachment_confirmed=true, no vuelvas a seleccionar ese recurso. No repitas el historial ni uses relleno. Máximo una pregunta y sólo en opening/discovery. Terminá todas las oraciones.
+REGLAS: respondé breve, humana y coherentemente usando sólo estas fuentes. Relacioná la necesidad real con name, purpose y send_when aunque el usuario no nombre literalmente ese recurso. TRATÁ EL HISTORIAL COMO MEMORIA SEMÁNTICA: antes de responder identificá qué hechos, beneficios, características, horarios, explicaciones, recursos y propuestas YA fueron comunicados. No vuelvas a presentar un dato conocido como si fuera nuevo aunque lo reformules. Si el usuario pregunta algo nuevo, respondé sólo la información incremental necesaria y apoyate implícitamente en lo ya dicho. Un recurso puede ser relevante como CONTEXTO sin necesitar ser ENVIADO. Sólo devolvé send_resource_id cuando la intención actual requiera realmente entregarlo ahora. Si un recurso figura already_sent=true, no lo vuelvas a seleccionar salvo que el usuario explícitamente pida recibirlo otra vez o diga que no lo recibió/no lo ve. Si prometés o insinuás que vas a mandar, dejar o compartir un recurso ahora, send_resource_id es obligatorio. Si no hay necesidad real de entrega, usá null. Nunca elijas el primer recurso, inventes o sustituyas recursos. No escribas URLs en text. Si attachment_confirmed=true, no vuelvas a seleccionar ese recurso. Evitá repetición SEMÁNTICA, no sólo textual. No repitas el historial ni uses relleno. Máximo una pregunta y sólo en opening/discovery. Terminá todas las oraciones.
 Respondé SOLO JSON válido: {"text":"respuesta final","send_resource_id":null}.`;
  async function request(input:string,maxTokens=650){
   const r=await fetch("https://api.openai.com/v1/responses",{method:"POST",headers:{Authorization:`Bearer ${key}`,"Content-Type":"application/json"},body:JSON.stringify({model:"gpt-5.6-luna",input,max_output_tokens:maxTokens}),signal:AbortSignal.timeout(15000)}),j=await r.json().catch(()=>({}));
@@ -168,7 +168,7 @@ export async function processInstagramConversationEvent(event:InstagramConversat
 
  let textMessageId="",reply="",brainResource:any=null;
  if(attachmentConfirmed){const g=await generateText(a,event,state,intent,true,resource,resources,profile);reply=g.text}
- else if(!voiceSent){const g=await generateText(a,event,state,intent,false,resource,resources,profile);reply=g.text;if(g.sendResourceId)brainResource=resources.find((r:any)=>String(r.id)===g.sendResourceId)||null}
+ else if(!voiceSent){const g=await generateText(a,event,state,intent,false,resource,resources,profile);reply=g.text;if(g.sendResourceId){const candidate=resources.find((r:any)=>String(r.id)===g.sendResourceId)||null;const alreadySent=Boolean(candidate&&state.resources_sent?.includes(String(candidate.id)));const explicitRetry=intent==="claim_missing_resource"||intent==="resource_request";if(candidate&&(!alreadySent||explicitRetry))brainResource=candidate}}
  if(reply){
   const recentQ=await db.from("vyral_inbox_messages").select("body").eq("account_id",event.account.id).eq("contact_id",event.contactId).eq("direction","out").order("created_at",{ascending:false}).limit(8),recent=(recentQ.data||[]).map((x:any)=>norm(x.body)),candidate=norm(reply);
   const duplicate=recent.some((x:string)=>x===candidate||(candidate.length>24&&x.length>24&&(x.includes(candidate)||candidate.includes(x))));
