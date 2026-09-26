@@ -164,7 +164,7 @@ RECURSOS CONFIRMADOS COMO ENVIADOS EN ESTA ACTIVACIÓN: ${JSON.stringify(sentRes
 BUSINESS BRAIN: ${JSON.stringify(profile||{})}
 REGLA CENTRAL: toda afirmación sobre hechos o acciones pasadas del agente debe estar demostrada por la evidencia de ESTA activación. Frases equivalentes a "ya te lo mandé", "te lo dejé arriba", "como te mostré", "ya te pasé", "lo compartí antes", "viste el archivo/audio/link" son falsas si la evidencia no demuestra esa acción concreta. No uses recuerdos de activaciones anteriores ni supongas que un recurso ofrecido fue enviado.
 También verificá que no contradiga el historial, no invente acciones, recursos, cifras o contenido, y que responda al último mensaje sin repetir innecesariamente.
-AUDITORÍA DE CTA: si la respuesta presenta/menciona un recurso real como solución útil y ese recurso no figura como enviado en esta activación, la respuesta no puede cerrar con otra pregunta de diagnóstico: debe cerrar invitando explícitamente a recibir/acceder/unirse/ver/usar ese recurso. No inventes un recurso: sólo podés invitar a uno existente en RECURSOS CONFIRMADOS o inferible de la respuesta propuesta y del BUSINESS BRAIN.
+LÍMITE DE AUTORIDAD: este verificador NO puede crear una acción nueva. No agregues ofertas, invitaciones, promesas de envío, afirmaciones de que vas a mandar/adjuntar/compartir algo, ni menciones nuevas de recursos que no estuvieran ya en RESPUESTA PROPUESTA. Tu trabajo es únicamente corregir hechos, contradicciones y repetición manteniendo exactamente la intención operativa original. La decisión de entregar recursos pertenece al planificador/ejecutor posterior.
 AUDITORÍA DE INTERROGATORIO: mirá EVIDENCIA REAL y el último mensaje. Si el usuario ya explicó su problema o ya contestó una pregunta diagnóstica, eliminá nuevas preguntas de discovery salvo que falte un dato imprescindible para un pedido nuevo. No conviertas cada respuesta en otra pregunta.
 Si está respaldada y cumple estas reglas, devolvela sin cambios. Si falla alguna, reescribí sólo lo necesario para que sea verdadera, natural y útil. No agregues URLs ni afirmes que algo ya fue enviado sin evidencia.
 Respondé SOLO JSON válido: {"valid":true,"text":"respuesta final"}.`;
@@ -209,6 +209,10 @@ export async function processInstagramConversationEvent(event:InstagramConversat
  // PLAN FIRST: resource/action planning must run regardless of whether presentation uses audio or text.
  // Explicit missing-resource retries are locked to the pending/last-offered resource above and never re-routed.
  let plan=await generateText(a,sessionEvent,state,intent,false,resource,resources,profile);
+
+ // SEMANTIC VALIDATION HAPPENS BEFORE ACTION COMMIT.
+ // No component after the action audit is allowed to create a new promise/invitation.
+ if(plan.text)plan.text=await validateReplyBeforeSend(sessionEvent,state,resources,profile,plan.text);
 
  // ATOMIC PROMISE GATE: conversational copy may never promise a resource unless the same
  // plan carries the exact real resource id that the executor can deliver in this turn.
@@ -285,8 +289,8 @@ Respondé SOLO JSON válido: {"text":"texto coherente","must_send_resource_id":n
   else reply=plan.text;
  }
  if(reply){
-  // FINAL FACT CHECK: never send conversational copy that claims an action/history not proven inside the current activation.
-  reply=await validateReplyBeforeSend(sessionEvent,state,resources,profile,reply);
+  // ACTION COMMIT BOUNDARY: from here on, copy is immutable with respect to resource actions.
+  // Any promise capable of causing delivery was already audited before the executor.
   let recentQuery=db.from("vyral_inbox_messages").select("body").eq("account_id",event.account.id).eq("contact_id",event.contactId).eq("direction","out");
   const sessionStartedAt=String(state.context_payload?.session_started_at||"");if(sessionStartedAt)recentQuery=recentQuery.gte("created_at",sessionStartedAt);
   const recentQ=await recentQuery.order("created_at",{ascending:false}).limit(8),recent=(recentQ.data||[]).map((x:any)=>norm(x.body)),candidate=norm(reply);
