@@ -49,15 +49,24 @@ function semanticOverlap(a: any, b: any) {
 
 function classifyIntent(text: string, resources: any[] = [], history = "") {
   const t = norm(text);
-  const asksDelivery = /\b(como|donde)\b.*\b(uno|entro|accedo|ingreso|ingresar|consigo|obtengo|puedo|hago|explicas|compartis|muestras)\b|\b(pasame|mandame|enviame|compartime|dame|acceso|link|enlace|archivo|material|recurso|discord|comunidad|canal)\b/.test(t);
+
+  // Reclamo explícito de envío no recibido
+  if (/no me (la|lo) (mandaste|enviaste|pasaste)|no (la|lo) veo|no aparece|no me aparece|no llego|no me llego|reenvi|otra vez|de nuevo/.test(t)) {
+    return "claim_missing_resource";
+  }
+
+  // Solicitud explícita de pruebas / evidencia / backtest / recursos
+  const asksProofOrResource = /\b(prueba|pruebas|evidencia|captura|resultado|resultados|backtest|backtesting|winrate|win rate)\b/.test(t) ||
+    /\b(como|donde)\b.*\b(uno|entro|accedo|ingreso|ingresar|consigo|obtengo|puedo|hago|explicas|compartis|muestras)\b/.test(t) ||
+    /\b(pasame|mandame|enviame|compartime|dame|acceso|link|enlace|archivo|material|recurso|discord|comunidad|canal)\b/.test(t);
+
   const related = chooseResource(resources, text, null, history);
-  if (asksDelivery && related) return "resource_request";
+  if (asksProofOrResource && related) return "resource_request";
 
   const farewell = /\b(chau|adios|nos vemos|hasta luego|gracias,? chau|listo,? gracias)\b/.test(t);
   const hasContinuation = /\?|\b(y por ultimo|pero|consulta|pregunta|tenes|tienes|podes|puedes|quisiera|quiero|necesito|como|donde|cual|que)\b/.test(t);
   if (farewell && !hasContinuation) return "close";
 
-  if (/no me (la|lo) (mandaste|enviaste|pasaste)|no (la|lo) veo|no aparece|no me aparece|no llego|no me llego|reenvi|otra vez|de nuevo/.test(t)) return "claim_missing_resource";
   if (/precio|comprar|contratar|pagar|plan|presupuesto|cotizacion/.test(t)) return "qualification";
   if (/gracias|listo|genial|perfecto|dale/.test(t) && t.split(/\s+/).length < 6) return "ack";
 
@@ -166,29 +175,7 @@ function chooseResource(pool: any[], text: string, pending?: string | null, hist
     if (s > bestScore) { second = bestScore; bestScore = s; best = r; }
     else if (s > second) second = s;
   }
-  return bestScore >= 4 && bestScore > second ? best : pool[0] || null;
-}
-
-function chooseStageVoice(a: any, state: any, intent: string, isFirstTouch = false, currentMessage = "", resourceDeliveryConfirmed = false) {
-  if (!a?.voiceEnabled) return null;
-  const all = (Array.isArray(a.voiceAssets) ? a.voiceAssets : []).filter((v: any) => v?.url);
-  const sent = new Set((state.voice_assets_sent || []).map(String));
-  const first = isFirstTouch && sent.size === 0;
-  const role = first ? "opening" : intent === "proof_request" ? "proof" : state.current_stage === "follow_up" ? "follow_up" : state.current_stage;
-  if (role === "resource_ready" || role === "resource_offer") return null;
-  if (role === "resource_sent" && !resourceDeliveryConfirmed) return null;
-  const candidates = all.filter((v: any) => stageOfVoice(v) === role && allowedOrigin(v, state.origin) && (!sent.has(String(v.id)) || v.is_reusable === true));
-  if (first) return candidates[0] || null;
-  if (!candidates.length) return null;
-  const message = String(currentMessage || "").trim();
-  if (!message) return null;
-  let best: any = null, bestScore = 0;
-  for (const v of candidates) {
-    const voiceMeaning = `${v.when || ""} ${v.purpose || ""} ${v.transcript || ""} ${v.name || ""}`;
-    const score = semanticOverlap(message, voiceMeaning);
-    if (score > bestScore) { best = v; bestScore = score; }
-  }
-  return bestScore >= 2 ? best : null;
+  return bestScore >= 2 ? best : pool[0] || null;
 }
 
 async function loadResources(userId: string, a: any) {
@@ -280,7 +267,6 @@ export async function processInstagramConversationEvent(event: InstagramConversa
   
   const newActivation = !found.data;
   const freshState = { ...key, user_id: event.account.user_id, thread_id: event.threadId || null, current_stage: "opening", origin: event.origin || "direct_dm", context_payload: { ...(event.contextPayload || {}), session_started_at: new Date().toISOString(), activation_message_id: String(event.messageId || "") }, last_question_asked: null, last_audio_id: null, voice_assets_sent: [], resources_offered: [], resources_sent: [], pending_resource_id: null, last_intent: null };
-  const isFirstTouch = !found.data;
   let state: any = found.data || freshState;
   const sessionEvent: InstagramConversationEvent = newActivation ? { ...event, history: "" } : event;
   
@@ -351,8 +337,6 @@ export async function processInstagramConversationEvent(event: InstagramConversa
   }
 
   // 4. RE-GENERACIÓN DEL TEXTO SI HUBO ENTREGA EFECTIVA O BLOQUEO
-  // Si la entrega física fue exitosa, forzamos generateText con attachmentConfirmed = true.
-  // Si no se envió nada (por deduplicación), se asegura attachmentConfirmed = false.
   if (attachmentConfirmed || (plan.sendResourceId && !actionResource)) {
     const refreshedPlan = await generateText(a, sessionEvent, state, intent, attachmentConfirmed, actionResource || plannedResource, resources, profile);
     reply = refreshedPlan.text;
