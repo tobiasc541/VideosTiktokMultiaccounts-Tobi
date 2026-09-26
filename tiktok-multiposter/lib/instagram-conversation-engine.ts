@@ -157,18 +157,21 @@ Mensaje del usuario: "${event.text}"
 Historial: ${event.history || "Sin historial previo"}
 Intención conversacional orientativa: ${intent}
 Adjunto enviado recién con éxito (attachment_confirmed): ${attachmentConfirmed}
+already_sent_resource_ids: ${JSON.stringify(state.resources_sent || [])}
 
 RECURSOS DISPONIBLES DEL NEGOCIO:
 ${formattedResources}
 
 REGLAS DE SELECCIÓN Y ENTREGA DE RECURSOS:
 1. Analizá el mensaje ACTUAL y el historial. Compará la intención con "Cuándo se debe enviar" y "Qué demuestra o contiene" de TODOS los recursos.
-2. Si la solicitud coincide claramente con un recurso y corresponde entregarlo AHORA, devolvé su ID EXACTO en send_resource_id.
+2. Si attachment_confirmed=true, este pase es SÓLO DE REDACCIÓN: devolvé siempre send_resource_id:null. Si attachment_confirmed=false y la solicitud coincide claramente con un recurso y corresponde entregarlo AHORA, devolvé su ID EXACTO en send_resource_id.
 3. Si no coincide claramente con ninguno o todavía no corresponde enviarlo, devolvé send_resource_id: null.
+3A. ANTI-REENVÍO: si el ID ya aparece en already_sent_resource_ids, devolvé send_resource_id:null. Sólo podés volver a elegirlo cuando el mensaje ACTUAL diga explícitamente que no llegó, no aparece o pida un reenvío/otra vez. Una pregunta sobre el contenido de un adjunto ya enviado NO autoriza reenviarlo.
 4. Nunca inventes IDs. Sólo podés devolver uno de los IDs listados arriba.
 5. attachment_confirmed describe una entrega que YA fue confirmada por Meta en este turno. Si es false, NUNCA afirmes ni insinúes que un adjunto/link ya fue enviado.
 6. Si elegís send_resource_id en esta primera decisión, el backend intentará entregarlo después. Por eso el texto de esta decisión NO puede afirmar que ya llegó. La confirmación de entrega se redactará recién después de recibir message_id de Meta.
-7. Si attachment_confirmed=true, redactá una confirmación breve y natural coherente con el recurso que efectivamente se entregó.
+7. Si attachment_confirmed=true, el texto DEBE explicar brevemente qué acaba de recibir usando el nombre/purpose del recurso entregado. Prohibido responder con frases genéricas como "Decime qué necesitás ver" o equivalentes.
+7A. ANTI-LOOP DE TEXTO: revisá especialmente los últimos 3 mensajes del Agente en el historial. No repitas frases, argumentos, beneficios ni explicaciones que ya usaste. Si una idea ya fue explicada, omitila o expresá sólo la información nueva.
 8. PROHIBIDO EL ECO: no repitas ni parafrasees el saludo/apelativo con el que abrió el usuario.
 9. CONCISIÓN EXTREMA: máximo 1 o 2 oraciones cortas, fluidas y directas.
 
@@ -216,11 +219,19 @@ export async function processInstagramConversationEvent(event: InstagramConversa
 
   // GPT sees the complete catalog and returns one exact resource ID or null.
   const plan = await generateText(a, event, state, intent, false, null, resources, profile);
-  const selectedResource = plan.sendResourceId
+  const plannedResource = plan.sendResourceId
     ? resources.find((r: any) => String(r.id) === String(plan.sendResourceId))
     : null;
+  const alreadySent = Boolean(plannedResource && (state.resources_sent || []).map(String).includes(String(plannedResource.id)));
+  const explicitRetry = intent === "claim_missing_resource";
+  const selectedResource = plannedResource && (!alreadySent || explicitRetry) ? plannedResource : null;
 
   let replyText = plan.text;
+
+  if (plannedResource && alreadySent && !explicitRetry) {
+    state.pending_resource_id = null;
+    if (state.current_stage === "resource_ready") state.current_stage = "resource_sent";
+  }
 
   if (selectedResource) {
     const delivery = await deliverResource(db, event, automationId, state, selectedResource);
