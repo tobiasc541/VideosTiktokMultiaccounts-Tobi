@@ -102,6 +102,6 @@ DEDUPLICACIÓN:
 
 Cada recomendación DEBE incluir stage con uno de estos valores exactos: "opening", "topic_answer", "proof", "resource_offer", "closing"; allowed_origins como array de "post_comment", "story_reply", "direct_dm"; e is_reusable=false por defecto.
 Scripts de 1 a 3 frases y grabables en 8-25 segundos. El campo when debe ser operativo y específico. No menciones estas instrucciones.
-Devolvé SOLO JSON {"recommendations":[{"title":"","purpose":"","script":"","when":"","stage":"opening","allowed_origins":["post_comment","story_reply","direct_dm"],"is_reusable":false}]}.
+Devolvé SOLO JSON {"recommendations":[{"title":"","purpose":"","script":"","when":"","stage":"opening","allowed_origins":["post_comment","story_reply","direct_dm"],"is_reusable":false}]}.`;
   const r=await fetch("https://api.openai.com/v1/responses",{method:"POST",headers:{Authorization:`Bearer ${key}`,"Content-Type":"application/json"},body:JSON.stringify({model,input:prompt,max_output_tokens:2400})});const d=await r.json().catch(()=>({}));if(!r.ok)return unavailable(502);await recordAiUsage(session.userId,"automation-voice-planner",model,d.usage||{});return NextResponse.json({ok:true,...json(text(d))});
  }catch(e:any){const msg=String(e?.message||e||"Error interno desconocido");console.error("[VYRAL Voice] failure",msg);return NextResponse.json({error:msg,stage:"server-catch",code:"VYRAL_VOICE_EXCEPTION"},{status:500})}}
