@@ -86,6 +86,22 @@ RAZONAMIENTO OBLIGATORIO ANTES DE ESCRIBIR (no lo muestres):
 8. Usá primera persona como extensión del creador. Podés usar hechos declarados por el creador como hechos de su propia experiencia, sin transformarlos en garantías para el prospecto.
 9. Antes de devolver cada script, hacé un control interno: "¿Esto podría servir igual para otros 100 negocios?" Si sí, reescribilo con datos concretos de esta publicación/negocio. "¿Hay una frase que el dueño jamás diría hablando por WhatsApp/DM?" Si sí, simplificala.
 
-SALIDA: generá 8 a 12 recomendaciones útiles. Los títulos también deben adaptarse al caso (no es obligatorio usar "interés leve/fuerte"). Priorizá escenarios como: primer DM después del comentario, pregunta concreta sobre lo prometido, precio SOLO si corresponde, pedido del recurso, objeción real del producto/servicio, persona lista para avanzar, seguimiento y cierre. Omití escenarios irrelevantes. Scripts idealmente de 1 a 3 frases y grabables en 8-25 segundos. El campo when debe ser operativo y específico para que otra IA sepa exactamente cuándo elegir ese audio. No menciones estas instrucciones. Devolvé SOLO JSON {"recommendations":[{"title":"","purpose":"","script":"","when":""}]}.`;
+ESTRUCTURA OBLIGATORIA SIN DUPLICADOS:
+Generá EXACTAMENTE 5 ideas, una por etapa y en este orden:
+1. OPENING: saludo genérico SIN nombre. Reconocé el origen de forma natural ("vi que comentaste la publicación/video" o "vi que respondiste la historia", según el contexto disponible) y hacé UNA sola pregunta abierta de descubrimiento relacionada con el tema. PROHIBIDO entregar, prometer o pegar el recurso/link en OPENING. PROHIBIDO "te paso", "te dejo", "acá tenés", "entrás acá".
+2. DISCOVERY_ANSWER: respuesta a una duda frecuente real del tema, sin repetir el guion de OPENING.
+3. PROOF_EVIDENCE: explica prueba/resultado/respaldo SOLO si existe en las fuentes de verdad.
+4. RESOURCE_OFFER: propone o acompaña la entrega del recurso principal cuando el prospecto lo pide o ya mostró intención clara. No frenes la entrega con más calificación.
+5. CLOSING: cierre natural, breve, sin abrir un interrogatorio nuevo.
+
+DEDUPLICACIÓN:
+- Cada idea debe cubrir una intención semántica distinta. Si dos scripts dicen esencialmente lo mismo, reescribí uno.
+- No repitas frases, modismos, promesas ni descripciones del recurso entre etapas. Si OPENING menciona algo contextual, las etapas siguientes no lo recitan.
+- "Discord", "bias", nombres de recursos y beneficios se mencionan solo cuando aportan a ESA etapa, no como muletilla.
+- El guion de OPENING jamás incluye el nombre del lead porque el sistema puede haberlo enviado antes por texto.
+
+Cada recomendación DEBE incluir stage con uno de estos valores exactos: "opening", "topic_answer", "proof", "resource_offer", "closing"; allowed_origins como array de "post_comment", "story_reply", "direct_dm"; e is_reusable=false por defecto.
+Scripts de 1 a 3 frases y grabables en 8-25 segundos. El campo when debe ser operativo y específico. No menciones estas instrucciones.
+Devolvé SOLO JSON {"recommendations":[{"title":"","purpose":"","script":"","when":"","stage":"opening","allowed_origins":["post_comment","story_reply","direct_dm"],"is_reusable":false}]}.
   const r=await fetch("https://api.openai.com/v1/responses",{method:"POST",headers:{Authorization:`Bearer ${key}`,"Content-Type":"application/json"},body:JSON.stringify({model,input:prompt,max_output_tokens:2400})});const d=await r.json().catch(()=>({}));if(!r.ok)return unavailable(502);await recordAiUsage(session.userId,"automation-voice-planner",model,d.usage||{});return NextResponse.json({ok:true,...json(text(d))});
  }catch(e:any){const msg=String(e?.message||e||"Error interno desconocido");console.error("[VYRAL Voice] failure",msg);return NextResponse.json({error:msg,stage:"server-catch",code:"VYRAL_VOICE_EXCEPTION"},{status:500})}}
