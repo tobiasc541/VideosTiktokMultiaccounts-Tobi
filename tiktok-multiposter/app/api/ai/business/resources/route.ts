@@ -19,11 +19,12 @@ export async function PATCH(req:Request){
  let resource:any=null;
  if(id){const q=await db.from("vyral_business_resources").select("id,name,kind,storage_path,external_url,mime_type").eq("id",id).eq("user_id",s.userId).maybeSingle();resource=q.data}
  const name=clean(resource?.name||b.name,180),mime=clean(resource?.mime_type||b.type,120),kind=resource?.kind||b.kind;
- let source=clean(resource?.external_url||b.url,1800);
+ let source=String(b.dataUrl||"").trim()||clean(resource?.external_url||b.url,1800);
+ if(source.startsWith("data:")&&source.length>12*1024*1024)return NextResponse.json({error:"La imagen es demasiado grande para analizarla directamente."},{status:413});
  if(!source&&resource?.storage_path){const q=await db.storage.from(BUCKET).createSignedUrl(String(resource.storage_path),3600);source=String(q.data?.signedUrl||"")}
  if(!source)return NextResponse.json({error:"No se pudo obtener el recurso para analizar."},{status:400});
- const visual=/^image\//i.test(mime)||/\.(png|jpe?g|webp|gif)(?:$|\?)/i.test(source);
- const prompt=`Analizá este recurso de negocio de forma universal, sin asumir industria. Identificá con precisión qué contiene, cualquier plataforma/producto/interfaz reconocible sólo si es visible, y los datos, métricas, conceptos o elementos importantes. Devolvé JSON válido con dos campos: "purpose" = resumen preciso de máximo 2 oraciones sobre qué demuestra o contiene; "send_when" = 1 oración describiendo en qué intención o pregunta de un cliente sería útil enviarlo. No inventes información que no sea visible o verificable. Nombre: ${name||"Sin nombre"}. Tipo: ${mime||kind||"desconocido"}.`;
+ const visual=source.startsWith("data:image/")||/^image\//i.test(mime)||/\.(png|jpe?g|webp|gif)(?:$|\?)/i.test(source);
+ const prompt=`Analizá este recurso de negocio con muchísimo detalle y de forma universal, sin asumir industria. Mirá el contenido visual completo. Identificá, sólo cuando sea realmente visible, la plataforma/software/producto/interfaz, títulos, textos, métricas, porcentajes, cantidades, fechas, tablas, gráficos, resultados y cualquier evidencia relevante. Explicá qué demuestra y qué NO permite concluir para evitar que el agente invente. Devolvé JSON válido con exactamente dos campos: "purpose" = descripción rica, concreta y autosuficiente de 2 a 4 oraciones sobre qué contiene/demuestra, incluyendo los datos visibles importantes; "send_when" = 1 o 2 oraciones con las preguntas/intenciones concretas del cliente ante las que conviene enviarlo y cuándo NO enviarlo de forma proactiva. No inventes ni completes datos ilegibles. Nombre: ${name||"Sin nombre"}. Tipo: ${mime||kind||"desconocido"}.`;
  const content:any[]=[{type:"input_text",text:prompt}];
  if(visual)content.push({type:"input_image",image_url:source});
  else content[0].text+=` URL de referencia: ${source}`;
