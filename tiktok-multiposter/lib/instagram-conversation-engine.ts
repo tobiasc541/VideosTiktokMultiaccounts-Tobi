@@ -84,29 +84,31 @@ async function loadResources(userId:string,a:any){
  return(q.data||[]).filter((r:any)=>!Array.isArray(a.businessResourceIds)||!a.businessResourceIds.length||a.businessResourceIds.includes(r.id));
 }
 async function generateText(a:any,event:InstagramConversationEvent,state:any,intent:string,attachmentConfirmed:boolean,resource:any,resources:any[],profile:any){
- const key=process.env.VYRAL_CREATOR_PRODUCTION;
- if(!key)return "";
- const prompt=`Sos el motor conversacional de ventas por Instagram DM para VYRAL.\n\nOrigen: ${state.origin}.\nEtapa actual: ${state.current_stage}.\nIntención detectada: ${intent}.\n\nContexto de la publicación:\n${JSON.stringify(state.context_payload||{})}\n\nPublicación/oferta:\n${String(a.contentLabel||"")}\n\nHistorial de la conversación:\n${event.history||"Sin historial"}\n\nMensaje nuevo del usuario:\n${event.text}\n\nPERFIL / BRAND BRAIN DEL DUEÑO:\n${JSON.stringify(profile||{})}\n\nRECURSOS REALES DISPONIBLES:\n${JSON.stringify((resources||[]).map((r:any)=>({name:r.name,purpose:r.purpose,send_when:r.send_when,kind:r.kind})))}\n\nRecurso relacionado:\n${resource?JSON.stringify({name:resource.name,purpose:resource.purpose,send_when:resource.send_when}):"ninguno"}\n\nattachment_confirmed=${attachmentConfirmed}\n\nREGLAS DE ORO CONVERSACIONALES:\n1. SÉ HUMANO Y DIRECTO: Respondé de forma natural, corta y fluida. Máximo 1 pregunta por mensaje.\n2. NO REPETIR LO YA DICHO: Revisá el historial. Está ESTRICTAMENTE PROHIBIDO repetir promesas, muletillas, preguntas o explicaciones ya hechas en audios o mensajes anteriores.\n3. URLS: Nunca escribas, deletrees ni dictes URLs como parte de una respuesta conversacional. El backend entrega el enlace real como mensaje independiente. Si ya fue entregado, sólo podés referirte naturalmente a que quedó por escrito.\n4. INTENCIÓN ALTA (HIGH_INTENT): Si el usuario pide directamente recurso/acceso/link, no hagas preguntas de calificación adicionales. El backend se encarga de entregar el recurso.\n5. CERO CHAT INFINITO: Si responde corto o con poco interés, no abras un interrogatorio. Dejá una cortesía abierta.\n6. MANEJO DE ADJUNTOS: Si attachment_confirmed=false, PROHIBIDO afirmar o prometer que algo fue enviado. Si attachment_confirmed=true, podés confirmar brevemente que el recurso quedó enviado.\n7. CONTROL DE PREGUNTAS: Sólo hacé preguntas cuando la etapa actual sea opening o discovery. Fuera de esas etapas, respondé sin preguntas.\n8. No repitas el nombre, saludo, CTA ni información del post salvo que sea imprescindible para contestar lo que preguntó el usuario. No inventes recursos, resultados ni datos.\n9. CONTESTÁ LA PREGUNTA REAL usando exclusivamente el PERFIL/BRAND BRAIN, la publicación, el historial y los RECURSOS REALES de ESTE negocio. El motor es multirrubro: no presupongas industria, producto, servicio, plataforma, método ni vocabulario.\n10. RELACIONÁ INFORMACIÓN: no copies campos del perfil mecánicamente. Combiná los datos relevantes para responder la intención concreta del mensaje. Si existe un recurso cuyo nombre, propósito o condición de envío resuelve naturalmente lo que pide la persona, mencioná su utilidad sin inventar nada; el backend decide si corresponde entregarlo.\n11. CONCIENCIA DEL NEGOCIO: hablá como extensión del dueño según brand_voice, tone, offer, products_services, differentiators, experience, customer_pains, customer_desires, objections, social_context y current_priority cuando sean pertinentes. Ignorá campos irrelevantes.\n12. Nunca uses como respuesta de relleno frases tipo "Te leo", "Contame un poco más", "seguimos", "¿algo más?" si no contestan concretamente el mensaje actual.\n13. Terminá frases completas. Nunca devuelvas una oración cortada.\n\nRespondé ÚNICAMENTE con el texto final que se le enviará al usuario.`;
- async function request(input:string,maxTokens=500){
-  const r=await fetch("https://api.openai.com/v1/responses",{method:"POST",headers:{Authorization:`Bearer ${key}`,"Content-Type":"application/json"},body:JSON.stringify({model:"gpt-5.6-luna",input,max_output_tokens:maxTokens}),signal:AbortSignal.timeout(15000)});
-  const j=await r.json().catch(()=>({}));
-  if(!r.ok)return{ok:false,text:"",incomplete:false};
-  let text=String(j.output_text||"");
-  if(!text)for(const x of j.output||[])for(const z of x.content||[])if(z.type==="output_text")text+=z.text||"";
-  const incomplete=j.status==="incomplete"||Boolean(j.incomplete_details)||j.output?.some?.((x:any)=>x.status==="incomplete");
-  return{ok:true,text:text.trim(),incomplete:Boolean(incomplete)};
+ const key=process.env.VYRAL_CREATOR_PRODUCTION;if(!key)return{text:"",sendResourceId:null as string|null};
+ const catalog=(resources||[]).map((r:any)=>({id:String(r.id),name:r.name,purpose:r.purpose,send_when:r.send_when,kind:r.kind}));
+ const prompt=`Sos el cerebro conversacional multirrubro de VYRAL para Instagram DM. Razoná por significado, no por coincidencia literal.
+Etapa: ${state.current_stage}. Intención: ${intent}. Origen: ${state.origin}.
+Contexto/publicación: ${JSON.stringify(state.context_payload||{})} ${String(a.contentLabel||"")}
+Historial: ${event.history||"Sin historial"}
+Mensaje nuevo: ${event.text}
+BUSINESS BRAIN: ${JSON.stringify(profile||{})}
+RECURSOS REALES: ${JSON.stringify(catalog)}
+Recurso relacionado: ${resource?JSON.stringify({id:String(resource.id),name:resource.name,purpose:resource.purpose,send_when:resource.send_when}):"ninguno"}
+attachment_confirmed=${attachmentConfirmed}
+REGLAS: respondé breve, humana y coherentemente usando sólo estas fuentes. Relacioná la necesidad real con name, purpose y send_when aunque el usuario no nombre literalmente el recurso. Si un recurso satisface claramente lo que busca o pide, recomendalo y devolvé su id en send_resource_id. Si prometés o insinuás que vas a mandar, dejar o compartir un recurso ahora, send_resource_id es obligatorio. Si no hay correspondencia clara, usá null. Nunca elijas el primer recurso, inventes o sustituyas recursos. No escribas URLs en text. Si attachment_confirmed=true, no vuelvas a seleccionar ese recurso. No repitas el historial ni uses relleno. Máximo una pregunta y sólo en opening/discovery. Terminá todas las oraciones.
+Respondé SOLO JSON válido: {"text":"respuesta final","send_resource_id":null}.`;
+ async function request(input:string,maxTokens=650){
+  const r=await fetch("https://api.openai.com/v1/responses",{method:"POST",headers:{Authorization:`Bearer ${key}`,"Content-Type":"application/json"},body:JSON.stringify({model:"gpt-5.6-luna",input,max_output_tokens:maxTokens}),signal:AbortSignal.timeout(15000)}),j=await r.json().catch(()=>({}));
+  if(!r.ok)return{ok:false,raw:"",incomplete:false};let raw=String(j.output_text||"");if(!raw)for(const x of j.output||[])for(const z of x.content||[])if(z.type==="output_text")raw+=z.text||"";
+  return{ok:true,raw:raw.trim(),incomplete:Boolean(j.status==="incomplete"||j.incomplete_details||j.output?.some?.((x:any)=>x.status==="incomplete"))};
  }
- const first=await request(prompt,500);
- if(!first.ok||!first.text)return "";
- let out=first.text;
- const looksCut=first.incomplete||!/[.!?…)"'’]$/.test(out.trim());
- if(looksCut){
-  const repairPrompt=`${prompt}\n\nBORRADOR INCOMPLETO QUE NO DEBE ENVIARSE:\n${out}\n\nReescribí la respuesta COMPLETA desde cero. Conservá la intención y la información útil, pero asegurate de terminar todas las oraciones. No hagas referencia al borrador. Máximo 120 palabras.`;
-  const repaired=await request(repairPrompt,650);
-  if(!repaired.ok||!repaired.text||repaired.incomplete||!/[.!?…)"'’]$/.test(repaired.text.trim()))return "";
-  out=repaired.text;
- }
- return out.trim();
+ const parse=(raw:string)=>{try{let x=raw.trim();if(x.startsWith("~~~json"))x=x.slice(7);if(x.endsWith("~~~"))x=x.slice(0,-3);const p=JSON.parse(x.trim());return{text:String(p.text||"").trim(),sendResourceId:p.send_resource_id==null?null:String(p.send_resource_id)}}catch{return{text:"",sendResourceId:null as string|null}}};
+ const complete=(x:string)=>Boolean(x&&/[.!?…]$/.test(x.trim()));
+ let res=await request(prompt),generated=parse(res.raw);
+ if(!res.ok||res.incomplete||!complete(generated.text)){res=await request(prompt+"\\nLa salida anterior fue inválida o incompleta. Generá nuevamente el JSON completo desde cero.",800);generated=parse(res.raw)}
+ if(!res.ok||res.incomplete||!complete(generated.text))return{text:"",sendResourceId:null as string|null};
+ if(generated.sendResourceId&&!resources.some((r:any)=>String(r.id)===generated.sendResourceId))generated.sendResourceId=null;
+ return generated;
 }
 
 export async function processInstagramConversationEvent(event:InstagramConversationEvent){
@@ -151,22 +153,20 @@ export async function processInstagramConversationEvent(event:InstagramConversat
   }catch{attachmentConfirmed=false;state.pending_resource_id=String(resource.id);state.current_stage="resource_ready"}
  }
 
- let textMessageId="",reply="";
- if(attachmentConfirmed){
-  reply=await generateText(a,event,state,intent,true,resource,resources,profile);
- }else if(!voiceSent){
-  reply=await generateText(a,event,state,intent,false,resource,resources,profile);
- }
+ let textMessageId="",reply="",brainResource:any=null;
+ if(attachmentConfirmed){const g=await generateText(a,event,state,intent,true,resource,resources,profile);reply=g.text}
+ else if(!voiceSent){const g=await generateText(a,event,state,intent,false,resource,resources,profile);reply=g.text;if(g.sendResourceId)brainResource=resources.find((r:any)=>String(r.id)===g.sendResourceId)||null}
  if(reply){
-  const recentQ=await db.from("vyral_inbox_messages").select("body").eq("account_id",event.account.id).eq("contact_id",event.contactId).eq("direction","out").order("created_at",{ascending:false}).limit(8);
-  const recent=(recentQ.data||[]).map((x:any)=>norm(x.body));
-  const candidate=norm(reply);
+  const recentQ=await db.from("vyral_inbox_messages").select("body").eq("account_id",event.account.id).eq("contact_id",event.contactId).eq("direction","out").order("created_at",{ascending:false}).limit(8),recent=(recentQ.data||[]).map((x:any)=>norm(x.body)),candidate=norm(reply);
   const duplicate=recent.some((x:string)=>x===candidate||(candidate.length>24&&x.length>24&&(x.includes(candidate)||candidate.includes(x))));
-  if(!duplicate){
-   const j=await metaSend(event.account,event.contactId,{message:{text:reply}});
-   textMessageId=String(j.message_id||"");
-   await db.from("vyral_inbox_messages").insert({user_id:event.account.user_id,account_id:event.account.id,platform:"instagram",contact_id:event.contactId,message_id:textMessageId||crypto.randomUUID(),body:reply,direction:"out",sender_type:"ai",automation_id:automationId});
-  }
+  if(!duplicate){const j=await metaSend(event.account,event.contactId,{message:{text:reply}});textMessageId=String(j.message_id||"");await db.from("vyral_inbox_messages").insert({user_id:event.account.user_id,account_id:event.account.id,platform:"instagram",contact_id:event.contactId,message_id:textMessageId||crypto.randomUUID(),body:reply,direction:"out",sender_type:"ai",automation_id:automationId})}
+ }
+ if(brainResource&&!state.resources_sent?.includes(String(brainResource.id))){
+  try{
+   if(brainResource.kind==="url"){const j=await metaSend(event.account,event.contactId,{message:{text:String(brainResource.external_url||"")}});resourceMessageId=String(j.message_id||resourceMessageId)}
+   else{const url=await signed(String(brainResource.storage_path||""));if(!url)throw new Error("resource_url_missing");const j=await metaSend(event.account,event.contactId,{message:{attachment:{type:attachmentType(brainResource),payload:{url}}}});resourceMessageId=String(j.message_id||resourceMessageId)}
+   state.resources_sent=uniq([...(state.resources_sent||[]),brainResource.id]);state.resources_offered=uniq([...(state.resources_offered||[]),brainResource.id]);state.pending_resource_id=null;state.current_stage="resource_sent";
+  }catch{state.pending_resource_id=String(brainResource.id);state.current_stage="resource_ready"}
  }
  await db.from("instagram_conversation_state").upsert({...state,updated_at:new Date().toISOString()},{onConflict:"account_id,contact_id,automation_id"});
  return{ok:true,intent,stage:state.current_stage,voiceSent,voiceId:voice?.id||null,attachmentConfirmed,resourceId:resource?.id||null,pendingResourceId:state.pending_resource_id||null,messageId:textMessageId||resourceMessageId||null};
