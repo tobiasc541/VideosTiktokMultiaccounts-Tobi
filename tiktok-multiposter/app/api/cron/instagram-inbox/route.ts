@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../../lib/supabase-admin";
+import { processInstagramConversationEvent } from "../../../../lib/instagram-conversation-engine";
 
 export const maxDuration = 60;
 const GRAPH = "https://graph.instagram.com";
@@ -115,43 +116,16 @@ export async function GET(req:Request){
           let resourcePool:any[]=[];
           if(a.resourceMode!=="specific"){const rq=await db.from("vyral_business_resources").select("id,name,kind,storage_path,external_url,mime_type,purpose,send_when").eq("user_id",account.user_id).eq("enabled",true);resourcePool=(rq.data||[]).filter((r:any)=>!Array.isArray(a.businessResourceIds)||!a.businessResourceIds.length||a.businessResourceIds.includes(r.id))}
           if(a.resourceMode==="specific"&&a.resourceUrl)resourcePool=[{id:"specific",name:String(a.resourceName||"recurso"),kind:/^https?:/i.test(String(a.resourceUrl))?"url":"file",storage_path:/^https?:/i.test(String(a.resourceUrl))?null:String(a.resourceUrl),external_url:/^https?:/i.test(String(a.resourceUrl))?String(a.resourceUrl):null,purpose:String(a.resourcePurpose||""),send_when:String(a.resourceWhen||"")}];
-          let reply="";
-          if(asksHuman)reply="Perfecto. Ya te derivo con una persona del equipo por este mismo chat. En cuanto esté disponible te responde por acá.";
-          else if(!currentHandoff.data?.ai_paused){try{reply=await aiReply(a,userInput,history,imageUrls,resourcePool)}catch{reply=String(a.dmMessage||"Gracias por escribir. ¿En qué te puedo ayudar?")}}
-          const explicitResend=/\b(reenvi|reenví|reenviame|reenviáme|reenvialo|reenviálo|reenviala|reenviála|mandamelo|mandámelo|mandamela|mandámela|pasamelo|pasámelo|pasamela|pasámela|envialo|enviálo|enviala|enviála|de nuevo|otra vez)\b/i.test(body);
-          const asksResource=explicitResend||/\b(manda|mandá|envia|enviá|pasame|pasáme|guia|guía|pdf|archivo|foto|imagen|video|vídeo|link|recurso|catalogo|catálogo|ficha|prueba|pruebas|resultado|resultados|evidencia|backtest|win ?rate|winrate|estrategia s[oó]lida)\b/i.test(body);
-          const priorAgentMessages=(hist.data||[]).filter((x:any)=>x.direction==="out").length;
-                    const voice=chooseVoice(a,userInput,priorAgentMessages===0);
-          if(!reply)reply="Sí, te leo. Contame qué necesitás y seguimos por acá.";
-          for(const x of burst){const media=mediaOf(x),xbody=String(x.message||"").trim()||(media.type==="image"?"[Imagen]":"[Archivo adjunto]");await db.from("vyral_inbox_messages").upsert({user_id:account.user_id,account_id:account.id,contact_id:person,contact_username:username,message_id:String(x.id||crypto.randomUUID()),body:xbody,direction:"in",sender_type:"contact",automation_id:a.id,attachment_type:media.type||null,attachment_url:media.url||null,attachment_meta:media.raw||{}},{onConflict:"platform,message_id",ignoreDuplicates:true});}
-          if(currentHandoff.data?.ai_paused&&!asksHuman){
-            await db.from("vyral_handoffs").update({last_message:userInput,unread:true,updated_at:new Date().toISOString()}).eq("id",currentHandoff.data.id);
-            await db.from("instagram_automation_runs").update({status:"sent",updated_at:new Date().toISOString(),detail:{source:"instagram_conversations_poll",humanHandoff:true,aiPaused:true}}).eq("id",ins.data?.id);
-            results.push({account:account.id,person,status:"waiting_human"});continue;
-          }
-          {
-            const sent=await send(account,person,reply);
-            await db.from("vyral_inbox_messages").upsert({user_id:account.user_id,account_id:account.id,contact_id:person,contact_username:username,message_id:String(sent.message_id||crypto.randomUUID()),body:reply,direction:"out",sender_type:"ai",automation_id:a.id},{onConflict:"platform,message_id",ignoreDuplicates:true});
-            const transcript=history+"\nUsuario: "+userInput+"\nAgente: "+reply;
-            const buying=/\b(precio|cu[aá]nto|compr|contrat|presupuesto|pagar|pago|plan|quiero|me interesa)\b/i.test(transcript);
-            const whatsappIntent=/\b(whatsapp|wsp)\b/i.test(transcript);
-            const engaged=/\b(info|sirve|c[oó]mo|consulta|necesito|quiero saber|interesa|contame|explic)\b/i.test(transcript);
-            const goal=/\b(compr[eé]|contrat[eé]|ya pagu[eé]|listo.{0,20}pago|cerramos|confirmo)\b/i.test(body);
-            const score=goal?100:buying&&whatsappIntent?90:buying?80:whatsappIntent?75:engaged?60:35;
-            const stage=goal?"won":score>=75?"qualified":score>=60?"contacted":"new";
-            const priority=score>=90?"urgent":score>=75?"high":"normal";
-            const reason=goal?"Objetivo comercial detectado":whatsappIntent?"Pidió atención humana o WhatsApp":buying?"Intención de compra detectada":engaged?"Interés detectado por VYRAL":"Conversación activa";
-            const existing=await db.from("vyral_handoffs").select("id,stage,lead_score,priority").eq("user_id",account.user_id).eq("account_id",account.id).eq("contact_id",person).eq("automation_id",a.id).limit(1).maybeSingle();
-            const crmPatch={contact_username:username||undefined,last_message:userInput,lead_score:Math.max(Number(existing.data?.lead_score)||0,score),reason:asksHuman?"Pidió hablar con una persona":reason,unread:true,status:"open",stage:existing.data?.stage==="won"?"won":stage,priority:asksHuman?"urgent":(Number(existing.data?.lead_score)>=90?"urgent":priority),needs_human:asksHuman||undefined,ai_paused:asksHuman||undefined,human_requested_at:asksHuman?new Date().toISOString():undefined,updated_at:new Date().toISOString()};
-            if(existing.data)await db.from("vyral_handoffs").update(crmPatch).eq("id",existing.data.id);
-            else await db.from("vyral_handoffs").insert({user_id:account.user_id,account_id:account.id,contact_id:person,automation_id:a.id,...crmPatch});
-            const autoEvents=[engaged&&"interested",whatsappIntent&&"whatsapp",buying&&"payment_intent",goal&&"goal_completed",asksHuman&&"human_requested"].filter(Boolean) as string[];
-            for(const eventType of autoEvents){const priorEvent=await db.from("vyral_crm_events").select("id").eq("user_id",account.user_id).eq("account_id",account.id).eq("contact_id",person).eq("automation_id",a.id).eq("event_type",eventType).limit(1).maybeSingle();if(!priorEvent.data)await db.from("vyral_crm_events").insert({user_id:account.user_id,account_id:account.id,contact_id:person,automation_id:a.id,event_type:eventType,source:"ai"});}
-            let voiceSent:any=null;
-            if(voice?.url){const voiceUrl=await signedMedia(db,String(voice.url),86400);if(voiceUrl){voiceSent=await sendAttachment(account,person,"audio",voiceUrl);await db.from("vyral_inbox_messages").upsert({user_id:account.user_id,account_id:account.id,contact_id:person,contact_username:username,message_id:String(voiceSent.message_id||crypto.randomUUID()),body:"[Audio]",direction:"out",sender_type:"ai",automation_id:a.id,attachment_type:"audio",attachment_url:voiceUrl,attachment_meta:{mime:"audio/mp4",voiceId:voice.id||null}},{onConflict:"platform,message_id",ignoreDuplicates:true});}}
-            if(asksResource&&resourcePool.length){const genericRequest=/^(?:si\s+)?(?:dale|perfecto|genial|listo|ok|bueno)?[\s,!.]*(?:por\s*fa(?:vor)?\s*)?(?:enviame|enviáme|mandame|mandáme|pasame|pasáme|envialo|enviálo|mandalo|mandálo|pasalo|pasálo)?[\s,!.]*$/i.test(userInput.trim());const t=normVoiceText(genericRequest?`${history.slice(-2500)} ${userInput}`:`${userInput} ${history.slice(-1200)}`),tokens=t.split(" ").filter((x:string)=>x.length>3);let chosen:any=null,best=-1;for(const r of resourcePool){const hay=normVoiceText(`${r.name||""} ${r.purpose||""} ${r.send_when||""}`);let s=tokens.filter((w:string)=>hay.includes(w)).length;if(/prueba|resultado|backtest|win rate|winrate|estrategia solida/.test(t)&&/prueba|resultado|backtest|win rate|winrate|estrategia solida/.test(hay))s+=20;if(s>best){best=s;chosen=r}}if(explicitResend&&(!chosen||best<=0))chosen=resourcePool.find((r:any)=>r.kind!=="url")||resourcePool[0];if(chosen&&(best>0||explicitResend)){const resourceUrl=chosen.kind==="url"?String(chosen.external_url||""):await signedMedia(db,String(chosen.storage_path||""),604800);if(resourceUrl){if(chosen.kind==="url")await send(account,person,resourceUrl);else await sendAttachment(account,person,resourceType(`${String(chosen.name||"")} ${String(chosen.storage_path||"")} ${resourceUrl}`,String(chosen.mime_type||"")),resourceUrl)}}}
-            await db.from("instagram_automation_runs").update({status:"sent",private_message_id:String(sent.message_id||"")||null,updated_at:new Date().toISOString(),detail:{source:"instagram_conversations_poll",continueConversation:true,resourceResent:Boolean(asksResource&&a.resourceUrl),voiceSelected:voice?.id||null,voiceSent:voiceSent?.message_id||null}}).eq("id",ins.data?.id);
-            results.push({account:account.id,person,status:"sent"});
+          const syntheticId=`dm:${mid}`;
+          const claim=await db.from("instagram_automation_runs").insert({user_id:account.user_id,account_id:account.id,automation_id:a.id,comment_id:syntheticId,commenter_id:person,comment_text:body,status:"matched",detail:{source:"instagram_conversations_poll",engine:"state_v2"}}).select("id").maybeSingle();
+          if(claim.error)continue;
+          for(const x of burst){const media=mediaOf(x),xbody=String(x.message||"").trim()||(media.type==="image"?"[Imagen]":"[Archivo adjunto]");await db.from("vyral_inbox_messages").upsert({user_id:account.user_id,account_id:account.id,platform:"instagram",contact_id:person,contact_username:username,message_id:String(x.id||crypto.randomUUID()),body:xbody,direction:"in",sender_type:"contact",automation_id:a.id,attachment_type:media.type||null,attachment_url:media.url||null,attachment_meta:media.raw||{}},{onConflict:"platform,message_id",ignoreDuplicates:true});}
+          try{
+            const result=await processInstagramConversationEvent({account,automation:a,contactId:person,threadId:cid,messageId:mid,text:userInput,origin:mediaId?"post_comment":"direct_dm",contextPayload:{post_title:String(a.contentLabel||""),target_topic:String(a.contentLabel||""),media_id:mediaId||null},history,source:"polling"});
+            await db.from("instagram_automation_runs").update({status:"sent",private_message_id:result.messageId||null,updated_at:new Date().toISOString(),detail:{source:"instagram_conversations_poll",engine:"state_v2",...result}}).eq("id",claim.data?.id);
+            results.push({account:account.id,person,status:"sent",engine:"state_v2"});
+          }catch(e:any){
+            await db.from("instagram_automation_runs").update({status:"error",error:String(e?.message||e).slice(0,1000),updated_at:new Date().toISOString()}).eq("id",claim.data?.id);
           }
         }catch(e:any){
           await db.from("instagram_automation_runs").update({status:"error",error:String(e?.message||e).slice(0,1000),updated_at:new Date().toISOString()}).eq("id",ins.data?.id);
