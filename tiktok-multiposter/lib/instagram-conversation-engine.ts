@@ -210,7 +210,18 @@ export async function processInstagramConversationEvent(event:InstagramConversat
   const validReason=["proactive_value","first_delivery","new_need","explicit_request","retry_missing"].includes(String(plan.deliveryReason));
   if(candidate&&validReason){brainResource=candidate;state.pending_resource_id=String(candidate.id);state.resources_offered=uniq([...(state.resources_offered||[]),String(candidate.id)]);state.current_stage="resource_ready"}
  }
- const actionResource=wantsResource?resource:brainResource;
+ // DELIVERY DEDUPE GATE: a resource already delivered in this activation stays delivered.
+ // It may be sent again only when the CURRENT user turn explicitly asks for a retry/resend because it is missing.
+ // Acknowledgements, "ahora me uno", continued interest, a new related need, or model delivery_reason can never resend it.
+ const plannedResource=wantsResource?resource:brainResource;
+ const plannedId=String(plannedResource?.id||"");
+ const alreadyDelivered=Boolean(plannedId&&state.resources_sent?.map(String).includes(plannedId));
+ const explicitRetry=intent==="claim_missing_resource";
+ const actionResource=plannedResource&&(!alreadyDelivered||explicitRetry)?plannedResource:null;
+ if(plannedResource&&alreadyDelivered&&!explicitRetry){
+  state.pending_resource_id=null;
+  if(state.current_stage==="resource_ready")state.current_stage="resource_sent";
+ }
 
  // Presentation is independent from planning. A voice can never suppress a planned resource action.
  const voice=intent==="close"||intent==="claim_missing_resource"||intent==="resource_request"?null:chooseStageVoice(a,state,intent,isFirstTouch,sessionEvent.text);
