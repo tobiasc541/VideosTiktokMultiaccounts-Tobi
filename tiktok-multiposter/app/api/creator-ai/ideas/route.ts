@@ -142,7 +142,13 @@ ESTILO VISUAL YA SELECCIONADO: "${visualStyle}". MOLDE SEMÁNTICO OBLIGATORIO: $
 - slide_count exacto: ${slideCount}.
 - Si slide_count == 1: cada propuesta representa UNA sola imagen fija. PROHIBIDO escribir "Slide 1", secuencias, carrusel o divisiones. El hook y el copy deben funcionar completos en una sola placa.
 - Si slide_count >= 2: cada propuesta debe repartir su narrativa EXACTAMENTE en ${slideCount} placas. El campo angle debe enumerar la progresión de Slide 1 hasta Slide ${slideCount}, sin agregar ni quitar placas.
-- Las cuatro propuestas usan el mismo estilo visual seleccionado, pero cuatro ángulos narrativos obligatoriamente distintos: 1) Disruptivo/Mitos, 2) Storytelling, 3) Paso a Paso, 4) Contraste Antes/Después.
+- Las cuatro propuestas usan el mismo estilo visual seleccionado y EXACTAMENTE estos cuatro ángulos, uno por propuesta:
+  1) HISTORIA / ORIGEN DISRUPTIVO — Storytelling / Transformación. Explorá punto de partida, etapa anterior, fracaso real disponible en el Brand Brain, quiebre y transformación. PROHIBIDO inventar hechos biográficos ausentes.
+  2) PSICOLOGÍA / MENTALIDAD / ERRORES DEL SECTOR — Dolor profundo. Explorá disciplina, miedo a perder, impaciencia, saltar de estrategia en estrategia y paciencia. No reveles la herramienta o estrategia hasta el final cuando la narrativa lo permita.
+  3) CASO DE ESTUDIO / EVIDENCIA PRÁCTICA — Backtesting / Pruebas. Enfoque técnico pero amigable: proceso de validación, pruebas, datos disponibles, paciencia y disciplina de ejecución antes que resultado monetario.
+  4) ATAQUE A MITOS / POLÉMICO — Viralidad pura por contraste. Creá un hook polémico que cuestione una creencia popular real del nicho, sin inventar estadísticas ni afirmaciones falsas.
+- CERO REPETICIÓN: el Brand Brain es materia prima, NO un texto para recitar. Derivá hipótesis y narrativas nuevas desde aristas distintas del perfil, audiencia y mercado. No repitas automáticamente los mismos diferenciales, cifras, términos técnicos, logros o mecanismos entre propuestas.
+- Si un dato concreto domina una propuesta, evitá reutilizarlo como argumento central en las otras tres.
 - No mezcles los cuatro ángulos entre sí y no generes variantes redundantes.
 
 MOTORES DE HOOK RECOMENDADOS: contraste disruptivo; resultado fuerte solo si está respaldado; frase literal del mercado; pregunta incómoda; provocación directa; error costoso; secreto/mecanismo; antes vs después; creencia popular vs realidad.
