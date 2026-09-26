@@ -149,35 +149,42 @@ export async function processInstagramConversationEvent(event:InstagramConversat
  if(wantsResource){state.pending_resource_id=String(resource.id);state.resources_offered=uniq([...(state.resources_offered||[]),resource.id])}
  await db.from("instagram_conversation_state").upsert({...state,updated_at:new Date().toISOString()},{onConflict:"account_id,contact_id,automation_id"});
 
- let attachmentConfirmed=false,resourceMessageId="";
+ let attachmentConfirmed=false,resourceMessageId="",textMessageId="",reply="",brainResource:any=null;
 
- // AUDIO-FIRST: choose and send the stage audio before any resource/text response.
- // For an explicit resource request this prioritizes resource_offer/topic_answer audio,
- // then the backend delivers the resource as a separate message.
- const voice=intent==="close"?null:chooseStageVoice(a,state,intent,isFirstTouch);
+ // PLAN FIRST: resource/action planning must run regardless of whether presentation uses audio or text.
+ // Explicit missing-resource retries are locked to the pending/last-offered resource above and never re-routed.
+ const plan=await generateText(a,event,state,intent,false,resource,resources,profile);
+ if(!wantsResource&&plan.sendResourceId){
+  const candidate=resources.find((r:any)=>String(r.id)===String(plan.sendResourceId))||null;
+  const validReason=["proactive_value","first_delivery","new_need","explicit_request","retry_missing"].includes(String(plan.deliveryReason));
+  if(candidate&&validReason){brainResource=candidate;state.pending_resource_id=String(candidate.id);state.resources_offered=uniq([...(state.resources_offered||[]),String(candidate.id)]);state.current_stage="resource_ready"}
+ }
+ const actionResource=wantsResource?resource:brainResource;
+
+ // Presentation is independent from planning. A voice can never suppress a planned resource action.
+ const voice=intent==="close"||intent==="claim_missing_resource"?null:chooseStageVoice(a,state,intent,isFirstTouch);
  let voiceSent=false;
  if(voice?.url){
   try{const url=await signed(String(voice.url),86400);if(url){const j=await metaSend(event.account,event.contactId,{message:{attachment:{type:"audio",payload:{url}}}});voiceSent=true;state.last_audio_id=String(voice.id||"");state.voice_assets_sent=uniq([...(state.voice_assets_sent||[]),voice.id]);await db.from("vyral_inbox_messages").insert({user_id:event.account.user_id,account_id:event.account.id,platform:"instagram",contact_id:event.contactId,message_id:String(j.message_id||crypto.randomUUID()),body:`[Audio enviado: ${String(voice.transcript||voice.name||voice.id||"audio")}]`,direction:"out",sender_type:"ai",automation_id:automationId,attachment_type:"audio",attachment_meta:{voiceId:voice.id||null,stage:stageOfVoice(voice)}})} }catch{}
  }
 
- // Resource delivery has one executor. A resource is only marked sent after Meta confirms message_id.
- if(wantsResource&&resource){
-  const delivery=await deliverResource(db,event,automationId,state,resource);
+ // One executor owns delivery. The exact planned resource id is preserved through delivery/retry.
+ if(actionResource){
+  const delivery=await deliverResource(db,event,automationId,state,actionResource);
   attachmentConfirmed=delivery.sent;resourceMessageId=delivery.messageId;
  }
 
- let textMessageId="",reply="",brainResource:any=null;
- if(attachmentConfirmed){const g=await generateText(a,event,state,intent,true,resource,resources,profile);reply=g.text}
- else if(!voiceSent){const g=await generateText(a,event,state,intent,false,resource,resources,profile);reply=g.text;if(g.sendResourceId){const candidate=resources.find((r:any)=>String(r.id)===g.sendResourceId)||null;const validReason=["proactive_value","first_delivery","new_need","explicit_request","retry_missing"].includes(String(g.deliveryReason));if(candidate&&validReason)brainResource=candidate}}
+ // Text is presentation only. If audio already answered, do not add competing generated copy.
+ // If a resource was delivered without audio, regenerate only to acknowledge the confirmed action.
+ if(!voiceSent){
+  if(attachmentConfirmed){const confirmed=await generateText(a,event,state,intent,true,actionResource,resources,profile);reply=confirmed.text}
+  else reply=plan.text;
+ }
  if(reply){
   const recentQ=await db.from("vyral_inbox_messages").select("body").eq("account_id",event.account.id).eq("contact_id",event.contactId).eq("direction","out").order("created_at",{ascending:false}).limit(8),recent=(recentQ.data||[]).map((x:any)=>norm(x.body)),candidate=norm(reply);
   const duplicate=recent.some((x:string)=>x===candidate||(candidate.length>24&&x.length>24&&(x.includes(candidate)||candidate.includes(x))));
   if(!duplicate){const j=await metaSend(event.account,event.contactId,{message:{text:reply}});textMessageId=String(j.message_id||"");await db.from("vyral_inbox_messages").insert({user_id:event.account.user_id,account_id:event.account.id,platform:"instagram",contact_id:event.contactId,message_id:textMessageId||crypto.randomUUID(),body:reply,direction:"out",sender_type:"ai",automation_id:automationId})}
  }
- if(brainResource){
-  const delivery=await deliverResource(db,event,automationId,state,brainResource);
-  attachmentConfirmed=delivery.sent;resourceMessageId=delivery.messageId||resourceMessageId;
- }
  await db.from("instagram_conversation_state").upsert({...state,updated_at:new Date().toISOString()},{onConflict:"account_id,contact_id,automation_id"});
- return{ok:true,intent,stage:state.current_stage,voiceSent,voiceId:voice?.id||null,attachmentConfirmed,resourceId:resource?.id||null,pendingResourceId:state.pending_resource_id||null,messageId:textMessageId||resourceMessageId||null};
+ return{ok:true,intent,stage:state.current_stage,voiceSent,voiceId:voice?.id||null,attachmentConfirmed,resourceId:actionResource?.id||null,pendingResourceId:state.pending_resource_id||null,messageId:textMessageId||resourceMessageId||null};
 }
