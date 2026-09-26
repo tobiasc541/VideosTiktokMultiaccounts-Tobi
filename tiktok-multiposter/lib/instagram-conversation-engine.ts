@@ -121,7 +121,7 @@ export async function processInstagramConversationEvent(event:InstagramConversat
   }catch{attachmentConfirmed=false;state.pending_resource_id=String(resource.id);state.current_stage="resource_ready"}
  }
 
- const voice=chooseStageVoice(a,state,intent);
+ const voice=attachmentConfirmed?null:chooseStageVoice(a,state,intent);
  let voiceSent=false;
  if(voice?.url){
   try{const url=await signed(String(voice.url),86400);if(url){const j=await metaSend(event.account,event.contactId,{message:{attachment:{type:"audio",payload:{url}}}});voiceSent=true;state.last_audio_id=String(voice.id||"");state.voice_assets_sent=uniq([...(state.voice_assets_sent||[]),voice.id]);await db.from("vyral_inbox_messages").insert({user_id:event.account.user_id,account_id:event.account.id,platform:"instagram",contact_id:event.contactId,message_id:String(j.message_id||crypto.randomUUID()),body:`[Audio enviado: ${voice.name||voice.id||"audio"}]`,direction:"out",sender_type:"ai",automation_id:automationId,attachment_type:"audio",attachment_meta:{voiceId:voice.id||null,stage:stageOfVoice(voice)}})} }catch{}
