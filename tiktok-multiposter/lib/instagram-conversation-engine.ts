@@ -107,9 +107,13 @@ export async function processInstagramConversationEvent(event:InstagramConversat
  let state:any=found.data||{...key,user_id:event.account.user_id,thread_id:event.threadId||null,current_stage:"opening",origin:event.origin||"direct_dm",context_payload:event.contextPayload||{},last_question_asked:null,last_audio_id:null,voice_assets_sent:[],resources_offered:[],resources_sent:[],pending_resource_id:null,last_intent:null};
  const intent=classifyIntent(event.text);
  const resources=await loadResources(event.account.user_id,a);
+ const previousStage=state.current_stage as ConversationStage;
  let resource=chooseResource(resources,event.text,state.pending_resource_id);
+ if(intent==="high_intent"&&!resource)resource=resources.find((r:any)=>r.kind==="url")||resources[0]||null;
  if(intent==="claim_missing_resource"&&!resource&&state.resources_offered?.length)resource=resources.find((r:any)=>state.resources_offered.includes(String(r.id)))||null;
- const wantsResource=["high_intent","resource_request","proof_request","claim_missing_resource"].includes(intent)&&Boolean(resource);
+ if(intent==="ack"&&previousStage==="discovery"&&!resource)resource=resources.find((r:any)=>r.kind==="url")||null;
+ const lowInterestDelivery=intent==="ack"&&previousStage==="discovery"&&Boolean(resource);
+ const wantsResource=(["high_intent","resource_request","proof_request","claim_missing_resource"].includes(intent)||lowInterestDelivery)&&Boolean(resource);
  state.last_intent=intent;
  state.current_stage=nextStage(state.current_stage,intent);
  if(wantsResource){state.pending_resource_id=String(resource.id);state.resources_offered=uniq([...(state.resources_offered||[]),resource.id])}
