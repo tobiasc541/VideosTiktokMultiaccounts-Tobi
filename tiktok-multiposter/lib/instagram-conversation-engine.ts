@@ -241,9 +241,16 @@ Respondé SOLO JSON válido: {"text":"texto coherente","must_send_resource_id":n
   }catch(err:any){console.error("[VYRAL Instagram] atomic promise audit failed",{error:String(err?.message||err)})}
  }
  if(!wantsResource&&plan.sendResourceId){
+  // sendResourceId is already constrained to an exact ID from the real resource catalog.
+  // Do NOT require a second model label (deliveryReason) to authorize the same action:
+  // that old double-gate could silently cancel a valid promised/requested delivery.
   const candidate=resources.find((r:any)=>String(r.id)===String(plan.sendResourceId))||null;
-  const validReason=["proactive_value","first_delivery","new_need","explicit_request","retry_missing"].includes(String(plan.deliveryReason));
-  if(candidate&&validReason){brainResource=candidate;state.pending_resource_id=String(candidate.id);state.resources_offered=uniq([...(state.resources_offered||[]),String(candidate.id)]);state.current_stage="resource_ready"}
+  if(candidate){
+   brainResource=candidate;
+   state.pending_resource_id=String(candidate.id);
+   state.resources_offered=uniq([...(state.resources_offered||[]),String(candidate.id)]);
+   state.current_stage="resource_ready";
+  }
  }
  // DELIVERY DEDUPE GATE: a resource already delivered in this activation stays delivered.
  // It may be sent again only when the CURRENT user turn explicitly asks for a retry/resend because it is missing.
