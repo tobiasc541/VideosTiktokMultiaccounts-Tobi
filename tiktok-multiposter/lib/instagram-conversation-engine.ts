@@ -85,12 +85,15 @@ async function deliverResource(db:any,event:InstagramConversationEvent,automatio
 }
 function resourceScore(r:any,text:string,history=""){const meta=`${r?.name||""} ${r?.purpose||""} ${r?.send_when||""}`,current=semanticOverlap(text,meta),context=semanticOverlap(history,meta);return current*4+Math.min(context,3)}
 function chooseResource(pool:any[],text:string,pending?:string|null,history=""){if(pending){const p=pool.find(r=>String(r.id)===String(pending));if(p)return p}let best:any=null,bestScore=0,second=0;for(const r of pool){const s=resourceScore(r,text,history);if(s>bestScore){second=bestScore;bestScore=s;best=r}else if(s>second)second=s}return bestScore>=4&&bestScore>second?best:null}
-function chooseStageVoice(a:any,state:any,intent:string,isFirstTouch=false){
+function chooseStageVoice(a:any,state:any,intent:string,isFirstTouch=false,resourceDeliveryConfirmed=false){
  if(!a?.voiceEnabled)return null;
  const all=(Array.isArray(a.voiceAssets)?a.voiceAssets:[]).filter((v:any)=>v?.url);
  const sent=new Set((state.voice_assets_sent||[]).map(String));
  const first=isFirstTouch&&sent.size===0;
- const role=first?"opening":intent==="proof_request"?"proof":state.current_stage==="follow_up"?"follow_up":state.current_stage==="resource_ready"?"resource_offer":state.current_stage;
+ // Resource discovery/readiness is NOT permission to play a resource-delivery audio. A prerecorded audio can only represent a resource action after that action is actually confirmed.
+ let role=first?"opening":intent==="proof_request"?"proof":state.current_stage==="follow_up"?"follow_up":state.current_stage;
+ if(role==="resource_ready"||role==="resource_offer")return null;
+ if(role==="resource_sent"&&!resourceDeliveryConfirmed)return null;
  const candidates=all.filter((v:any)=>stageOfVoice(v)===role&&allowedOrigin(v,state.origin)&&(!sent.has(String(v.id))||v.is_reusable===true));
  if(first)return candidates[0]||null;
  if(!candidates.length)return null;
