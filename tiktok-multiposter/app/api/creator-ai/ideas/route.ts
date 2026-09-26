@@ -66,7 +66,8 @@ export async function POST(req:Request){
  try{
   const b=await req.json();
   const brief=String(b.brief||"").trim();
-  const visualStyle=String(b.visualStyle||"").trim();
+  const visualStyle=String(b.visual_style_id||b.visualStyle||"").trim();
+  const slideCount=Math.max(1,Math.min(7,Math.trunc(Number(b.slide_count||b.slideCount||6))));
   const styleGuide=STYLE_IDEA_GUIDES[visualStyle];
   const forbidden=STYLE_IDEA_FORBIDDEN[visualStyle];
   const previousIdeas=Array.isArray(b.previousIdeas)?b.previousIdeas.map((x:any)=>String(x||"").trim()).filter(Boolean).slice(-24):[];
@@ -132,17 +133,16 @@ REGLAS DE MEMORIA:
 - Si el pedido actual contradice explícitamente un dato del Brand Brain, para ESTA pieza prevalece el pedido actual.
 - Las ideas deben sentirse escritas para ESTE negocio, no para un negocio genérico del mismo rubro.
 
-ESTILO VISUAL YA SELECCIONADO: "${visualStyle}". MOLDE SEMÁNTICO OBLIGATORIO: ${styleGuide}\nRESTRICCIONES ESPECÍFICAS DEL ESTILO: ${forbidden}\n\nARQUITECTURA DE CARRUSEL VIRAL — OBLIGATORIA:
-- SLIDE 1 — HOOK DEL DOLOR / DESEO / CONTRASTE: frase corta que incomoda, desafía una creencia, promete un resultado específico, formula una pregunta incómoda o provoca curiosidad. Máximo 3 líneas. Nunca "hoy te voy a enseñar".
-- SLIDE 2 — CONTRASTE / RESULTADO / GIRO: cambia la interpretación y abre una brecha de curiosidad para seguir deslizando.
-- SLIDES CENTRALES — DESARROLLO: una idea por slide; pasos, errores, evidencia, antes/después, mecanismo, historia, comparación o demostración según corresponda.
-- PENÚLTIMA — PRUEBA / RESOLUCIÓN: aterriza la promesa con conclusión, mecanismo, resultado o evidencia REAL del Brand Brain. Si no existe, no la inventes.
-- ÚLTIMA — CTA: cierra el arco y pide comentar una palabra clave para recibir un recurso por DM.
-- PROGRESIÓN OBLIGATORIA: HOOK → TENSIÓN → CURIOSIDAD → VALOR/PRUEBA → RESOLUCIÓN → CTA. Prohibido crear placas independientes sin continuidad.
+ESTILO VISUAL YA SELECCIONADO: "${visualStyle}". MOLDE SEMÁNTICO OBLIGATORIO: ${styleGuide}\nRESTRICCIONES ESPECÍFICAS DEL ESTILO: ${forbidden}\n\nFORMATO SEGÚN CANTIDAD — OBLIGATORIO:
+- slide_count exacto: ${slideCount}.
+- Si slide_count == 1: cada propuesta representa UNA sola imagen fija. PROHIBIDO escribir "Slide 1", secuencias, carrusel o divisiones. El hook y el copy deben funcionar completos en una sola placa.
+- Si slide_count >= 2: cada propuesta debe repartir su narrativa EXACTAMENTE en ${slideCount} placas. El campo angle debe enumerar la progresión de Slide 1 hasta Slide ${slideCount}, sin agregar ni quitar placas.
+- Las cuatro propuestas usan el mismo estilo visual seleccionado, pero cuatro ángulos narrativos obligatoriamente distintos: 1) Disruptivo/Mitos, 2) Storytelling, 3) Paso a Paso, 4) Contraste Antes/Después.
+- No mezcles los cuatro ángulos entre sí y no generes variantes redundantes.
 
 MOTORES DE HOOK RECOMENDADOS: contraste disruptivo; resultado fuerte solo si está respaldado; frase literal del mercado; pregunta incómoda; provocación directa; error costoso; secreto/mecanismo; antes vs después; creencia popular vs realidad.
 La viralidad debe salir de una tensión REAL del público + especificidad del Brand Brain + claridad. Prohibido clickbait falso.
-Las 8 propuestas deben ser conceptos que puedan convertirse inmediatamente en carruseles completos. El campo angle debe describir la progresión narrativa, no solamente una imagen.
+Las 4 propuestas deben ser conceptos que puedan convertirse inmediatamente en carruseles completos. El campo angle debe describir la progresión narrativa, no solamente una imagen.
 
 OBJETIVO CENTRAL: todo contenido de VYRAL debe detener el scroll, hacerse notar, ser recordado y cumplir el objetivo del usuario. No generes ideas meramente correctas: generá conceptos con una imagen mental instantánea y un hook que invite a leer, compartir, guardar, comentar o comprar según corresponda.
 
@@ -156,7 +156,7 @@ RAZONÁ INTERNAMENTE EN ESTE ORDEN OBLIGATORIO:
 7) HOOK: frase breve, memorable, humana y específica que amplifique la imagen.
 8) CTA: conectalo naturalmente con la acción objetivo.
 
-Creá exactamente 8 conceptos realmente diferentes, TODOS nacidos del mensaje del usuario y DESPUÉS traducidos al estilo seleccionado. REGLA CRÍTICA: EL ESTILO DECIDE CÓMO SE VE LA IDEA; NO DECIDE DE QUÉ TRATA LA IDEA. No conviertas palabras del guide como arena, adversario, mapa, ticket, formulario, etc. en el tema de las ocho ideas: son gramática de representación, no contenido.
+Creá exactamente 4 conceptos realmente diferentes, TODOS nacidos del mensaje del usuario y DESPUÉS traducidos al estilo seleccionado. REGLA CRÍTICA: EL ESTILO DECIDE CÓMO SE VE LA IDEA; NO DECIDE DE QUÉ TRATA LA IDEA. No conviertas palabras del guide como arena, adversario, mapa, ticket, formulario, etc. en el tema de las cuatro ideas: son gramática de representación, no contenido.
 
 RESPETÁ LA IMAGEN MENTAL DEL USUARIO. Si el brief ya contiene una metáfora clara, desarrollala primero en formas visuales directas y potentes. Ejemplo: si pide "sé el lobo distinto a toda la multitud", explorá una manada uniforme con un lobo diferente, una multitud humana uniforme con una persona que rompe el patrón u otros equivalentes claramente conectados. NO reemplaces una metáfora clara por conceptos abstractos sin relación. Si el tono es motivacional, cada propuesta debe incluir un hook/frase motivacional fuerte que exprese la tesis.
 
@@ -164,10 +164,10 @@ DIVERSIDAD REAL: no hagas ocho paráfrasis de la misma escena. Explorá cuando s
 
 FILTRO DE VIRALIDAD: rechazá internamente cualquier idea genérica, burocrática, excesivamente explicativa, visualmente difícil de imaginar o repetitiva. Antes de aceptar cada idea preguntate: ¿entiendo la imagen en dos segundos? ¿el hook me haría frenar? ¿representa lo que realmente pidió el usuario? ¿cumple el objetivo? ¿sigue perteneciendo al estilo seleccionado? Si alguna respuesta es no, regenerala.
 
-Cada propuesta debe aprovechar los slots, objetos, UI, metáfora o estructura propios del molde SIN permitir que esos slots secuestren el significado. La creatividad ocurre dentro del lenguaje visual, nunca cambiándolo. NO cambies dirección de arte, formato, tipografía, encuadre ni sistema visual entre ideas. No propongas UGC, chat, revista, checklist, documental u otro formato si el molde no lo contiene.\n\nTEST OBLIGATORIO: antes de devolver cada idea preguntate "¿esto aprovecha específicamente el estilo ${visualStyle}, o es genérico?". Si es genérica, RECHAZALA. Segundo test: "¿esta idea viola alguna restricción específica del estilo?". Si sí, RECHAZALA Y GENERÁ OTRA. Las 8 deben ser distintas entre sí pero nativas del mismo molde.\n\nIdeas/títulos ya mostrados al usuario que NO debés repetir ni parafrasear de cerca: ${previousIdeas.length?previousIdeas.join(" | "):"ninguna"}.
+Cada propuesta debe aprovechar los slots, objetos, UI, metáfora o estructura propios del molde SIN permitir que esos slots secuestren el significado. La creatividad ocurre dentro del lenguaje visual, nunca cambiándolo. NO cambies dirección de arte, formato, tipografía, encuadre ni sistema visual entre ideas. No propongas UGC, chat, revista, checklist, documental u otro formato si el molde no lo contiene.\n\nTEST OBLIGATORIO: antes de devolver cada idea preguntate "¿esto aprovecha específicamente el estilo ${visualStyle}, o es genérico?". Si es genérica, RECHAZALA. Segundo test: "¿esta idea viola alguna restricción específica del estilo?". Si sí, RECHAZALA Y GENERÁ OTRA. Las 4 deben ser distintas entre sí pero nativas del mismo molde.\n\nIdeas/títulos ya mostrados al usuario que NO debés repetir ni parafrasear de cerca: ${previousIdeas.length?previousIdeas.join(" | "):"ninguna"}.
 Semilla de variación de esta tanda: ${variationSeed}. Usala solo para forzar una nueva exploración creativa, no la menciones en la respuesta.
 
-No inventes precio, métricas, testimonios ni características ausentes. CTA GLOBAL OBLIGATORIO PARA LAS 8 IDEAS: el campo cta SIEMPRE debe ser un CTA de comentario con una sola PALABRA CLAVE corta, en mayúsculas y relacionada específicamente con la idea, pensado para entregar un recurso/archivo/GIF por DM. Formato: "Comentá PALABRA y te mando [recurso] por DM". Elegí automáticamente una palabra distinta y natural según el contenido cuando corresponda. Prohibido usar Conocé más, link en bio, seguime, guardalo, escribime, mandame DM, comprá o CTAs vagos. Priorizá ideas vendibles pero genuinamente variadas. Devolvé un objeto JSON con una única clave "ideas". "ideas" debe ser un array de 8 objetos con: id, name, hook, angle, humanStyle, business, offer, audience, goal, tone, cta, count. goal solo puede ser ventas, mensajes, seguidores, trafico o educar. count debe ser 6.`;
+No inventes precio, métricas, testimonios ni características ausentes. CTA GLOBAL OBLIGATORIO PARA LAS 4 IDEAS: el campo cta SIEMPRE debe ser un CTA de comentario con una sola PALABRA CLAVE corta, en mayúsculas y relacionada específicamente con la idea, pensado para entregar un recurso/archivo/GIF por DM. Formato: "Comentá PALABRA y te mando [recurso] por DM". Elegí automáticamente una palabra distinta y natural según el contenido cuando corresponda. Prohibido usar Conocé más, link en bio, seguime, guardalo, escribime, mandame DM, comprá o CTAs vagos. Priorizá ideas vendibles pero genuinamente variadas. Devolvé un objeto JSON con una única clave "ideas". "ideas" debe ser un array de exactamente 4 objetos con: id, name, hook, angle, humanStyle, business, offer, audience, goal, tone, cta, count. goal solo puede ser ventas, mensajes, seguidores, trafico o educar. count debe ser exactamente ${slideCount}. angle debe respetar el formato de ${slideCount===1?'una sola imagen fija sin etiquetas Slide':'exactamente '+slideCount+' slides'}.`;
 
   const controller=new AbortController();
   const timer=setTimeout(()=>controller.abort(),120000);
