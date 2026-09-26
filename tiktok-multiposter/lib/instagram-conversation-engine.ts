@@ -208,7 +208,38 @@ export async function processInstagramConversationEvent(event:InstagramConversat
 
  // PLAN FIRST: resource/action planning must run regardless of whether presentation uses audio or text.
  // Explicit missing-resource retries are locked to the pending/last-offered resource above and never re-routed.
- const plan=await generateText(a,sessionEvent,state,intent,false,resource,resources,profile);
+ let plan=await generateText(a,sessionEvent,state,intent,false,resource,resources,profile);
+
+ // ATOMIC PROMISE GATE: conversational copy may never promise a resource unless the same
+ // plan carries the exact real resource id that the executor can deliver in this turn.
+ // This is semantic (AI-audited), not a phrase/regex patch, so it works across industries.
+ const atomicKey=process.env.VYRAL_CREATOR_PRODUCTION;
+ if(!wantsResource&&plan.text&&atomicKey){
+  const atomicCatalog=(resources||[]).map((r:any)=>({id:String(r.id),name:r.name,purpose:r.purpose,send_when:r.send_when,kind:r.kind,already_sent:Boolean(state.resources_sent?.map(String).includes(String(r.id)))}));
+  const atomicPrompt=`Auditá una respuesta de Instagram DM antes de ejecutarla.
+MENSAJE DEL USUARIO: ${String(sessionEvent.text||"")}
+RESPUESTA PLANEADA: ${String(plan.text||"")}
+ACCIÓN PLANEADA send_resource_id: ${plan.sendResourceId?String(plan.sendResourceId):"null"}
+RECURSOS REALES DISPONIBLES: ${JSON.stringify(atomicCatalog)}
+Tu única tarea es detectar coherencia entre lenguaje y acción.
+Si la respuesta afirma, promete o implica que AHORA se entrega, adjunta, pasa, comparte, manda o deja disponible un recurso, must_send_resource_id debe ser el ID exacto de ese recurso real.
+Si el usuario pidió claramente recibir/ver una prueba, archivo, enlace, imagen, guía u otro recurso y existe uno que satisface ese pedido, tratá la entrega como acción requerida aunque el texto sea ambiguo.
+Si no corresponde entregar nada ahora, must_send_resource_id=null y el texto no puede prometer una entrega.
+No inventes IDs ni recursos. No decidas por palabras aisladas: razoná por el significado completo.
+Respondé SOLO JSON válido: {"text":"texto coherente","must_send_resource_id":null}.`;
+  try{
+   const ar=await fetch("https://api.openai.com/v1/responses",{method:"POST",headers:{Authorization:`Bearer ${atomicKey}`,"Content-Type":"application/json"},body:JSON.stringify({model:"gpt-5.6-luna",input:atomicPrompt,max_output_tokens:500}),signal:AbortSignal.timeout(15000)});
+   const aj=await ar.json().catch(()=>({}));
+   if(ar.ok){
+    let raw=String(aj.output_text||"");if(!raw)for(const x of aj.output||[])for(const z of x.content||[])if(z.type==="output_text")raw+=z.text||"";
+    let cleaned=raw.trim();if(cleaned.startsWith("~~~json"))cleaned=cleaned.slice(7);if(cleaned.endsWith("~~~"))cleaned=cleaned.slice(0,-3);
+    const audited=JSON.parse(cleaned.trim()),auditId=audited.must_send_resource_id==null?null:String(audited.must_send_resource_id);
+    const exact=auditId?(resources||[]).find((r:any)=>String(r.id)===auditId):null;
+    if(String(audited.text||"").trim())plan.text=String(audited.text).trim();
+    if(exact)plan.sendResourceId=String(exact.id);
+   }
+  }catch(err:any){console.error("[VYRAL Instagram] atomic promise audit failed",{error:String(err?.message||err)})}
+ }
  if(!wantsResource&&plan.sendResourceId){
   const candidate=resources.find((r:any)=>String(r.id)===String(plan.sendResourceId))||null;
   const validReason=["proactive_value","first_delivery","new_need","explicit_request","retry_missing"].includes(String(plan.deliveryReason));
