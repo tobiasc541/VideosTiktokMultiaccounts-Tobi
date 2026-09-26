@@ -212,48 +212,23 @@ export async function processInstagramConversationEvent(event:InstagramConversat
  // No component after the action audit is allowed to create a new promise/invitation.
  if(plan.text)plan.text=await validateReplyBeforeSend(sessionEvent,state,resources,profile,plan.text);
 
- // ATOMIC PROMISE GATE: conversational copy may never promise a resource unless the same
- // plan carries the exact real resource id that the executor can deliver in this turn.
- // This is semantic (AI-audited), not a phrase/regex patch, so it works across industries.
- const atomicKey=process.env.VYRAL_CREATOR_PRODUCTION;
- if(!wantsResource&&plan.text&&atomicKey){
-  const atomicCatalog=(resources||[]).map((r:any)=>({id:String(r.id),name:r.name,purpose:r.purpose,send_when:r.send_when,kind:r.kind,already_sent:Boolean(state.resources_sent?.map(String).includes(String(r.id)))}));
-  const atomicPrompt=`Auditá una respuesta de Instagram DM antes de ejecutarla.
-MENSAJE DEL USUARIO: ${String(sessionEvent.text||"")}
-RESPUESTA PLANEADA: ${String(plan.text||"")}
-ACCIÓN PLANEADA send_resource_id: ${plan.sendResourceId?String(plan.sendResourceId):"null"}
-RECURSOS REALES DISPONIBLES: ${JSON.stringify(atomicCatalog)}
-Tu única tarea es detectar coherencia entre lenguaje y acción.
-Si la respuesta afirma, promete o implica que AHORA se entrega, adjunta, pasa, comparte, manda o deja disponible un recurso, must_send_resource_id debe ser el ID exacto de ese recurso real.
-Si el usuario pidió claramente recibir/ver una prueba, archivo, enlace, imagen, guía u otro recurso y existe uno que satisface ese pedido, tratá la entrega como acción requerida aunque el texto sea ambiguo.
-Si no corresponde entregar nada ahora, must_send_resource_id=null y el texto no puede prometer una entrega.
-No inventes IDs ni recursos. No decidas por palabras aisladas: razoná por el significado completo.
-Respondé SOLO JSON válido: {"text":"texto coherente","must_send_resource_id":null}.`;
-  try{
-   const ar=await fetch("https://api.openai.com/v1/responses",{method:"POST",headers:{Authorization:`Bearer ${atomicKey}`,"Content-Type":"application/json"},body:JSON.stringify({model:"gpt-5.6-luna",input:atomicPrompt,max_output_tokens:500}),signal:AbortSignal.timeout(15000)});
-   const aj=await ar.json().catch(()=>({}));
-   if(ar.ok){
-    let raw=String(aj.output_text||"");if(!raw)for(const x of aj.output||[])for(const z of x.content||[])if(z.type==="output_text")raw+=z.text||"";
-    let cleaned=raw.trim();if(cleaned.startsWith("~~~json"))cleaned=cleaned.slice(7);if(cleaned.endsWith("~~~"))cleaned=cleaned.slice(0,-3);
-    const audited=JSON.parse(cleaned.trim()),auditId=audited.must_send_resource_id==null?null:String(audited.must_send_resource_id);
-    const exact=auditId?(resources||[]).find((r:any)=>String(r.id)===auditId):null;
-    if(String(audited.text||"").trim())plan.text=String(audited.text).trim();
-    if(exact)plan.sendResourceId=String(exact.id);
-   }
-  }catch(err:any){console.error("[VYRAL Instagram] atomic promise audit failed",{error:String(err?.message||err)})}
- }
- if(!wantsResource&&plan.sendResourceId){
-  // sendResourceId is already constrained to an exact ID from the real resource catalog.
-  // Do NOT require a second model label (deliveryReason) to authorize the same action:
-  // that old double-gate could silently cancel a valid promised/requested delivery.
+ // SINGLE ACTION PLAN:
+ // generateText already returns structured copy + sendResourceId in one model decision.
+ // That resource id is the action. Do not ask a second model to reinterpret the copy,
+ // because that can split "I will send it" from the actual delivery.
+ if(plan.sendResourceId){
   const candidate=resources.find((r:any)=>String(r.id)===String(plan.sendResourceId))||null;
   if(candidate){
    brainResource=candidate;
    state.pending_resource_id=String(candidate.id);
    state.resources_offered=uniq([...(state.resources_offered||[]),String(candidate.id)]);
    state.current_stage="resource_ready";
+  }else{
+   plan.sendResourceId=null;
+   plan.deliveryReason="none";
   }
  }
+
  // DELIVERY POLICY (executor-owned):
  // - Passive continuation/acknowledgement never resends an already delivered resource.
  // - A CURRENT operational request for the resource is authoritative and must execute,
