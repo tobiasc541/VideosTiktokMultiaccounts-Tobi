@@ -27,12 +27,10 @@ function uniq(xs: any[]) { return [...new Set(xs.map(String).filter(Boolean))]; 
 function classifyIntent(text: string, resources: any[] = [], history = "") {
   const t = norm(text);
 
-  // Reclamo explícito
   if (/no me (la|lo) (mandaste|enviaste|pasaste)|no (la|lo) veo|no aparece|no me aparece|no llego|no me llego|reenvi|otra vez|de nuevo/.test(t)) {
     return "claim_missing_resource";
   }
 
-  // Solicitud directa de fotos, pruebas, backtests o capturas
   const asksProofOrResource = /\b(foto|fotos|captura|capturas|imagen|imagenes|prueba|pruebas|evidencia|resultado|resultados|backtest|backtesting|winrate)\b/.test(t) ||
     /\b(pasame|mandame|enviame|compartime|dame|acceso|link|enlace|archivo|material|recurso|discord)\b/.test(t) ||
     /\b(tendrias|tenes|tienes|mostrame|enseñame)\b.*\b(foto|captura|imagen|prueba)\b/.test(t);
@@ -48,14 +46,6 @@ function classifyIntent(text: string, resources: any[] = [], history = "") {
   if (/gracias|listo|genial|perfecto|dale/.test(t) && t.split(/\s+/).length < 6) return "ack";
 
   return "discovery";
-}
-
-function nextStage(current: ConversationStage, intent: string): ConversationStage {
-  if (intent === "close") return "closed";
-  if (intent === "claim_missing_resource" || intent === "resource_request") return "resource_ready";
-  if (current === "opening") return "discovery";
-  if (current === "resource_sent") return "follow_up";
-  return current === "closed" ? "closed" : current;
 }
 
 async function metaSend(account: any, recipientId: string, payload: any) {
@@ -82,7 +72,7 @@ function attachmentType(r: any) {
   if (m.startsWith("image/") || /\.(png|jpg|jpeg|gif|webp)/.test(n)) return "image";
   if (m.startsWith("video/") || /\.(mp4|mov)/.test(n)) return "video";
   if (m.startsWith("audio/") || /\.(mp3|m4a|aac|ogg)/.test(n)) return "audio";
-  return "image"; // Fallback por defecto a imagen
+  return "image";
 }
 
 async function deliverResource(db: any, event: InstagramConversationEvent, automationId: string, state: any, r: any) {
@@ -136,7 +126,6 @@ function chooseResource(pool: any[], text: string, pending?: string | null, hist
     const p = pool.find(r => String(r.id) === String(pending));
     if (p) return p;
   }
-  // Si piden foto/prueba/backtest explícitamente y hay recursos cargados, asignamos el primero o el más acorde
   return pool[0] || null;
 }
 
@@ -167,7 +156,7 @@ Adjunto enviado recién con éxito (attachment_confirmed): ${attachmentConfirmed
 Recurso/Imagen asociada: ${resource ? resource.name : "Ninguno"}
 
 REGLAS OBLIGATORIAS DE ESTILO Y HUMANIZACIÓN:
-1. PROHIBIDO EL ECO: NUNCA saludes ni repitas la misma frase inicial con la que el usuario abrió su mensaje (ejemplo: si dice "Cómo va amigo", NUNCA respondas "Cómo va, amigo" ni repitas sus palabras exactas).
+1. PROHIBIDO EL ECO: NUNCA saludes ni repitas la misma frase inicial con la que el usuario abrió su mensaje (ej: si dice "Cómo va amigo", NUNCA respondas "Cómo va, amigo").
 2. CONCISIÓN EXTREMA: Sé natural, directo y cercano. Máximo 1 o 2 oraciones cortas. EVITÁ testamentos explicativos, listas o textos secos y largos.
 3. REGLA FOTO/ADJUNTO: 
    - Si attachment_confirmed = TRUE: Hacé una referencia muy breve a la imagen que acaba de llegarle (ej: "Sí, obvio! Mirá, acá te dejo la captura de los resultados. ¿Qué te parece?").
@@ -205,14 +194,12 @@ export async function processInstagramConversationEvent(event: InstagramConversa
   const profileQ = await db.from("vyral_bussines_profile").select("*").eq("user_id", String(event.account.user_id)).maybeSingle();
   const profile = profileQ.data || {};
 
-  // Buscar el recurso relevante
   const resource = chooseResource(resources, event.text, state.pending_resource_id, event.history || "");
 
   let attachmentConfirmed = false;
   let resourceMessageId = "";
   let textMessageId = "";
 
-  // 1. INTENTAR ENTREGAR EL RECURSO FÍSICO PRIMERO (SI EL USUARIO LO PIDE Y EXISTE EN LA BASE)
   if (resource && (intent === "resource_request" || intent === "claim_missing_resource" || /foto|captura|backtest|prueba/i.test(event.text))) {
     const delivery = await deliverResource(db, event, automationId, state, resource);
     if (delivery.sent) {
@@ -221,10 +208,8 @@ export async function processInstagramConversationEvent(event: InstagramConversa
     }
   }
 
-  // 2. GENERAR EL TEXTO CONOCIENDO EXACTAMENTE SI EL ARCHIVO SE ENVIÓ O NO
   const plan = await generateText(a, event, state, intent, attachmentConfirmed, resource, resources, profile);
 
-  // 3. ENVIAR EL MENSAJE DE TEXTO A INSTAGRAM
   if (plan.text) {
     const metaRes = await metaSend(event.account, event.contactId, { message: { text: plan.text } });
     textMessageId = String(metaRes.message_id || "");
@@ -243,5 +228,11 @@ export async function processInstagramConversationEvent(event: InstagramConversa
 
   await db.from("instagram_conversation_state").upsert({ ...state, updated_at: new Date().toISOString() }, { onConflict: "account_id,contact_id,automation_id" });
 
-  return { success: true, textMessageId, resourceMessageId };
+  // Se mantiene messageId para compatibilidad total con el cron
+  return { 
+    success: true, 
+    messageId: textMessageId || resourceMessageId || "", 
+    textMessageId, 
+    resourceMessageId 
+  };
 }
