@@ -120,6 +120,17 @@ export async function processInstagramConversationEvent(event:InstagramConversat
  await db.from("instagram_conversation_state").upsert({...state,updated_at:new Date().toISOString()},{onConflict:"account_id,contact_id,automation_id"});
 
  let attachmentConfirmed=false,resourceMessageId="";
+
+ // AUDIO-FIRST: choose and send the stage audio before any resource/text response.
+ // For an explicit resource request this prioritizes resource_offer/topic_answer audio,
+ // then the backend delivers the resource as a separate message.
+ const voice=intent==="close"?null:chooseStageVoice(a,state,intent,isFirstTouch);
+ let voiceSent=false;
+ if(voice?.url){
+  try{const url=await signed(String(voice.url),86400);if(url){const j=await metaSend(event.account,event.contactId,{message:{attachment:{type:"audio",payload:{url}}}});voiceSent=true;state.last_audio_id=String(voice.id||"");state.voice_assets_sent=uniq([...(state.voice_assets_sent||[]),voice.id]);await db.from("vyral_inbox_messages").insert({user_id:event.account.user_id,account_id:event.account.id,platform:"instagram",contact_id:event.contactId,message_id:String(j.message_id||crypto.randomUUID()),body:`[Audio enviado: ${String(voice.transcript||voice.name||voice.id||"audio")}]`,direction:"out",sender_type:"ai",automation_id:automationId,attachment_type:"audio",attachment_meta:{voiceId:voice.id||null,stage:stageOfVoice(voice)}})} }catch{}
+ }
+
+ // Resource delivery is always a distinct message and happens after the relevant audio.
  if(wantsResource&&resource){
   try{
    if(resource.kind==="url"){const j=await metaSend(event.account,event.contactId,{message:{text:String(resource.external_url||"")}});resourceMessageId=String(j.message_id||"")}
@@ -129,17 +140,15 @@ export async function processInstagramConversationEvent(event:InstagramConversat
   }catch{attachmentConfirmed=false;state.pending_resource_id=String(resource.id);state.current_stage="resource_ready"}
  }
 
- const voice=attachmentConfirmed||intent==="close"?null:chooseStageVoice(a,state,intent,isFirstTouch);
- let voiceSent=false;
- if(voice?.url){
-  try{const url=await signed(String(voice.url),86400);if(url){const j=await metaSend(event.account,event.contactId,{message:{attachment:{type:"audio",payload:{url}}}});voiceSent=true;state.last_audio_id=String(voice.id||"");state.voice_assets_sent=uniq([...(state.voice_assets_sent||[]),voice.id]);await db.from("vyral_inbox_messages").insert({user_id:event.account.user_id,account_id:event.account.id,platform:"instagram",contact_id:event.contactId,message_id:String(j.message_id||crypto.randomUUID()),body:`[Audio enviado: ${String(voice.transcript||voice.name||voice.id||"audio")}]`,direction:"out",sender_type:"ai",automation_id:automationId,attachment_type:"audio",attachment_meta:{voiceId:voice.id||null,stage:stageOfVoice(voice)}})} }catch{}
- }
-
  let textMessageId="",reply="";
- if(!voiceSent){
-  reply=await generateText(a,event,state,intent,attachmentConfirmed,resource);
-  if(reply){const j=await metaSend(event.account,event.contactId,{message:{text:reply}});textMessageId=String(j.message_id||"");await db.from("vyral_inbox_messages").insert({user_id:event.account.user_id,account_id:event.account.id,platform:"instagram",contact_id:event.contactId,message_id:textMessageId||crypto.randomUUID(),body:reply,direction:"out",sender_type:"ai",automation_id:automationId})}
+ if(attachmentConfirmed){
+  // Human confirmation is deliberately separate from the link/resource.
+  // Keep it neutral so it cannot repeat post/audio marketing claims or reopen discovery.
+  reply="Ahí te lo dejé arriba. Entrá tranquilo y cualquier duda me avisás.";
+ }else if(!voiceSent){
+  reply=await generateText(a,event,state,intent,false,resource);
  }
+ if(reply){const j=await metaSend(event.account,event.contactId,{message:{text:reply}});textMessageId=String(j.message_id||"");await db.from("vyral_inbox_messages").insert({user_id:event.account.user_id,account_id:event.account.id,platform:"instagram",contact_id:event.contactId,message_id:textMessageId||crypto.randomUUID(),body:reply,direction:"out",sender_type:"ai",automation_id:automationId})}
  await db.from("instagram_conversation_state").upsert({...state,updated_at:new Date().toISOString()},{onConflict:"account_id,contact_id,automation_id"});
  return{ok:true,intent,stage:state.current_stage,voiceSent,voiceId:voice?.id||null,attachmentConfirmed,resourceId:resource?.id||null,pendingResourceId:state.pending_resource_id||null,messageId:textMessageId||resourceMessageId||null};
 }
