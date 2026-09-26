@@ -138,18 +138,38 @@ REGLAS DE MEMORIA:
 - Si el pedido actual contradice explícitamente un dato del Brand Brain, para ESTA pieza prevalece el pedido actual.
 - Las ideas deben sentirse escritas para ESTE negocio, no para un negocio genérico del mismo rubro.
 
-ESTILO VISUAL YA SELECCIONADO: "${visualStyle}". MOLDE SEMÁNTICO OBLIGATORIO: ${styleGuide}\nRESTRICCIONES ESPECÍFICAS DEL ESTILO: ${forbidden}\n\nFORMATO SEGÚN CANTIDAD — OBLIGATORIO:
-- slide_count exacto: ${slideCount}.
-- Si slide_count == 1: cada propuesta representa UNA sola imagen fija. PROHIBIDO escribir "Slide 1", secuencias, carrusel o divisiones. El hook y el copy deben funcionar completos en una sola placa.
-- Si slide_count >= 2: cada propuesta debe repartir su narrativa EXACTAMENTE en ${slideCount} placas. El campo angle debe enumerar la progresión de Slide 1 hasta Slide ${slideCount}, sin agregar ni quitar placas.
-- Las cuatro propuestas usan el mismo estilo visual seleccionado y EXACTAMENTE estos cuatro ángulos, uno por propuesta:
-  1) HISTORIA / ORIGEN DISRUPTIVO — Storytelling / Transformación. Explorá punto de partida, etapa anterior, fracaso real disponible en el Brand Brain, quiebre y transformación. PROHIBIDO inventar hechos biográficos ausentes.
-  2) PSICOLOGÍA / MENTALIDAD / ERRORES DEL SECTOR — Dolor profundo. Explorá disciplina, miedo a perder, impaciencia, saltar de estrategia en estrategia y paciencia. No reveles la herramienta o estrategia hasta el final cuando la narrativa lo permita.
-  3) CASO DE ESTUDIO / EVIDENCIA PRÁCTICA — Backtesting / Pruebas. Enfoque técnico pero amigable: proceso de validación, pruebas, datos disponibles, paciencia y disciplina de ejecución antes que resultado monetario.
-  4) ATAQUE A MITOS / POLÉMICO — Viralidad pura por contraste. Creá un hook polémico que cuestione una creencia popular real del nicho, sin inventar estadísticas ni afirmaciones falsas.
-- CERO REPETICIÓN: el Brand Brain es materia prima, NO un texto para recitar. Derivá hipótesis y narrativas nuevas desde aristas distintas del perfil, audiencia y mercado. No repitas automáticamente los mismos diferenciales, cifras, términos técnicos, logros o mecanismos entre propuestas.
-- Si un dato concreto domina una propuesta, evitá reutilizarlo como argumento central en las otras tres.
-- No mezcles los cuatro ángulos entre sí y no generes variantes redundantes.
+ESTILO VISUAL YA SELECCIONADO: "${visualStyle}". MOLDE SEMÁNTICO OBLIGATORIO: ${styleGuide}\nRESTRICCIONES ESPECÍFICAS DEL ESTILO: ${forbidden}\n\nFORMATO ADAPTATIVO Y ÁNGULOS UNIVERSALES — OBLIGATORIO:
+- Variables activas: user_brain = Brand Brain permanente; slide_count = ${slideCount}; visual_style = "${visualStyle}"; conversion_goal = "${conversionGoal}".
+- Estas reglas son AGNÓSTICAS AL NICHO: deben funcionar para cualquier industria, profesión, producto, servicio o marca. No asumas trading, SaaS, ecommerce ni ningún sector salvo que user_brain/brief lo indiquen.
+- Si slide_count == 1: cada propuesta es UNA sola imagen fija con Hook visual + Copy. PROHIBIDO escribir "Slide 1", secuencias, carrusel o divisiones.
+- Si slide_count >= 2: repartí la narrativa EXACTAMENTE en ${slideCount} diapositivas. El campo angle debe enumerar Slide 1 hasta Slide ${slideCount}, sin agregar ni quitar placas.
+
+GENERÁ EXACTAMENTE ESTOS 4 ÁNGULOS, UNO POR OPCIÓN:
+1) TRANSFORMACIÓN Y STORYTELLING PERSONAL
+   - Extraé de user_brain el contraste real entre situación inicial/frustración/pasado y estado actual/solución/transformación.
+   - Construí un relato humano de cambio, aprendizaje, superación o lección que conecte emocionalmente.
+   - PROHIBIDO inventar pasado, fracasos, trabajos, resultados o biografía que user_brain no respalde.
+
+2) PSICOLOGÍA Y FRUSTRACIONES DEL CLIENTE IDEAL
+   - Mapeá customer_pains, customer_desires, objections, audience y dudas frecuentes disponibles en user_brain.
+   - Elegí un dolor profundo o bloqueo cotidiano y explicá empáticamente por qué una conducta, creencia o método habitual falla.
+   - No conviertas esta opción en una explicación del producto desde el comienzo: primero hacé sentir entendido al público.
+
+3) EDUCATIVO / FRAMEWORK / PASO A PASO
+   - Detectá el método, proceso, experiencia, diferenciador o pilar útil disponible en user_brain y convertílo en valor práctico.
+   - Estructuralo como tutorial, framework, checklist, pasos, errores/soluciones o sistema accionable según lo que mejor encaje.
+   - Priorizá claridad, utilidad inmediata y aprendizaje rápido. No dependas de resultados monetarios ni de evidencia técnica específica de un nicho.
+
+4) DISRUPTIVO / ATAQUE A MITOS DEL SECTOR
+   - Identificá una creencia popular, consejo repetido, práctica asumida o mito relevante para la industria inferida desde user_brain.
+   - Abrí con un hook contundente y defendible que genere curiosidad o debate y después explicá el contraste.
+   - PROHIBIDO inventar estadísticas, consensos o afirmaciones falsas sólo para volverlo polémico.
+
+DIVERSIDAD REAL — CERO REPETICIÓN:
+- Las 4 opciones deben tener tesis, hook, tensión y estructura narrativa distintas.
+- user_brain es materia prima, NO un texto para recitar. No repitas automáticamente los mismos diferenciales, cifras, logros, términos técnicos o mecanismos.
+- Si un dato domina una opción, buscá otra arista para las demás.
+- No mezcles los cuatro ángulos ni conviertas cuatro opciones en paráfrasis de la misma idea.
 
 MOTORES DE HOOK RECOMENDADOS: contraste disruptivo; resultado fuerte solo si está respaldado; frase literal del mercado; pregunta incómoda; provocación directa; error costoso; secreto/mecanismo; antes vs después; creencia popular vs realidad.
 La viralidad debe salir de una tensión REAL del público + especificidad del Brand Brain + claridad. Prohibido clickbait falso.
