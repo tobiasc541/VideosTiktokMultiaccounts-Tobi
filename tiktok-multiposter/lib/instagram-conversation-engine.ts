@@ -24,27 +24,14 @@ export type InstagramConversationEvent = {
 function norm(v: any) { return String(v || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase(); }
 function uniq(xs: any[]) { return [...new Set(xs.map(String).filter(Boolean))]; }
 
-function classifyIntent(text: string, resources: any[] = [], history = "") {
+function classifyIntent(text: string) {
   const t = norm(text);
-
-  if (/no me (la|lo) (mandaste|enviaste|pasaste)|no (la|lo) veo|no aparece|no me aparece|no llego|no me llego|reenvi|otra vez|de nuevo/.test(t)) {
-    return "claim_missing_resource";
-  }
-
-  const asksProofOrResource = /\b(foto|fotos|captura|capturas|imagen|imagenes|prueba|pruebas|evidencia|resultado|resultados|backtest|backtesting|winrate)\b/.test(t) ||
-    /\b(pasame|mandame|enviame|compartime|dame|acceso|link|enlace|archivo|material|recurso|discord)\b/.test(t) ||
-    /\b(tendrias|tenes|tienes|mostrame|enseñame)\b.*\b(foto|captura|imagen|prueba)\b/.test(t);
-
-  const related = chooseResource(resources, text, null, history);
-  if (asksProofOrResource && related) return "resource_request";
-
+  if (/no me (la|lo) (mandaste|enviaste|pasaste)|no (la|lo) veo|no aparece|no me aparece|no llego|no me llego|reenvi|otra vez|de nuevo/.test(t)) return "claim_missing_resource";
   const farewell = /\b(chau|adios|nos vemos|hasta luego|gracias,? chau|listo,? gracias)\b/.test(t);
   const hasContinuation = /\?|\b(y por ultimo|pero|consulta|pregunta|tenes|tienes|podes|puedes|quisiera|quiero|necesito|como|donde|cual|que)\b/.test(t);
   if (farewell && !hasContinuation) return "close";
-
   if (/precio|comprar|contratar|pagar|plan|presupuesto|cotizacion/.test(t)) return "qualification";
   if (/gracias|listo|genial|perfecto|dale/.test(t) && t.split(/\s+/).length < 6) return "ack";
-
   return "discovery";
 }
 
@@ -124,15 +111,6 @@ async function deliverResource(db: any, event: InstagramConversationEvent, autom
   }
 }
 
-function chooseResource(pool: any[], text: string, pending?: string | null, history = "") {
-  if (!pool || !pool.length) return null;
-  if (pending) {
-    const p = pool.find(r => String(r.id) === String(pending));
-    if (p) return p;
-  }
-  return pool[0] || null;
-}
-
 async function loadResources(userId: string, a: any) {
   if (a.resourceUrl) {
     const raw = String(a.resourceUrl || "").trim();
@@ -163,23 +141,40 @@ async function loadResources(userId: string, a: any) {
 }
 
 async function generateText(a: any, event: InstagramConversationEvent, state: any, intent: string, attachmentConfirmed: boolean, resource: any, resources: any[], profile: any) {
-  const key = process.env.VYRAL_CREATOR_PRODUCTION; 
-  if (!key) return { text: "", sendResourceId: null as string | null, deliveryReason: "none" };
+  const key = process.env.VYRAL_CREATOR_PRODUCTION;
+  if (!key) return { text: "", sendResourceId: null as string | null };
+
+  const formattedResources = resources.length > 0
+    ? resources.map((r: any) => `- ID: "${String(r.id)}"
+  Nombre: "${String(r.name || "Sin nombre")}"
+  Tipo: "${String(r.kind || (r.storage_path ? "file" : "url"))}" (file/url)
+  Qué demuestra o contiene: "${String(r.purpose || "Sin descripción")}"
+  Cuándo se debe enviar: "${String(r.send_when || "Sin condición")}"`).join("\n")
+    : "No hay recursos disponibles.";
 
   const prompt = `Sos el asistente de Instagram DM de la marca.
 Mensaje del usuario: "${event.text}"
 Historial: ${event.history || "Sin historial previo"}
+Intención conversacional orientativa: ${intent}
 Adjunto enviado recién con éxito (attachment_confirmed): ${attachmentConfirmed}
-Recurso/Imagen asociada: ${resource ? resource.name : "Ninguno"}
 
-REGLAS OBLIGATORIAS DE ESTILO Y HUMANIZACIÓN:
-1. PROHIBIDO EL ECO: NUNCA saludes ni repitas la misma frase inicial con la que el usuario abrió su mensaje (ej: si dice "Cómo va amigo", NUNCA respondas "Cómo va, amigo").
-2. CONCISIÓN EXTREMA: Sé natural, directo y cercano. Máximo 1 o 2 oraciones cortas. EVITÁ testamentos explicativos, listas o textos secos y largos.
-3. REGLA FOTO/ADJUNTO: 
-   - Si attachment_confirmed = TRUE: Hacé una referencia muy breve a la imagen que acaba de llegarle (ej: "Sí, obvio! Mirá, acá te dejo la captura de los resultados. ¿Qué te parece?").
-   - Si attachment_confirmed = FALSE: NUNCA afirmes ni insinúes que enviaste, adjuntaste, compartiste o dejaste una imagen, prueba, archivo, link o acceso. No digas "ahí te dejé", "acá tenés", "te la mandé" ni equivalentes. Respondé sin inventar una entrega.
+RECURSOS DISPONIBLES DEL NEGOCIO:
+${formattedResources}
 
-Respondé ÚNICAMENTE un JSON válido: {"text":"tu respuesta corta aquí","send_resource_id":null,"delivery_reason":"none"}`;
+REGLAS DE SELECCIÓN Y ENTREGA DE RECURSOS:
+1. Analizá el mensaje ACTUAL y el historial. Compará la intención con "Cuándo se debe enviar" y "Qué demuestra o contiene" de TODOS los recursos.
+2. Si la solicitud coincide claramente con un recurso y corresponde entregarlo AHORA, devolvé su ID EXACTO en send_resource_id.
+3. Si no coincide claramente con ninguno o todavía no corresponde enviarlo, devolvé send_resource_id: null.
+4. Nunca inventes IDs. Sólo podés devolver uno de los IDs listados arriba.
+5. attachment_confirmed describe una entrega que YA fue confirmada por Meta en este turno. Si es false, NUNCA afirmes ni insinúes que un adjunto/link ya fue enviado.
+6. Si elegís send_resource_id en esta primera decisión, el backend intentará entregarlo después. Por eso el texto de esta decisión NO puede afirmar que ya llegó. La confirmación de entrega se redactará recién después de recibir message_id de Meta.
+7. Si attachment_confirmed=true, redactá una confirmación breve y natural coherente con el recurso que efectivamente se entregó.
+8. PROHIBIDO EL ECO: no repitas ni parafrasees el saludo/apelativo con el que abrió el usuario.
+9. CONCISIÓN EXTREMA: máximo 1 o 2 oraciones cortas, fluidas y directas.
+
+FORMATO REQUERIDO — JSON estrictamente válido, sin markdown:
+{"text":"respuesta corta","send_resource_id":null}
+`;
 
   try {
     const r = await fetch("https://api.openai.com/v1/responses", {
@@ -189,13 +184,17 @@ Respondé ÚNICAMENTE un JSON válido: {"text":"tu respuesta corta aquí","send_
       signal: AbortSignal.timeout(12000)
     });
     const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j?.error?.message || `OpenAI HTTP ${r.status}`);
     let raw = String(j.output_text || "");
     if (!raw) for (const x of j.output || []) for (const z of x.content || []) if (z.type === "output_text") raw += z.text || "";
-    let cleaned = raw.trim(); if (cleaned.startsWith("~~~json")) cleaned = cleaned.slice(7); if (cleaned.endsWith("~~~")) cleaned = cleaned.slice(0, -3);
-    const parsed = JSON.parse(cleaned.trim());
-    return { text: String(parsed.text || "").trim(), sendResourceId: parsed.send_resource_id || null, deliveryReason: parsed.delivery_reason || "none" };
-  } catch {
-    return { text: "Decime qué necesitás ver y te ayudo.", sendResourceId: null, deliveryReason: "none" };
+    let cleaned = raw.trim().replace(/^~~~json\s*/i, "").replace(/~~~$/i, "").trim();
+    const parsed = JSON.parse(cleaned);
+    const candidate = parsed.send_resource_id == null ? null : String(parsed.send_resource_id);
+    const validId = candidate && resources.some((r: any) => String(r.id) === candidate) ? candidate : null;
+    return { text: String(parsed.text || "").trim(), sendResourceId: validId };
+  } catch (err: any) {
+    console.error("[VYRAL Instagram] Error al planificar respuesta:", String(err?.message || err));
+    return { text: "Decime qué necesitás ver y te ayudo.", sendResourceId: null as string | null };
   }
 }
 
@@ -203,32 +202,43 @@ export async function processInstagramConversationEvent(event: InstagramConversa
   const db = supabaseAdmin(), a = event.automation, automationId = String(a.id || "");
   const key = { account_id: event.account.id, contact_id: event.contactId, automation_id: automationId };
   const found = await db.from("instagram_conversation_state").select("*").match(key).maybeSingle();
-  
+
   let state: any = found.data || { ...key, user_id: event.account.user_id, thread_id: event.threadId || null, current_stage: "opening", origin: event.origin || "direct_dm", resources_offered: [], resources_sent: [], pending_resource_id: null };
-  
+
   const resources = await loadResources(event.account.user_id, a);
-  const intent = classifyIntent(event.text, resources, event.history || "");
+  const intent = classifyIntent(event.text);
   const profileQ = await db.from("vyral_bussines_profile").select("*").eq("user_id", String(event.account.user_id)).maybeSingle();
   const profile = profileQ.data || {};
-
-  const resource = chooseResource(resources, event.text, state.pending_resource_id, event.history || "");
 
   let attachmentConfirmed = false;
   let resourceMessageId = "";
   let textMessageId = "";
 
-  if (resource && (intent === "resource_request" || intent === "claim_missing_resource" || /foto|captura|backtest|prueba/i.test(event.text))) {
-    const delivery = await deliverResource(db, event, automationId, state, resource);
+  // GPT sees the complete catalog and returns one exact resource ID or null.
+  const plan = await generateText(a, event, state, intent, false, null, resources, profile);
+  const selectedResource = plan.sendResourceId
+    ? resources.find((r: any) => String(r.id) === String(plan.sendResourceId))
+    : null;
+
+  let replyText = plan.text;
+
+  if (selectedResource) {
+    const delivery = await deliverResource(db, event, automationId, state, selectedResource);
     if (delivery.sent) {
       attachmentConfirmed = true;
       resourceMessageId = delivery.messageId;
+
+      // Only after Meta returned message_id may the model say that delivery happened.
+      const confirmation = await generateText(a, event, state, intent, true, selectedResource, resources, profile);
+      if (confirmation.text) replyText = confirmation.text;
+    } else {
+      // Never send copy that could falsely imply successful delivery.
+      replyText = "No pude adjuntarlo en este momento. Si querés, volvé a pedírmelo y lo intento de nuevo.";
     }
   }
 
-  const plan = await generateText(a, event, state, intent, attachmentConfirmed, resource, resources, profile);
-
-  if (plan.text) {
-    const metaRes = await metaSend(event.account, event.contactId, { message: { text: plan.text } });
+  if (replyText) {
+    const metaRes = await metaSend(event.account, event.contactId, { message: { text: replyText } });
     textMessageId = String(metaRes.message_id || "");
     await db.from("vyral_inbox_messages").insert({
       user_id: event.account.user_id,
@@ -236,7 +246,7 @@ export async function processInstagramConversationEvent(event: InstagramConversa
       platform: "instagram",
       contact_id: event.contactId,
       message_id: textMessageId,
-      body: plan.text,
+      body: replyText,
       direction: "out",
       sender_type: "ai",
       automation_id: automationId
@@ -245,11 +255,12 @@ export async function processInstagramConversationEvent(event: InstagramConversa
 
   await db.from("instagram_conversation_state").upsert({ ...state, updated_at: new Date().toISOString() }, { onConflict: "account_id,contact_id,automation_id" });
 
-  // Se mantiene messageId para compatibilidad total con el cron
-  return { 
-    success: true, 
-    messageId: textMessageId || resourceMessageId || "", 
-    textMessageId, 
-    resourceMessageId 
+  return {
+    success: true,
+    attachmentConfirmed,
+    messageId: textMessageId || resourceMessageId || "",
+    textMessageId,
+    resourceMessageId,
+    selectedResourceId: selectedResource ? String(selectedResource.id) : null
   };
 }
