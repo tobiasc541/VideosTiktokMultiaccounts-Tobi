@@ -104,6 +104,7 @@ async function loadResources(userId:string,a:any){
 }
 async function generateText(a:any,event:InstagramConversationEvent,state:any,intent:string,attachmentConfirmed:boolean,resource:any,resources:any[],profile:any){
  const key=process.env.VYRAL_CREATOR_PRODUCTION;if(!key)return{text:"",sendResourceId:null as string|null,deliveryReason:"none"};
+ // The model may write copy, but deterministic consent gates own resource delivery.
  const catalog=(resources||[]).map((r:any)=>({id:String(r.id),name:r.name,purpose:r.purpose,send_when:r.send_when,kind:r.kind,already_sent:Boolean(state.resources_sent?.includes(String(r.id))),already_offered:Boolean(state.resources_offered?.includes(String(r.id)))}));
  const prompt=`Sos el cerebro conversacional multirrubro de VYRAL para Instagram DM. Razoná por significado, no por coincidencia literal.
 Etapa: ${state.current_stage}. Intención: ${intent}. Origen: ${state.origin}.
@@ -157,12 +158,12 @@ export async function processInstagramConversationEvent(event:InstagramConversat
  // PLAN FIRST: resource/action planning must run regardless of whether presentation uses audio or text.
  // Explicit missing-resource retries are locked to the pending/last-offered resource above and never re-routed.
  const plan=await generateText(a,event,state,intent,false,resource,resources,profile);
- if(!wantsResource&&plan.sendResourceId){
+ if(false&&!wantsResource&&plan.sendResourceId){
   const candidate=resources.find((r:any)=>String(r.id)===String(plan.sendResourceId))||null;
   const validReason=["proactive_value","first_delivery","new_need","explicit_request","retry_missing"].includes(String(plan.deliveryReason));
   if(candidate&&validReason){brainResource=candidate;state.pending_resource_id=String(candidate.id);state.resources_offered=uniq([...(state.resources_offered||[]),String(candidate.id)]);state.current_stage="resource_ready"}
  }
- const actionResource=wantsResource?resource:brainResource;
+ const actionResource=wantsResource?resource:null;
 
  // Presentation is independent from planning. A voice can never suppress a planned resource action.
  const voice=intent==="close"||intent==="claim_missing_resource"||intent==="resource_request"?null:chooseStageVoice(a,state,intent,isFirstTouch);
@@ -181,7 +182,7 @@ export async function processInstagramConversationEvent(event:InstagramConversat
  // If a resource was delivered without audio, regenerate only to acknowledge the confirmed action.
  if(!voiceSent){
   if(attachmentConfirmed){const confirmed=await generateText(a,event,state,intent,true,actionResource,resources,profile);reply=confirmed.text}
-  else reply=plan.text;
+  else reply=plan.text.replace(/\b(?:discord|link|enlace|recurso|archivo|pdf|gu[ií]a)\b[^.!?]*[.!?]?/gi,"").trim();
  }
  if(reply){
   const recentQ=await db.from("vyral_inbox_messages").select("body").eq("account_id",event.account.id).eq("contact_id",event.contactId).eq("direction","out").order("created_at",{ascending:false}).limit(8),recent=(recentQ.data||[]).map((x:any)=>norm(x.body)),candidate=norm(reply);
