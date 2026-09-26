@@ -19,7 +19,7 @@ async function analyzeResourceFile(file:File){
   const dataUrl=await new Promise<string>((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result||""));reader.onerror=()=>reject(Error("No pude leer el archivo."));reader.readAsDataURL(file)});
   const r=await fetch("/api/ai/business/resources",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"analyze",name:resName||file.name,type:file.type,kind:"file",dataUrl})});
   const j=await r.json().catch(()=>({}));
-  if(!r.ok)throw Error(j.error||"No se pudo analizar el archivo.");
+  if(!r.ok)throw Error((j.error||"No se pudo analizar el archivo.")+(j.detail?" · "+j.detail:""));
   setResPurpose(String(j.purpose||"").trim());
   setResWhen(String(j.send_when||"").trim());
   notice("✦ Análisis inteligente listo","VYRAL analizó la imagen y completó ambos campos. Podés editarlos antes de guardar.","good");
