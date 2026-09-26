@@ -100,7 +100,8 @@ export async function processInstagramConversationEvent(event:InstagramConversat
  const isFirstTouch=!found.data;
  let state:any=found.data||{...key,user_id:event.account.user_id,thread_id:event.threadId||null,current_stage:"opening",origin:event.origin||"direct_dm",context_payload:event.contextPayload||{},last_question_asked:null,last_audio_id:null,voice_assets_sent:[],resources_offered:[],resources_sent:[],pending_resource_id:null,last_intent:null};
  const intent=classifyIntent(event.text);
- const resources=await loadResources(event.account.user_id,a);\n const profileQ=await db.from("vyral_bussines_profile").select("*").eq("user_id",String(event.account.user_id)).maybeSingle();const profile=profileQ.data||{};
+ const resources=await loadResources(event.account.user_id,a);
+ const profileQ=await db.from("vyral_bussines_profile").select("*").eq("user_id",String(event.account.user_id)).maybeSingle();const profile=profileQ.data||{};
  const previousStage=state.current_stage as ConversationStage;
  let resource=chooseResource(resources,event.text,state.pending_resource_id,event.history||"");
 
