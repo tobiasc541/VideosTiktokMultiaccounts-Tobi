@@ -37,6 +37,8 @@ function stageOfVoice(v:any):string{
 function allowedOrigin(v:any,origin:ConversationOrigin){const xs=Array.isArray(v?.allowed_origins)?v.allowed_origins:Array.isArray(v?.allowedOrigins)?v.allowedOrigins:[];return !xs.length||xs.includes(origin)}
 function classifyIntent(text:string){
  const t=norm(text);
+ if(/\b(chau|adios|nos vemos|hasta luego|gracias,? chau|listo,? gracias)\b/.test(t))return"close";
+ if(/donde (puedo )?(ver|entrar|acceder)|como (hago para )?(entrar|acceder)|quiero (entrar|acceder|ver mas)|pasame (el )?(link|enlace|acceso)|mandame (el )?(link|enlace|acceso)/.test(t))return"high_intent";
  if(/no me (la|lo) (mandaste|enviaste|pasaste)|no llego|no me llego|reenvi|otra vez|de nuevo/.test(t))return"claim_missing_resource";
  if(/prueba|evidencia|backtest|resultado|win ?rate|captura/.test(t))return"proof_request";
  if(/link|discord|acceso|guia|pdf|archivo|foto|imagen|recurso|catalogo/.test(t)&&/(manda|envia|pasame|quiero|link|acceso)/.test(t))return"resource_request";
@@ -45,7 +47,8 @@ function classifyIntent(text:string){
  return"discovery";
 }
 function nextStage(current:ConversationStage,intent:string):ConversationStage{
- if(intent==="claim_missing_resource"||intent==="proof_request"||intent==="resource_request")return"resource_ready";
+ if(intent==="close")return"closed";
+ if(intent==="high_intent"||intent==="claim_missing_resource"||intent==="proof_request"||intent==="resource_request")return"resource_ready";
  if(current==="opening")return"discovery";
  if(current==="resource_sent")return"follow_up";
  if(intent==="qualification")return"qualification";
@@ -61,11 +64,11 @@ async function signed(path:string,seconds=604800){if(!path)return"";if(/^https:\
 function attachmentType(r:any){const m=norm(r?.mime_type),n=norm(`${r?.name||""} ${r?.storage_path||""}`);if(m.startsWith("image/")||/\.(png|jpg|jpeg|gif|webp)/.test(n))return"image";if(m.startsWith("video/")||/\.(mp4|mov)/.test(n))return"video";if(m.startsWith("audio/")||/\.(mp3|m4a|aac|ogg)/.test(n))return"audio";return"file"}
 function resourceScore(r:any,text:string){const t=norm(text),h=norm(`${r?.name||""} ${r?.purpose||""} ${r?.send_when||""}`);let s=t.split(/\W+/).filter(x=>x.length>3&&h.includes(x)).length;if(/prueba|evidencia|backtest|resultado|win ?rate|captura/.test(t)&&/prueba|evidencia|backtest|resultado|win ?rate|captura/.test(h))s+=30;if(/discord|acceso|comunidad/.test(t)&&/discord|acceso|comunidad/.test(h))s+=20;return s}
 function chooseResource(pool:any[],text:string,pending?:string|null){if(pending){const p=pool.find(r=>String(r.id)===String(pending));if(p)return p}let best:any=null,score=0;for(const r of pool){const s=resourceScore(r,text);if(s>score){score=s;best=r}}return best}
-function chooseStageVoice(a:any,state:any,intent:string){
+function chooseStageVoice(a:any,state:any,intent:string,isFirstTouch=false){
  if(!a?.voiceEnabled)return null;
  const all=(Array.isArray(a.voiceAssets)?a.voiceAssets:[]).filter((v:any)=>v?.url);
  const sent=new Set((state.voice_assets_sent||[]).map(String));
- const first=state.current_stage==="opening"&&sent.size===0;
+ const first=isFirstTouch&&sent.size===0;
  const role=first?"opening":intent==="proof_request"?"proof":state.current_stage==="follow_up"?"follow_up":state.current_stage==="resource_ready"?"resource_offer":state.current_stage;
  const candidates=all.filter((v:any)=>stageOfVoice(v)===role&&allowedOrigin(v,state.origin)&&(!sent.has(String(v.id))||v.is_reusable===true));
  if(first)return candidates[0]||null;
@@ -89,7 +92,7 @@ Historial: ${event.history||"Sin historial"}
 Mensaje nuevo: ${event.text}
 Recurso relacionado: ${resource?JSON.stringify({name:resource.name,purpose:resource.purpose}):"ninguno"}
 attachment_confirmed=${attachmentConfirmed}
-Reglas: respondé natural y breve, máximo una pregunta. No repitas nombre, saludo, CTA, link ni pregunta ya usada. Si attachment_confirmed=false está PROHIBIDO decir "te lo envié", "ahí va", "te lo mando", "te paso la captura" o cualquier afirmación/promesa de envío. Si attachment_confirmed=true podés confirmar brevemente que el recurso fue enviado. No inventes recursos. En opening/discovery conversá y descubrí necesidad antes de entregar recursos salvo pedido explícito. Respondé SOLO el texto final.`;
+Reglas: respondé natural y breve, máximo una pregunta. Si la intención es high_intent, el recurso ya debe entregarse sin demoras ni preguntas de calificación; como máximo una frase breve opcional de cierre. Si la etapa es closed o el usuario se despide, cerrá sin hacer preguntas. Si el usuario responde corto o con poco interés, no insistas ni abras un interrogatorio: dejá una cortesía abierta. No repitas nombre, saludo, CTA, link ni pregunta ya usada. Si attachment_confirmed=false está PROHIBIDO decir "te lo envié", "ahí va", "te lo mando", "te paso la captura" o cualquier afirmación/promesa de envío. Si attachment_confirmed=true podés confirmar brevemente que el recurso fue enviado. No inventes recursos. En opening/discovery conversá y descubrí necesidad antes de entregar recursos salvo pedido explícito. Respondé SOLO el texto final.`;
  const r=await fetch("https://api.openai.com/v1/responses",{method:"POST",headers:{Authorization:`Bearer ${key}`,"Content-Type":"application/json"},body:JSON.stringify({model:"gpt-5.6-luna",input:prompt,max_output_tokens:250}),signal:AbortSignal.timeout(12000)}),j=await r.json().catch(()=>({}));
  if(!r.ok)return attachmentConfirmed?"Listo, ya te lo envié por acá.":"Te leo. Contame un poco más y seguimos.";
  let out=String(j.output_text||"");if(!out)for(const x of j.output||[])for(const z of x.content||[])if(z.type==="output_text")out+=z.text||"";
@@ -100,12 +103,13 @@ export async function processInstagramConversationEvent(event:InstagramConversat
  const db=supabaseAdmin(),a=event.automation,automationId=String(a.id||"");
  const key={account_id:event.account.id,contact_id:event.contactId,automation_id:automationId};
  const found=await db.from("instagram_conversation_state").select("*").match(key).maybeSingle();
+ const isFirstTouch=!found.data;
  let state:any=found.data||{...key,user_id:event.account.user_id,thread_id:event.threadId||null,current_stage:"opening",origin:event.origin||"direct_dm",context_payload:event.contextPayload||{},last_question_asked:null,last_audio_id:null,voice_assets_sent:[],resources_offered:[],resources_sent:[],pending_resource_id:null,last_intent:null};
  const intent=classifyIntent(event.text);
  const resources=await loadResources(event.account.user_id,a);
  let resource=chooseResource(resources,event.text,state.pending_resource_id);
  if(intent==="claim_missing_resource"&&!resource&&state.resources_offered?.length)resource=resources.find((r:any)=>state.resources_offered.includes(String(r.id)))||null;
- const wantsResource=["resource_request","proof_request","claim_missing_resource"].includes(intent)&&Boolean(resource);
+ const wantsResource=["high_intent","resource_request","proof_request","claim_missing_resource"].includes(intent)&&Boolean(resource);
  state.last_intent=intent;
  state.current_stage=nextStage(state.current_stage,intent);
  if(wantsResource){state.pending_resource_id=String(resource.id);state.resources_offered=uniq([...(state.resources_offered||[]),resource.id])}
@@ -121,10 +125,10 @@ export async function processInstagramConversationEvent(event:InstagramConversat
   }catch{attachmentConfirmed=false;state.pending_resource_id=String(resource.id);state.current_stage="resource_ready"}
  }
 
- const voice=attachmentConfirmed?null:chooseStageVoice(a,state,intent);
+ const voice=attachmentConfirmed||intent==="close"?null:chooseStageVoice(a,state,intent,isFirstTouch);
  let voiceSent=false;
  if(voice?.url){
-  try{const url=await signed(String(voice.url),86400);if(url){const j=await metaSend(event.account,event.contactId,{message:{attachment:{type:"audio",payload:{url}}}});voiceSent=true;state.last_audio_id=String(voice.id||"");state.voice_assets_sent=uniq([...(state.voice_assets_sent||[]),voice.id]);await db.from("vyral_inbox_messages").insert({user_id:event.account.user_id,account_id:event.account.id,platform:"instagram",contact_id:event.contactId,message_id:String(j.message_id||crypto.randomUUID()),body:`[Audio enviado: ${voice.name||voice.id||"audio"}]`,direction:"out",sender_type:"ai",automation_id:automationId,attachment_type:"audio",attachment_meta:{voiceId:voice.id||null,stage:stageOfVoice(voice)}})} }catch{}
+  try{const url=await signed(String(voice.url),86400);if(url){const j=await metaSend(event.account,event.contactId,{message:{attachment:{type:"audio",payload:{url}}}});voiceSent=true;state.last_audio_id=String(voice.id||"");state.voice_assets_sent=uniq([...(state.voice_assets_sent||[]),voice.id]);await db.from("vyral_inbox_messages").insert({user_id:event.account.user_id,account_id:event.account.id,platform:"instagram",contact_id:event.contactId,message_id:String(j.message_id||crypto.randomUUID()),body:`[Audio enviado: ${String(voice.transcript||voice.name||voice.id||"audio")}]`,direction:"out",sender_type:"ai",automation_id:automationId,attachment_type:"audio",attachment_meta:{voiceId:voice.id||null,stage:stageOfVoice(voice)}})} }catch{}
  }
 
  let textMessageId="",reply="";
