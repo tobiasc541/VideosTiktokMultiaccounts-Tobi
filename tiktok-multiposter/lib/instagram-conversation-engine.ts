@@ -37,19 +37,17 @@ function stageOfVoice(v:any):string{
 function allowedOrigin(v:any,origin:ConversationOrigin){const xs=Array.isArray(v?.allowed_origins)?v.allowed_origins:Array.isArray(v?.allowedOrigins)?v.allowedOrigins:[];return !xs.length||xs.includes(origin)}
 function tokens(v:any){return norm(v).split(/[^a-z0-9]+/).filter((x:string)=>x.length>2)}
 function semanticOverlap(a:any,b:any){const A=new Set(tokens(a)),B=new Set(tokens(b));let n=0;for(const x of A)if(B.has(x))n++;return n}
-function classifyIntent(text:string,resources:any[]=[]){
- const t=norm(text);
- // Operational delivery/access requests outrank discovery: once the person asks how to access/join/get something, execute rather than educate again.
- if(/\b(como|donde)\s+(me\s+)?(uno|entro|accedo|ingreso|consigo|obtengo)|\b(me\s+)?(puedo|quiero)\s+(unir|entrar|acceder|ingresar)|\b(pasame|mandame|enviame|compartime|dame)\b/.test(t))return"resource_request";
- // A farewell only closes the conversation when it is actually the whole turn.
- // If the same message continues with a question/request (e.g. "nos vemos... y por último, ¿tenés pruebas?"), keep reasoning.
+function classifyIntent(text:string,resources:any[]=[],history=""){
+ const t=norm(text),conversation=norm(`${history} ${text}`);
+ // Delivery/access language is resolved against the CONVERSATION, not the isolated turn.
+ // This lets "¿cómo ingreso?" inherit the Discord/resource introduced one turn earlier.
+ const asksDelivery=/\b(como|donde)\b.*\b(uno|entro|accedo|ingreso|ingresar|consigo|obtengo|puedo|hago)|\b(pasame|mandame|enviame|compartime|dame|acceso|link|enlace|archivo|material|recurso)\b/.test(t);
+ const related=chooseResource(resources,text,null,history);
+ if(asksDelivery&&related)return"resource_request";
  const farewell=/\b(chau|adios|nos vemos|hasta luego|gracias,? chau|listo,? gracias)\b/.test(t);
- const hasQuestionOrContinuation=/\?|\b(y por ultimo|pero|consulta|pregunta|tenes|tienes|podes|puedes|quisiera|quiero|necesito|como|donde|cual|que)\b/.test(t);
- if(farewell&&!hasQuestionOrContinuation)return"close";
+ const hasContinuation=/\?|\b(y por ultimo|pero|consulta|pregunta|tenes|tienes|podes|puedes|quisiera|quiero|necesito|como|donde|cual|que)\b/.test(t);
+ if(farewell&&!hasContinuation)return"close";
  if(/no me (la|lo) (mandaste|enviaste|pasaste)|no (la|lo) veo|no aparece|no me aparece|no llego|no me llego|reenvi|otra vez|de nuevo/.test(t))return"claim_missing_resource";
- const asksDelivery=/(pasame|mandame|enviame|compartime|dame|quiero|necesito|donde|como (puedo|hago)|acceso|link|enlace|archivo|material|recurso)/.test(t);
- const resourceMatch=resources.some((r:any)=>semanticOverlap(t,`${r?.name||""} ${r?.purpose||""} ${r?.send_when||""}`)>0);
- if(resourceMatch&&asksDelivery)return"resource_request";
  if(/precio|comprar|contratar|pagar|plan|presupuesto|cotizacion/.test(t))return"qualification";
  if(/gracias|listo|genial|perfecto|dale/.test(t)&&t.split(/\s+/).length<6)return"ack";
  return"discovery";
@@ -190,7 +188,7 @@ export async function processInstagramConversationEvent(event:InstagramConversat
  // Only a genuinely missing state starts without history. Existing post-comment sessions must preserve their current activation.
  const sessionEvent:InstagramConversationEvent=newActivation?{...event,history:""}:event;
  const resources=await loadResources(event.account.user_id,a);
- const intent=classifyIntent(sessionEvent.text,resources);
+ const intent=classifyIntent(sessionEvent.text,resources,sessionEvent.history||"");
  const profileQ=await db.from("vyral_bussines_profile").select("*").eq("user_id",String(event.account.user_id)).maybeSingle();const profile=profileQ.data||{};
  const previousStage=state.current_stage as ConversationStage;
  let resource:any=null;
