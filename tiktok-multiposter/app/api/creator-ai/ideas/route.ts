@@ -67,7 +67,10 @@ export async function POST(req:Request){
   const b=await req.json();
   const brief=String(b.brief||"").trim();
   const visualStyle=String(b.visual_style_id||b.visualStyle||"").trim();
-  const slideCount=Math.max(1,Math.min(7,Math.trunc(Number(b.slide_count||b.slideCount||6))));
+  const rawSlideCount=b.slide_count??b.slideCount;
+  const parsedSlideCount=Number(rawSlideCount);
+  if(rawSlideCount===undefined||rawSlideCount===null||rawSlideCount===""||!Number.isInteger(parsedSlideCount)||parsedSlideCount<1||parsedSlideCount>7)return NextResponse.json({error:"Elegí obligatoriamente una cantidad de placas entre 1 y 7."},{status:400});
+  const slideCount=parsedSlideCount;
   const styleGuide=STYLE_IDEA_GUIDES[visualStyle];
   const forbidden=STYLE_IDEA_FORBIDDEN[visualStyle];
   const previousIdeas=Array.isArray(b.previousIdeas)?b.previousIdeas.map((x:any)=>String(x||"").trim()).filter(Boolean).slice(-24):[];
