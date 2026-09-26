@@ -147,12 +147,13 @@ export async function processInstagramConversationEvent(event:InstagramConversat
  const db=supabaseAdmin(),a=event.automation,automationId=String(a.id||"");
  const key={account_id:event.account.id,contact_id:event.contactId,automation_id:automationId};
  const found=await db.from("instagram_conversation_state").select("*").match(key).maybeSingle();
- // A post-comment activation is a hard conversation boundary. The same contact may trigger the same automation again later; that must start from zero instead of inheriting conversational state from the previous activation.
- const newActivation=(event.origin||"direct_dm")==="post_comment";
+ // A real comment activation is reset by processComment before its opening DM/audio is sent.
+ // Follow-up DMs keep origin="post_comment" as session provenance, so origin MUST NOT be used as a reset signal.
+ const newActivation=!found.data;
  const freshState={...key,user_id:event.account.user_id,thread_id:event.threadId||null,current_stage:"opening",origin:event.origin||"direct_dm",context_payload:{...(event.contextPayload||{}),session_started_at:new Date().toISOString(),activation_message_id:String(event.messageId||"")},last_question_asked:null,last_audio_id:null,voice_assets_sent:[],resources_offered:[],resources_sent:[],pending_resource_id:null,last_intent:null};
- const isFirstTouch=newActivation||!found.data;
- let state:any=newActivation?freshState:(found.data||freshState);
- // Never expose a previous activation to the model on the root comment turn, even if an upstream inbox history query contains older DMs.
+ const isFirstTouch=!found.data;
+ let state:any=found.data||freshState;
+ // Only a genuinely missing state starts without history. Existing post-comment sessions must preserve their current activation.
  const sessionEvent:InstagramConversationEvent=newActivation?{...event,history:""}:event;
  const resources=await loadResources(event.account.user_id,a);
  const intent=classifyIntent(sessionEvent.text,resources);
