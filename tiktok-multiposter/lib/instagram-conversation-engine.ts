@@ -41,7 +41,11 @@ function classifyIntent(text:string,resources:any[]=[]){
  const t=norm(text);
  // Operational delivery/access requests outrank discovery: once the person asks how to access/join/get something, execute rather than educate again.
  if(/\b(como|donde)\s+(me\s+)?(uno|entro|accedo|ingreso|consigo|obtengo)|\b(me\s+)?(puedo|quiero)\s+(unir|entrar|acceder|ingresar)|\b(pasame|mandame|enviame|compartime|dame)\b/.test(t))return"resource_request";
- if(/\b(chau|adios|nos vemos|hasta luego|gracias,? chau|listo,? gracias)\b/.test(t))return"close";
+ // A farewell only closes the conversation when it is actually the whole turn.
+ // If the same message continues with a question/request (e.g. "nos vemos... y por último, ¿tenés pruebas?"), keep reasoning.
+ const farewell=/\b(chau|adios|nos vemos|hasta luego|gracias,? chau|listo,? gracias)\b/.test(t);
+ const hasQuestionOrContinuation=/\?|\b(y por ultimo|pero|consulta|pregunta|tenes|tienes|podes|puedes|quisiera|quiero|necesito|como|donde|cual|que)\b/.test(t);
+ if(farewell&&!hasQuestionOrContinuation)return"close";
  if(/no me (la|lo) (mandaste|enviaste|pasaste)|no (la|lo) veo|no aparece|no me aparece|no llego|no me llego|reenvi|otra vez|de nuevo/.test(t))return"claim_missing_resource";
  const asksDelivery=/(pasame|mandame|enviame|compartime|dame|quiero|necesito|donde|como (puedo|hago)|acceso|link|enlace|archivo|material|recurso)/.test(t);
  const resourceMatch=resources.some((r:any)=>semanticOverlap(t,`${r?.name||""} ${r?.purpose||""} ${r?.send_when||""}`)>0);
