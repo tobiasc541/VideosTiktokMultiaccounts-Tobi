@@ -136,17 +136,22 @@ export async function processInstagramConversationEvent(event:InstagramConversat
  const db=supabaseAdmin(),a=event.automation,automationId=String(a.id||"");
  const key={account_id:event.account.id,contact_id:event.contactId,automation_id:automationId};
  const found=await db.from("instagram_conversation_state").select("*").match(key).maybeSingle();
- const isFirstTouch=!found.data;
- let state:any=found.data||{...key,user_id:event.account.user_id,thread_id:event.threadId||null,current_stage:"opening",origin:event.origin||"direct_dm",context_payload:event.contextPayload||{},last_question_asked:null,last_audio_id:null,voice_assets_sent:[],resources_offered:[],resources_sent:[],pending_resource_id:null,last_intent:null};
+ // A post-comment activation is a hard conversation boundary. The same contact may trigger the same automation again later; that must start from zero instead of inheriting conversational state from the previous activation.
+ const newActivation=(event.origin||"direct_dm")==="post_comment";
+ const freshState={...key,user_id:event.account.user_id,thread_id:event.threadId||null,current_stage:"opening",origin:event.origin||"direct_dm",context_payload:{...(event.contextPayload||{}),session_started_at:new Date().toISOString(),activation_message_id:String(event.messageId||"")},last_question_asked:null,last_audio_id:null,voice_assets_sent:[],resources_offered:[],resources_sent:[],pending_resource_id:null,last_intent:null};
+ const isFirstTouch=newActivation||!found.data;
+ let state:any=newActivation?freshState:(found.data||freshState);
+ // Never expose a previous activation to the model on the root comment turn, even if an upstream inbox history query contains older DMs.
+ const sessionEvent:InstagramConversationEvent=newActivation?{...event,history:""}:event;
  const resources=await loadResources(event.account.user_id,a);
- const intent=classifyIntent(event.text,resources);
+ const intent=classifyIntent(sessionEvent.text,resources);
  const profileQ=await db.from("vyral_bussines_profile").select("*").eq("user_id",String(event.account.user_id)).maybeSingle();const profile=profileQ.data||{};
  const previousStage=state.current_stage as ConversationStage;
  let resource:any=null;
  if(intent==="claim_missing_resource"){
   if(state.pending_resource_id)resource=resources.find((r:any)=>String(r.id)===String(state.pending_resource_id))||null;
   if(!resource&&state.resources_offered?.length){const lastOffered=String(state.resources_offered[state.resources_offered.length-1]);resource=resources.find((r:any)=>String(r.id)===lastOffered)||null}
- }else resource=chooseResource(resources,event.text,state.pending_resource_id,event.history||"");
+ }else resource=chooseResource(resources,sessionEvent.text,state.pending_resource_id,sessionEvent.history||"");
  const wantsResource=["resource_request","claim_missing_resource"].includes(intent)&&Boolean(resource);
  state.last_intent=intent;
  state.current_stage=nextStage(state.current_stage,intent);
@@ -157,7 +162,7 @@ export async function processInstagramConversationEvent(event:InstagramConversat
 
  // PLAN FIRST: resource/action planning must run regardless of whether presentation uses audio or text.
  // Explicit missing-resource retries are locked to the pending/last-offered resource above and never re-routed.
- const plan=await generateText(a,event,state,intent,false,resource,resources,profile);
+ const plan=await generateText(a,sessionEvent,state,intent,false,resource,resources,profile);
  if(!wantsResource&&plan.sendResourceId){
   const candidate=resources.find((r:any)=>String(r.id)===String(plan.sendResourceId))||null;
   const validReason=["proactive_value","first_delivery","new_need","explicit_request","retry_missing"].includes(String(plan.deliveryReason));
