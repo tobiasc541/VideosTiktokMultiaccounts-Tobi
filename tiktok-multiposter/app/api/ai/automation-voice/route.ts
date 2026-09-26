@@ -94,6 +94,13 @@ Generá EXACTAMENTE 5 ideas, una por etapa y en este orden:
 4. RESOURCE_OFFER: propone o acompaña la entrega del recurso principal cuando el prospecto lo pide o ya mostró intención clara. No frenes la entrega con más calificación.
 5. CLOSING: cierre natural, breve, sin abrir un interrogatorio nuevo.
 
+REGLAS DE SENTIDO COMÚN PARA AUDIO:
+- PROHIBIDO incluir o dictar URLs, dominios o enlaces literales en cualquier script (por ejemplo https://, www., discord.gg/ o equivalentes).
+- Si una etapa RESOURCE_OFFER acompaña un link/recurso, el audio solamente lo referencia de forma humana: "ahí te dejé el link por escrito", "te mandé el enlace por texto" o equivalente. El backend envía el link real como mensaje separado.
+- Nunca repitas literalmente frases, claims, beneficios o muletillas que ya aparecen en el post u otro audio. Cada etapa debe avanzar la conversación.
+- TOPIC_ANSWER/DISCOVERY aclara una duda o aporta valor; RESOURCE_OFFER acompaña la entrega; OPENING solamente abre y descubre.
+- Ningún audio debe sonar como texto para copiar/pegar o leer caracteres de una URL.
+
 DEDUPLICACIÓN:
 - Cada idea debe cubrir una intención semántica distinta. Si dos scripts dicen esencialmente lo mismo, reescribí uno.
 - No repitas frases, modismos, promesas ni descripciones del recurso entre etapas. Si OPENING menciona algo contextual, las etapas siguientes no lo recitan.
