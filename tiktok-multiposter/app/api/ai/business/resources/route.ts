@@ -29,10 +29,14 @@ export async function PATCH(req:Request){
  if(visual)content.push({type:"input_image",image_url:source});
  else content[0].text+=` URL de referencia: ${source}`;
  try{
-  const r=await fetch("https://api.openai.com/v1/responses",{method:"POST",headers:{Authorization:`Bearer ${key}`,"Content-Type":"application/json"},body:JSON.stringify({model:"gpt-5.6-luna",input:[{role:"user",content}],max_output_tokens:350}),signal:AbortSignal.timeout(20000)});
+  const r=await fetch("https://api.openai.com/v1/responses",{method:"POST",headers:{Authorization:`Bearer ${key}`,"Content-Type":"application/json"},body:JSON.stringify({model:"gpt-5.6-luna",input:[{role:"user",content}],max_output_tokens:650,text:{format:{type:"json_schema",name:"resource_analysis",strict:true,schema:{type:"object",properties:{purpose:{type:"string"},send_when:{type:"string"}},required:["purpose","send_when"],additionalProperties:false}}}}),signal:AbortSignal.timeout(30000)});
   const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j?.error?.message||`OpenAI HTTP ${r.status}`);
   let raw=String(j.output_text||"");if(!raw)for(const x of j.output||[])for(const z of x.content||[])if(z.type==="output_text")raw+=z.text||"";
-  const parsed=JSON.parse(raw.trim().replace(/^~~~json\s*/i,"").replace(/~~~$/i,"").trim());
-  return NextResponse.json({ok:true,purpose:clean(parsed.purpose),send_when:clean(parsed.send_when,900)});
- }catch(e:any){return NextResponse.json({error:"No se pudo analizar el recurso.",detail:String(e?.message||e).slice(0,300)},{status:502})}
+  raw=raw.trim().replace(/^```(?:json)?\s*/i,"").replace(/\s*```$/,"").replace(/^~~~(?:json)?\s*/i,"").replace(/\s*~~~$/,"").trim();
+  const first=raw.indexOf("{"),last=raw.lastIndexOf("}");if(first<0||last<first)throw new Error("OpenAI no devolvió JSON analizable");
+  const parsed=JSON.parse(raw.slice(first,last+1));
+  const purpose=clean(parsed.purpose),sendWhen=clean(parsed.send_when,900);
+  if(!purpose||!sendWhen)throw new Error("El análisis llegó incompleto");
+  return NextResponse.json({ok:true,purpose,send_when:sendWhen});
+ }catch(e:any){console.error("[VYRAL resources] AI analysis failed",{name,mime,error:String(e?.message||e)});return NextResponse.json({error:"No se pudo analizar la imagen.",detail:String(e?.message||e).slice(0,500)},{status:502})}
 }
