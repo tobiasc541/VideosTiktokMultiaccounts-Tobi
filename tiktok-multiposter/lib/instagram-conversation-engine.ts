@@ -186,7 +186,7 @@ export async function processInstagramConversationEvent(event:InstagramConversat
  // Text is presentation only. If audio already answered, do not add competing generated copy.
  // If a resource was delivered without audio, regenerate only to acknowledge the confirmed action.
  if(!voiceSent){
-  if(attachmentConfirmed){const confirmed=await generateText(a,event,state,intent,true,actionResource,resources,profile);reply=confirmed.text}
+  if(attachmentConfirmed){const confirmed=await generateText(a,sessionEvent,state,intent,true,actionResource,resources,profile);reply=confirmed.text}
   else reply=plan.text;
  }
  if(reply){
