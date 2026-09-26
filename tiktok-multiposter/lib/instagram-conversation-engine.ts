@@ -209,10 +209,6 @@ export async function processInstagramConversationEvent(event:InstagramConversat
  // Explicit missing-resource retries are locked to the pending/last-offered resource above and never re-routed.
  let plan=await generateText(a,sessionEvent,state,intent,false,resource,resources,profile);
 
- // SEMANTIC VALIDATION HAPPENS BEFORE ACTION COMMIT.
- // No component after the action audit is allowed to create a new promise/invitation.
- if(plan.text)plan.text=await validateReplyBeforeSend(sessionEvent,state,resources,profile,plan.text);
-
  // SINGLE ACTION PLAN:
  // generateText already returns structured copy + sendResourceId in one model decision.
  // That resource id is the action. Do not ask a second model to reinterpret the copy,
@@ -239,7 +235,7 @@ export async function processInstagramConversationEvent(event:InstagramConversat
  const plannedResource=wantsResource?resource:brainResource;
  const plannedId=String(plannedResource?.id||"");
  const alreadyDelivered=Boolean(plannedId&&state.resources_sent?.map(String).includes(plannedId));
- const currentTurnRequiresDelivery=Boolean(plannedResource&&(intent==="resource_request"||intent==="claim_missing_resource"));
+ const currentTurnRequiresDelivery=Boolean(plannedResource&&(intent==="resource_request"||intent==="claim_missing_resource"||plan.sendResourceId));
  const actionResource=plannedResource&&(currentTurnRequiresDelivery||!alreadyDelivered)?plannedResource:null;
  if(plannedResource&&alreadyDelivered&&!currentTurnRequiresDelivery){
   state.pending_resource_id=null;
@@ -264,6 +260,9 @@ export async function processInstagramConversationEvent(event:InstagramConversat
  if(!voiceSent){
   if(attachmentConfirmed){const confirmed=await generateText(a,sessionEvent,state,intent,true,actionResource,resources,profile);reply=confirmed.text}
   else reply=plan.text;
+  // Validate presentation only after the executor has committed the real outcome.
+  // The validator is copy-only: it cannot create resource actions.
+  if(reply)reply=await validateReplyBeforeSend(sessionEvent,state,resources,profile,reply);
  }
  if(reply){
   // ACTION COMMIT BOUNDARY: from here on, copy is immutable with respect to resource actions.
