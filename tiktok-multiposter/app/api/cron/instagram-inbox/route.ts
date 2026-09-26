@@ -108,14 +108,6 @@ export async function GET(req:Request){
         const liveHistory=(mj.messages?.data||[]).slice(0,24).reverse().filter((x:any)=>String(x.message||"").trim()).map((x:any)=>`${String(x.from?.id||"")===person?"Usuario":"Agente"}: ${String(x.message||"").trim()}`).join("\n");
         const storedHistory=(hist.data||[]).slice().reverse().map((x:any)=>`${x.direction==="in"?"Usuario":"Agente"}: ${String(x.body||"")}`).join("\n");
         const history=(liveHistory||storedHistory).slice(-10000);
-        const ins=await db.from("instagram_automation_runs").insert({user_id:account.user_id,account_id:account.id,automation_id:a.id,comment_id:synthetic,commenter_id:person,comment_text:body,status:"matched",detail:{source:"instagram_conversations_poll",continueConversation:true}}).select("id").maybeSingle();
-        if(ins.error)continue;
-        try{
-          const asksHuman=/\b(humano|persona|asesor|vendedor|representante|equipo|agente real|hablar con alguien)\b/i.test(userInput)&&!/\b(whatsapp|wsp)\b/i.test(userInput);
-          const currentHandoff=await db.from("vyral_handoffs").select("id,ai_paused,needs_human").eq("user_id",account.user_id).eq("account_id",account.id).eq("contact_id",person).eq("automation_id",a.id).limit(1).maybeSingle();
-          let resourcePool:any[]=[];
-          if(a.resourceMode!=="specific"){const rq=await db.from("vyral_business_resources").select("id,name,kind,storage_path,external_url,mime_type,purpose,send_when").eq("user_id",account.user_id).eq("enabled",true);resourcePool=(rq.data||[]).filter((r:any)=>!Array.isArray(a.businessResourceIds)||!a.businessResourceIds.length||a.businessResourceIds.includes(r.id))}
-          if(a.resourceMode==="specific"&&a.resourceUrl)resourcePool=[{id:"specific",name:String(a.resourceName||"recurso"),kind:/^https?:/i.test(String(a.resourceUrl))?"url":"file",storage_path:/^https?:/i.test(String(a.resourceUrl))?null:String(a.resourceUrl),external_url:/^https?:/i.test(String(a.resourceUrl))?String(a.resourceUrl):null,purpose:String(a.resourcePurpose||""),send_when:String(a.resourceWhen||"")}];
           const syntheticId=`dm:${mid}`;
           const claim=await db.from("instagram_automation_runs").insert({user_id:account.user_id,account_id:account.id,automation_id:a.id,comment_id:syntheticId,commenter_id:person,comment_text:body,status:"matched",detail:{source:"instagram_conversations_poll",engine:"state_v2"}}).select("id").maybeSingle();
           if(claim.error)continue;
@@ -127,9 +119,6 @@ export async function GET(req:Request){
           }catch(e:any){
             await db.from("instagram_automation_runs").update({status:"error",error:String(e?.message||e).slice(0,1000),updated_at:new Date().toISOString()}).eq("id",claim.data?.id);
           }
-        }catch(e:any){
-          await db.from("instagram_automation_runs").update({status:"error",error:String(e?.message||e).slice(0,1000),updated_at:new Date().toISOString()}).eq("id",ins.data?.id);
-        }
       }catch(e:any){
         results.push({account:account.id,person,status:"poll_error",error:String(e?.message||e).slice(0,300)});
       }
