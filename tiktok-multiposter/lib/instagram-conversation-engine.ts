@@ -143,6 +143,34 @@ Respondé SOLO JSON válido: {"text":"respuesta final","send_resource_id":null,"
  return generated;
 }
 
+async function validateReplyBeforeSend(event:InstagramConversationEvent,state:any,resources:any[],profile:any,reply:string){
+ const text=String(reply||"").trim(),key=process.env.VYRAL_CREATOR_PRODUCTION;if(!text||!key)return text;
+ const db=supabaseAdmin(),started=String(state.context_payload?.session_started_at||"");
+ let q=db.from("vyral_inbox_messages").select("body,attachment_type,attachment_meta,created_at").eq("account_id",event.account.id).eq("contact_id",event.contactId).eq("automation_id",String(event.automation?.id||"")).eq("direction","out");
+ if(started)q=q.gte("created_at",started);
+ const evidenceQ=await q.order("created_at",{ascending:true}).limit(60);
+ const evidence=(evidenceQ.data||[]).map((x:any)=>({body:String(x.body||""),attachment_type:x.attachment_type||null,attachment_meta:x.attachment_meta||{},created_at:x.created_at}));
+ const sentIds=(state.resources_sent||[]).map(String);
+ const sentResources=(resources||[]).filter((r:any)=>sentIds.includes(String(r.id))).map((r:any)=>({id:String(r.id),name:r.name,kind:r.kind,purpose:r.purpose}));
+ const prompt=`Sos el verificador final de una respuesta de Instagram DM. No converses con el usuario: auditá y, si hace falta, corregí la RESPUESTA PROPUESTA antes de enviarla.
+RESPUESTA PROPUESTA: ${text}
+ÚLTIMO MENSAJE DEL USUARIO: ${String(event.text||"")}
+EVIDENCIA REAL DE ESTA ACTIVACIÓN: ${JSON.stringify(evidence)}
+RECURSOS CONFIRMADOS COMO ENVIADOS EN ESTA ACTIVACIÓN: ${JSON.stringify(sentResources)}
+BUSINESS BRAIN: ${JSON.stringify(profile||{})}
+REGLA CENTRAL: toda afirmación sobre hechos o acciones pasadas del agente debe estar demostrada por la evidencia de ESTA activación. Frases equivalentes a "ya te lo mandé", "te lo dejé arriba", "como te mostré", "ya te pasé", "lo compartí antes", "viste el archivo/audio/link" son falsas si la evidencia no demuestra esa acción concreta. No uses recuerdos de activaciones anteriores ni supongas que un recurso ofrecido fue enviado.
+También verificá que no contradiga el historial, no invente acciones, recursos, cifras o contenido, y que responda al último mensaje sin repetir innecesariamente.
+Si está respaldada, devolvela sin cambios. Si hay cualquier afirmación no respaldada, reescribí sólo lo necesario para que sea verdadera, natural y útil. No agregues promesas de envío ni URLs.
+Respondé SOLO JSON válido: {"valid":true,"text":"respuesta final"}.`;
+ try{
+  const r=await fetch("https://api.openai.com/v1/responses",{method:"POST",headers:{Authorization:`Bearer ${key}`,"Content-Type":"application/json"},body:JSON.stringify({model:"gpt-5.6-luna",input:prompt,max_output_tokens:650}),signal:AbortSignal.timeout(15000)}),j=await r.json().catch(()=>({}));
+  if(!r.ok)return text;let raw=String(j.output_text||"");if(!raw)for(const x of j.output||[])for(const z of x.content||[])if(z.type==="output_text")raw+=z.text||"";
+  let cleaned=raw.trim();if(cleaned.startsWith("~~~json"))cleaned=cleaned.slice(7);if(cleaned.endsWith("~~~"))cleaned=cleaned.slice(0,-3);
+  const parsed=JSON.parse(cleaned.trim()),checked=String(parsed.text||"").trim();
+  return checked&&/[.!?…]$/.test(checked)?checked:text;
+ }catch{return text}
+}
+
 export async function processInstagramConversationEvent(event:InstagramConversationEvent){
  const db=supabaseAdmin(),a=event.automation,automationId=String(a.id||"");
  const key={account_id:event.account.id,contact_id:event.contactId,automation_id:automationId};
@@ -202,6 +230,8 @@ export async function processInstagramConversationEvent(event:InstagramConversat
   else reply=plan.text;
  }
  if(reply){
+  // FINAL FACT CHECK: never send conversational copy that claims an action/history not proven inside the current activation.
+  reply=await validateReplyBeforeSend(sessionEvent,state,resources,profile,reply);
   let recentQuery=db.from("vyral_inbox_messages").select("body").eq("account_id",event.account.id).eq("contact_id",event.contactId).eq("direction","out");
   const sessionStartedAt=String(state.context_payload?.session_started_at||"");if(sessionStartedAt)recentQuery=recentQuery.gte("created_at",sessionStartedAt);
   const recentQ=await recentQuery.order("created_at",{ascending:false}).limit(8),recent=(recentQ.data||[]).map((x:any)=>norm(x.body)),candidate=norm(reply);
