@@ -64,8 +64,8 @@ async function metaSend(account:any,recipientId:string,payload:any){
 }
 async function signed(path:string,seconds=604800){if(!path)return"";if(/^https:\/\//i.test(path))return path;const s=await supabaseAdmin().storage.from("scheduled-media").createSignedUrl(path,seconds);return String(s.data?.signedUrl||"")}
 function attachmentType(r:any){const m=norm(r?.mime_type),n=norm(`${r?.name||""} ${r?.storage_path||""}`);if(m.startsWith("image/")||/\.(png|jpg|jpeg|gif|webp)/.test(n))return"image";if(m.startsWith("video/")||/\.(mp4|mov)/.test(n))return"video";if(m.startsWith("audio/")||/\.(mp3|m4a|aac|ogg)/.test(n))return"audio";return"file"}
-function resourceScore(r:any,text:string,history=""){const hay=`${text} ${history}`,meta=`${r?.name||""} ${r?.purpose||""} ${r?.send_when||""}`;return semanticOverlap(hay,meta)}
-function chooseResource(pool:any[],text:string,pending?:string|null,history=""){if(pending){const p=pool.find(r=>String(r.id)===String(pending));if(p)return p}let best:any=null,score=0;for(const r of pool){const s=resourceScore(r,text,history);if(s>score){score=s;best=r}}return best}
+function resourceScore(r:any,text:string,history=""){const meta=`${r?.name||""} ${r?.purpose||""} ${r?.send_when||""}`,current=semanticOverlap(text,meta),context=semanticOverlap(history,meta);return current*4+Math.min(context,3)}
+function chooseResource(pool:any[],text:string,pending?:string|null,history=""){if(pending){const p=pool.find(r=>String(r.id)===String(pending));if(p)return p}let best:any=null,bestScore=0,second=0;for(const r of pool){const s=resourceScore(r,text,history);if(s>bestScore){second=bestScore;bestScore=s;best=r}else if(s>second)second=s}return bestScore>=4&&bestScore>second?best:null}
 function chooseStageVoice(a:any,state:any,intent:string,isFirstTouch=false){
  if(!a?.voiceEnabled)return null;
  const all=(Array.isArray(a.voiceAssets)?a.voiceAssets:[]).filter((v:any)=>v?.url);
@@ -119,12 +119,12 @@ export async function processInstagramConversationEvent(event:InstagramConversat
  const intent=classifyIntent(event.text,resources);
  const profileQ=await db.from("vyral_bussines_profile").select("*").eq("user_id",String(event.account.user_id)).maybeSingle();const profile=profileQ.data||{};
  const previousStage=state.current_stage as ConversationStage;
- let resource=chooseResource(resources,event.text,state.pending_resource_id,event.history||"");
-
- if(intent==="claim_missing_resource"&&!resource&&state.resources_offered?.length)resource=resources.find((r:any)=>state.resources_offered.includes(String(r.id)))||null;
- if(intent==="ack"&&previousStage==="discovery"&&!resource)resource=resources.find((r:any)=>r.kind==="url")||null;
- const lowInterestDelivery=intent==="ack"&&previousStage==="discovery"&&Boolean(resource);
- const wantsResource=(["resource_request","claim_missing_resource"].includes(intent)||lowInterestDelivery)&&Boolean(resource);
+ let resource:any=null;
+ if(intent==="claim_missing_resource"){
+  if(state.pending_resource_id)resource=resources.find((r:any)=>String(r.id)===String(state.pending_resource_id))||null;
+  if(!resource&&state.resources_offered?.length){const lastOffered=String(state.resources_offered[state.resources_offered.length-1]);resource=resources.find((r:any)=>String(r.id)===lastOffered)||null}
+ }else resource=chooseResource(resources,event.text,state.pending_resource_id,event.history||"");
+ const wantsResource=["resource_request","claim_missing_resource"].includes(intent)&&Boolean(resource);
  state.last_intent=intent;
  state.current_stage=nextStage(state.current_stage,intent);
  if(wantsResource){state.pending_resource_id=String(resource.id);state.resources_offered=uniq([...(state.resources_offered||[]),resource.id])}
