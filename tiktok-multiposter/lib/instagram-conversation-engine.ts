@@ -85,20 +85,28 @@ async function deliverResource(db:any,event:InstagramConversationEvent,automatio
 }
 function resourceScore(r:any,text:string,history=""){const meta=`${r?.name||""} ${r?.purpose||""} ${r?.send_when||""}`,current=semanticOverlap(text,meta),context=semanticOverlap(history,meta);return current*4+Math.min(context,3)}
 function chooseResource(pool:any[],text:string,pending?:string|null,history=""){if(pending){const p=pool.find(r=>String(r.id)===String(pending));if(p)return p}let best:any=null,bestScore=0,second=0;for(const r of pool){const s=resourceScore(r,text,history);if(s>bestScore){second=bestScore;bestScore=s;best=r}else if(s>second)second=s}return bestScore>=4&&bestScore>second?best:null}
-function chooseStageVoice(a:any,state:any,intent:string,isFirstTouch=false,resourceDeliveryConfirmed=false){
+function chooseStageVoice(a:any,state:any,intent:string,isFirstTouch=false,currentMessage="",resourceDeliveryConfirmed=false){
  if(!a?.voiceEnabled)return null;
  const all=(Array.isArray(a.voiceAssets)?a.voiceAssets:[]).filter((v:any)=>v?.url);
  const sent=new Set((state.voice_assets_sent||[]).map(String));
  const first=isFirstTouch&&sent.size===0;
- // Resource discovery/readiness is NOT permission to play a resource-delivery audio. A prerecorded audio can only represent a resource action after that action is actually confirmed.
- let role=first?"opening":intent==="proof_request"?"proof":state.current_stage==="follow_up"?"follow_up":state.current_stage;
+ const role=first?"opening":intent==="proof_request"?"proof":state.current_stage==="follow_up"?"follow_up":state.current_stage;
  if(role==="resource_ready"||role==="resource_offer")return null;
  if(role==="resource_sent"&&!resourceDeliveryConfirmed)return null;
  const candidates=all.filter((v:any)=>stageOfVoice(v)===role&&allowedOrigin(v,state.origin)&&(!sent.has(String(v.id))||v.is_reusable===true));
+ // Opening is the only deterministic prerecorded voice. After opening, silence is safer than a semantically wrong recording.
  if(first)return candidates[0]||null;
  if(!candidates.length)return null;
- const t=norm(state.last_intent||"");
- return candidates.find((v:any)=>norm(`${v.when||""} ${v.purpose||""}`).split(/\W+/).some((w:string)=>w.length>4&&t.includes(w)))||candidates[0];
+ const message=String(currentMessage||"").trim();
+ if(!message)return null;
+ let best:any=null,bestScore=0;
+ for(const v of candidates){
+  const voiceMeaning=`${v.when||""} ${v.purpose||""} ${v.transcript||""} ${v.name||""}`;
+  const score=semanticOverlap(message,voiceMeaning);
+  if(score>bestScore){best=v;bestScore=score}
+ }
+ // Never use candidates[0] as a fallback. A prerecorded voice must be grounded in the current user turn.
+ return bestScore>=2?best:null;
 }
 async function loadResources(userId:string,a:any){
  if(a.resourceMode==="specific"&&a.resourceUrl)return[{id:"specific",name:a.resourceName||"recurso",kind:/^https?:/i.test(a.resourceUrl)?"url":"file",external_url:/^https?:/i.test(a.resourceUrl)?a.resourceUrl:null,storage_path:/^https?:/i.test(a.resourceUrl)?null:a.resourceUrl,purpose:a.resourcePurpose||"",send_when:a.resourceWhen||""}];
@@ -174,7 +182,7 @@ export async function processInstagramConversationEvent(event:InstagramConversat
  const actionResource=wantsResource?resource:brainResource;
 
  // Presentation is independent from planning. A voice can never suppress a planned resource action.
- const voice=intent==="close"||intent==="claim_missing_resource"||intent==="resource_request"?null:chooseStageVoice(a,state,intent,isFirstTouch);
+ const voice=intent==="close"||intent==="claim_missing_resource"||intent==="resource_request"?null:chooseStageVoice(a,state,intent,isFirstTouch,sessionEvent.text);
  let voiceSent=false;
  if(voice?.url){
   try{const url=await signed(String(voice.url),86400);if(url){const j=await metaSend(event.account,event.contactId,{message:{attachment:{type:"audio",payload:{url}}}});voiceSent=true;state.last_audio_id=String(voice.id||"");state.voice_assets_sent=uniq([...(state.voice_assets_sent||[]),voice.id]);await db.from("vyral_inbox_messages").insert({user_id:event.account.user_id,account_id:event.account.id,platform:"instagram",contact_id:event.contactId,message_id:String(j.message_id||crypto.randomUUID()),body:`[Audio enviado: ${String(voice.transcript||voice.name||voice.id||"audio")}]`,direction:"out",sender_type:"ai",automation_id:automationId,attachment_type:"audio",attachment_meta:{voiceId:voice.id||null,stage:stageOfVoice(voice)}})} }catch{}
