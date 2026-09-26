@@ -135,14 +135,7 @@ export async function processInstagramConversationEvent(event:InstagramConversat
  }
 
  let textMessageId="",reply="";
- if(attachmentConfirmed){
-  // Human confirmation is deliberately separate from the link/resource.
-  // Keep it neutral so it cannot repeat post/audio marketing claims or reopen discovery.
-  reply="Ahí te lo dejé arriba. Entrá tranquilo y cualquier duda me avisás.";
- }else if(!voiceSent){
-  reply=await generateText(a,event,state,intent,false,resource,resources,profile);
- }
- if(reply){const recentQ=await db.from("vyral_inbox_messages").select("body").eq("account_id",event.account.id).eq("contact_id",event.contactId).eq("direction","out").order("created_at",{ascending:false}).limit(8);const recent=(recentQ.data||[]).map((x:any)=>norm(x.body));const candidate=norm(reply);const duplicate=recent.some((x:string)=>x===candidate||(candidate.length>24&&x.length>24&&(x.includes(candidate)||candidate.includes(x))));if(!duplicate){const j=await metaSend(event.account,event.contactId,{message:{text:reply}});textMessageId=String(j.message_id||"");await db.from("vyral_inbox_messages").insert({user_id:event.account.user_id,account_id:event.account.id,platform:"instagram",contact_id:event.contactId,message_id:textMessageId||crypto.randomUUID(),body:reply,direction:"out",sender_type:"ai",automation_id:automationId})}}
+ if(attachmentConfirmed){\n  reply=await generateText(a,event,state,intent,true,resource,resources,profile);\n }else if(!voiceSent){\n  reply=await generateText(a,event,state,intent,false,resource,resources,profile);\n }\n if(reply){const recentQ=await db.from("vyral_inbox_messages").select("body").eq("account_id",event.account.id).eq("contact_id",event.contactId).eq("direction","out").order("created_at",{ascending:false}).limit(8);const recent=(recentQ.data||[]).map((x:any)=>norm(x.body));const candidate=norm(reply);const duplicate=recent.some((x:string)=>x===candidate||(candidate.length>24&&x.length>24&&(x.includes(candidate)||candidate.includes(x))));if(!duplicate){const j=await metaSend(event.account,event.contactId,{message:{text:reply}});textMessageId=String(j.message_id||"");await db.from("vyral_inbox_messages").insert({user_id:event.account.user_id,account_id:event.account.id,platform:"instagram",contact_id:event.contactId,message_id:textMessageId||crypto.randomUUID(),body:reply,direction:"out",sender_type:"ai",automation_id:automationId})}}
  await db.from("instagram_conversation_state").upsert({...state,updated_at:new Date().toISOString()},{onConflict:"account_id,contact_id,automation_id"});
  return{ok:true,intent,stage:state.current_stage,voiceSent,voiceId:voice?.id||null,attachmentConfirmed,resourceId:resource?.id||null,pendingResourceId:state.pending_resource_id||null,messageId:textMessageId||resourceMessageId||null};
 }
