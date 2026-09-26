@@ -381,5 +381,10 @@ export async function processInstagramConversationEvent(event: InstagramConversa
 
   await db.from("instagram_conversation_state").upsert({ ...state, updated_at: new Date().toISOString() }, { onConflict: "account_id,contact_id,automation_id" });
 
-  return { success: true, textMessageId, resourceMessageId };
+  return { 
+    success: true, 
+    textMessageId, 
+    resourceMessageId, 
+    messageId: textMessageId || resourceMessageId || "" 
+  };
 }
