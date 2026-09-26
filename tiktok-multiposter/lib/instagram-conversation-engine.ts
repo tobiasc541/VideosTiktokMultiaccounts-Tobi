@@ -68,7 +68,7 @@ async function signed(path: string, seconds = 604800) {
 }
 
 function attachmentType(r: any) {
-  const m = norm(r?.mime_type), n = norm(`${r?.name || ""} ${r?.storage_path || ""}`);
+  const m = norm(r?.mime_type), n = norm(`${r?.name || ""} ${r?.storage_path || ""} ${r?.external_url || ""}`);
   if (m.startsWith("image/") || /\.(png|jpg|jpeg|gif|webp)/.test(n)) return "image";
   if (m.startsWith("video/") || /\.(mp4|mov)/.test(n)) return "video";
   if (m.startsWith("audio/") || /\.(mp3|m4a|aac|ogg)/.test(n)) return "audio";
@@ -84,13 +84,15 @@ async function deliverResource(db: any, event: InstagramConversationEvent, autom
 
   try {
     let j: any;
+    let deliveredUrl = "";
     if (r.kind === "url") {
       const value = String(r.external_url || "").trim();
       if (!value) throw new Error("resource_external_url_missing");
       j = await metaSend(event.account, event.contactId, { message: { text: value } });
     } else {
-      const url = await signed(String(r.storage_path || ""));
+      const url = await signed(String(r.storage_path || ""), 604800);
       if (!url) throw new Error("resource_signed_url_missing");
+      deliveredUrl = url;
       j = await metaSend(event.account, event.contactId, { message: { attachment: { type: attachmentType(r), payload: { url } } } });
     }
     const messageId = String(j.message_id || "");
@@ -110,7 +112,9 @@ async function deliverResource(db: any, event: InstagramConversationEvent, autom
       direction: "out",
       sender_type: "ai",
       automation_id: automationId,
-      attachment_type: r.kind === "url" ? null : attachmentType(r)
+      attachment_type: r.kind === "url" ? null : attachmentType(r),
+      attachment_url: deliveredUrl || null,
+      attachment_meta: r.kind === "url" ? {} : { resource_id: id, mime_type: r.mime_type || null, storage_path: r.storage_path || null }
     });
 
     return { sent: true, messageId, error: "" };
@@ -130,18 +134,31 @@ function chooseResource(pool: any[], text: string, pending?: string | null, hist
 }
 
 async function loadResources(userId: string, a: any) {
-  if (a.resourceMode === "specific" && a.resourceUrl) {
+  if (a.resourceUrl) {
+    const raw = String(a.resourceUrl || "").trim();
+    const isExternal = /^https?:\/\//i.test(raw);
     return [{
-      id: "specific",
-      name: a.resourceName || "recurso",
-      kind: /^https?:/i.test(a.resourceUrl) ? "url" : "file",
-      external_url: /^https?:/i.test(a.resourceUrl) ? a.resourceUrl : null,
-      storage_path: /^https?:/i.test(a.resourceUrl) ? null : a.resourceUrl,
-      purpose: a.resourcePurpose || "",
-      send_when: a.resourceWhen || ""
+      id: String(a.resourceId || "specific"),
+      name: String(a.resourceName || "Adjunto"),
+      kind: isExternal ? "url" : "file",
+      storage_path: isExternal ? null : raw,
+      external_url: isExternal ? raw : null,
+      mime_type: a.resourceMimeType || null,
+      purpose: String(a.resourcePurpose || ""),
+      send_when: String(a.resourceWhen || "")
     }];
   }
-  const q = await supabaseAdmin().from("vyral_business_resources").select("id,name,kind,storage_path,external_url,mime_type,purpose,send_when").eq("user_id", userId).eq("enabled", true);
+
+  const q = await supabaseAdmin()
+    .from("vyral_business_resources")
+    .select("id,name,kind,storage_path,external_url,mime_type,purpose,send_when")
+    .eq("user_id", userId)
+    .eq("enabled", true);
+
+  if (q.error) {
+    console.error("[VYRAL Instagram] Error al cargar recursos:", q.error);
+    return [];
+  }
   return q.data || [];
 }
 
@@ -160,7 +177,7 @@ REGLAS OBLIGATORIAS DE ESTILO Y HUMANIZACIÓN:
 2. CONCISIÓN EXTREMA: Sé natural, directo y cercano. Máximo 1 o 2 oraciones cortas. EVITÁ testamentos explicativos, listas o textos secos y largos.
 3. REGLA FOTO/ADJUNTO: 
    - Si attachment_confirmed = TRUE: Hacé una referencia muy breve a la imagen que acaba de llegarle (ej: "Sí, obvio! Mirá, acá te dejo la captura de los resultados. ¿Qué te parece?").
-   - Si attachment_confirmed = FALSE: NUNCA digas "ahí te dejé", "acá tenés la foto", ni hables como si se hubiera enviado una imagen. Responde de forma fluida y natural.
+   - Si attachment_confirmed = FALSE: NUNCA afirmes ni insinúes que enviaste, adjuntaste, compartiste o dejaste una imagen, prueba, archivo, link o acceso. No digas "ahí te dejé", "acá tenés", "te la mandé" ni equivalentes. Respondé sin inventar una entrega.
 
 Respondé ÚNICAMENTE un JSON válido: {"text":"tu respuesta corta aquí","send_resource_id":null,"delivery_reason":"none"}`;
 
@@ -178,7 +195,7 @@ Respondé ÚNICAMENTE un JSON válido: {"text":"tu respuesta corta aquí","send_
     const parsed = JSON.parse(cleaned.trim());
     return { text: String(parsed.text || "").trim(), sendResourceId: parsed.send_resource_id || null, deliveryReason: parsed.delivery_reason || "none" };
   } catch {
-    return { text: "¡Hola! Sí, dale, decime en qué te puedo ayudar o qué necesitas ver.", sendResourceId: null, deliveryReason: "none" };
+    return { text: "Decime qué necesitás ver y te ayudo.", sendResourceId: null, deliveryReason: "none" };
   }
 }
 
