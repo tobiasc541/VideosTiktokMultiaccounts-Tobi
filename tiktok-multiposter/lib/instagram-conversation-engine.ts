@@ -87,10 +87,26 @@ async function generateText(a:any,event:InstagramConversationEvent,state:any,int
  const key=process.env.VYRAL_CREATOR_PRODUCTION;
  if(!key)return "";
  const prompt=`Sos el motor conversacional de ventas por Instagram DM para VYRAL.\n\nOrigen: ${state.origin}.\nEtapa actual: ${state.current_stage}.\nIntención detectada: ${intent}.\n\nContexto de la publicación:\n${JSON.stringify(state.context_payload||{})}\n\nPublicación/oferta:\n${String(a.contentLabel||"")}\n\nHistorial de la conversación:\n${event.history||"Sin historial"}\n\nMensaje nuevo del usuario:\n${event.text}\n\nPERFIL / BRAND BRAIN DEL DUEÑO:\n${JSON.stringify(profile||{})}\n\nRECURSOS REALES DISPONIBLES:\n${JSON.stringify((resources||[]).map((r:any)=>({name:r.name,purpose:r.purpose,send_when:r.send_when,kind:r.kind})))}\n\nRecurso relacionado:\n${resource?JSON.stringify({name:resource.name,purpose:resource.purpose,send_when:resource.send_when}):"ninguno"}\n\nattachment_confirmed=${attachmentConfirmed}\n\nREGLAS DE ORO CONVERSACIONALES:\n1. SÉ HUMANO Y DIRECTO: Respondé de forma natural, corta y fluida. Máximo 1 pregunta por mensaje.\n2. NO REPETIR LO YA DICHO: Revisá el historial. Está ESTRICTAMENTE PROHIBIDO repetir promesas, muletillas, preguntas o explicaciones ya hechas en audios o mensajes anteriores.\n3. URLS: Nunca escribas, deletrees ni dictes URLs como parte de una respuesta conversacional. El backend entrega el enlace real como mensaje independiente. Si ya fue entregado, sólo podés referirte naturalmente a que quedó por escrito.\n4. INTENCIÓN ALTA (HIGH_INTENT): Si el usuario pide directamente recurso/acceso/link, no hagas preguntas de calificación adicionales. El backend se encarga de entregar el recurso.\n5. CERO CHAT INFINITO: Si responde corto o con poco interés, no abras un interrogatorio. Dejá una cortesía abierta.\n6. MANEJO DE ADJUNTOS: Si attachment_confirmed=false, PROHIBIDO afirmar o prometer que algo fue enviado. Si attachment_confirmed=true, podés confirmar brevemente que el recurso quedó enviado.\n7. CONTROL DE PREGUNTAS: Sólo hacé preguntas cuando la etapa actual sea opening o discovery. Fuera de esas etapas, respondé sin preguntas.\n8. No repitas el nombre, saludo, CTA ni información del post salvo que sea imprescindible para contestar lo que preguntó el usuario. No inventes recursos, resultados ni datos.\n9. CONTESTÁ LA PREGUNTA REAL usando exclusivamente el PERFIL/BRAND BRAIN, la publicación, el historial y los RECURSOS REALES de ESTE negocio. El motor es multirrubro: no presupongas industria, producto, servicio, plataforma, método ni vocabulario.\n10. RELACIONÁ INFORMACIÓN: no copies campos del perfil mecánicamente. Combiná los datos relevantes para responder la intención concreta del mensaje. Si existe un recurso cuyo nombre, propósito o condición de envío resuelve naturalmente lo que pide la persona, mencioná su utilidad sin inventar nada; el backend decide si corresponde entregarlo.\n11. CONCIENCIA DEL NEGOCIO: hablá como extensión del dueño según brand_voice, tone, offer, products_services, differentiators, experience, customer_pains, customer_desires, objections, social_context y current_priority cuando sean pertinentes. Ignorá campos irrelevantes.\n12. Nunca uses como respuesta de relleno frases tipo "Te leo", "Contame un poco más", "seguimos", "¿algo más?" si no contestan concretamente el mensaje actual.\n13. Terminá frases completas. Nunca devuelvas una oración cortada.\n\nRespondé ÚNICAMENTE con el texto final que se le enviará al usuario.`;
- const r=await fetch("https://api.openai.com/v1/responses",{method:"POST",headers:{Authorization:`Bearer ${key}`,"Content-Type":"application/json"},body:JSON.stringify({model:"gpt-5.6-luna",input:prompt,max_output_tokens:250}),signal:AbortSignal.timeout(12000)}),j=await r.json().catch(()=>({}));
- if(!r.ok)return "";
- let out=String(j.output_text||"");if(!out)for(const x of j.output||[])for(const z of x.content||[])if(z.type==="output_text")out+=z.text||"";
- return out.trim().slice(0,1500);
+ async function request(input:string,maxTokens=500){
+  const r=await fetch("https://api.openai.com/v1/responses",{method:"POST",headers:{Authorization:`Bearer ${key}`,"Content-Type":"application/json"},body:JSON.stringify({model:"gpt-5.6-luna",input,max_output_tokens:maxTokens}),signal:AbortSignal.timeout(15000)});
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok)return{ok:false,text:"",incomplete:false};
+  let text=String(j.output_text||"");
+  if(!text)for(const x of j.output||[])for(const z of x.content||[])if(z.type==="output_text")text+=z.text||"";
+  const incomplete=j.status==="incomplete"||Boolean(j.incomplete_details)||j.output?.some?.((x:any)=>x.status==="incomplete");
+  return{ok:true,text:text.trim(),incomplete:Boolean(incomplete)};
+ }
+ const first=await request(prompt,500);
+ if(!first.ok||!first.text)return "";
+ let out=first.text;
+ const looksCut=first.incomplete||!/[.!?…)"'’]$/.test(out.trim());
+ if(looksCut){
+  const repairPrompt=`${prompt}\n\nBORRADOR INCOMPLETO QUE NO DEBE ENVIARSE:\n${out}\n\nReescribí la respuesta COMPLETA desde cero. Conservá la intención y la información útil, pero asegurate de terminar todas las oraciones. No hagas referencia al borrador. Máximo 120 palabras.`;
+  const repaired=await request(repairPrompt,650);
+  if(!repaired.ok||!repaired.text||repaired.incomplete||!/[.!?…)"'’]$/.test(repaired.text.trim()))return "";
+  out=repaired.text;
+ }
+ return out.trim();
 }
 
 export async function processInstagramConversationEvent(event:InstagramConversationEvent){
