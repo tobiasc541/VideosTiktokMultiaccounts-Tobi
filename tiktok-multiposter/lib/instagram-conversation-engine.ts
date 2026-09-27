@@ -140,7 +140,7 @@ async function loadResources(userId: string, a: any) {
   return q.data || [];
 }
 
-type ResourceAction = "NONE" | "SEND" | "RESEND";
+type ResourceAction = "NONE" | "SEND" | "RESEND" | "ERROR";
 type DeliveryStatus = "none" | "delivered" | "already_sent" | "failed";
 
 function formattedResources(resources:any[]){
@@ -151,20 +151,42 @@ function formattedResources(resources:any[]){
   Cuándo se debe enviar: "${String(r.send_when||"Sin condición")}"`).join("\n"):"No hay recursos disponibles.";
 }
 
+function parseAiJson(rawValue:any){
+  const raw=String(rawValue||"").trim();
+  if(!raw)throw new Error("openai_empty_output");
+  const unfenced=raw
+    .replace(/^\\s*(?:```|~~~)(?:json)?\\s*/i,"")
+    .replace(/\\s*(?:```|~~~)\\s*$/i,"")
+    .trim();
+  try{return JSON.parse(unfenced)}catch(firstErr){
+    // Defensive compatibility only: structured output should normally make this unnecessary.
+    const start=unfenced.indexOf("{"),end=unfenced.lastIndexOf("}");
+    if(start>=0&&end>start){
+      try{return JSON.parse(unfenced.slice(start,end+1))}catch{}
+    }
+    throw new Error(`openai_invalid_json: ${String((firstErr as any)?.message||firstErr)}`);
+  }
+}
+
 async function openAiJson(prompt:string,maxOutputTokens=300){
   const key=process.env.VYRAL_CREATOR_PRODUCTION;
   if(!key)throw new Error("openai_key_missing");
   const r=await fetch("https://api.openai.com/v1/responses",{
     method:"POST",
     headers:{Authorization:`Bearer ${key}`,"Content-Type":"application/json"},
-    body:JSON.stringify({model:"gpt-5.6-luna",input:prompt,max_output_tokens:maxOutputTokens}),
+    body:JSON.stringify({
+      model:"gpt-5.6-luna",
+      input:prompt,
+      max_output_tokens:maxOutputTokens,
+      text:{format:{type:"json_object"}}
+    }),
     signal:AbortSignal.timeout(12000)
   });
   const j=await r.json().catch(()=>({}));
   if(!r.ok)throw new Error(j?.error?.message||`OpenAI HTTP ${r.status}`);
   let raw=String(j.output_text||"");
   if(!raw)for(const x of j.output||[])for(const z of x.content||[])if(z.type==="output_text")raw+=z.text||"";
-  return JSON.parse(raw.trim().replace(/^~~~json\s*/i,"").replace(/~~~$/i,"").trim());
+  return parseAiJson(raw);
 }
 
 /**
@@ -210,7 +232,7 @@ JSON estricto:
     return{action,resourceId:validId};
   }catch(err:any){
     console.error("[VYRAL Instagram] Error al decidir recurso:",String(err?.message||err));
-    return{action:"NONE" as ResourceAction,resourceId:null};
+    return{action:"ERROR" as ResourceAction,resourceId:null,error:String(err?.message||err)};
   }
 }
 
@@ -259,6 +281,7 @@ VERDAD SOBRE ACCIONES Y ENTREGAS:
 - already_sent = ya había sido entregado antes. No digas que acabás de enviarlo ni que lo reenviás.
 - failed = el intento de entrega falló. No afirmes ni insinúes éxito.
 - none = no hubo entrega en este turno. Está prohibido afirmar o insinuar "te lo pasé", "ahí está", "tocá el link que te mandé", "te adjunto", "te envié" o equivalentes.
+- Nunca inventes mecanismos, palabras clave, pasos o promesas para provocar una entrega futura. Si el Executor no confirmó una entrega, no digas "respondé X", "avisame y te lo paso", "pedímelo de nuevo", "no se adjuntó", ni equivalentes. No expliques estados internos del sistema.
 - Si delivered y el historial ya explicó qué contiene/para qué sirve, limitate a una confirmación o CTA mínima; no vuelvas a vender ni explicar lo mismo.
 - Si delivered y el recurso todavía necesita contexto para que el usuario entienda qué recibió, agregá sólo el contexto nuevo imprescindible.
 - JAMÁS copies, reconstruyas ni escribas URLs, dominios, enlaces markdown o direcciones web de recursos. Los enlaces los entrega exclusivamente el backend.
@@ -313,6 +336,17 @@ export async function processInstagramConversationEvent(event: InstagramConversa
 
   // Phase 1: action decision. No user-facing prose exists here.
   const decision=await decideResourceAction(event,state,resources);
+  if(decision.action==="ERROR"){
+    console.error("[VYRAL Instagram] Turno detenido: no se pudo determinar de forma confiable la acción de recurso.",{
+      accountId:event.account.id,contactId:event.contactId,automationId,messageId:event.messageId,error:(decision as any).error||"resource_decision_error"
+    });
+    // Never reinterpret an infrastructure/model failure as NONE and never let the Writer
+    // invent a delivery protocol while the action decision is unknown.
+    return{
+      success:false,attachmentConfirmed:false,messageId:"",textMessageId:"",resourceMessageId:"",
+      selectedResourceId:null,resourceAction:"ERROR",deliveryStatus:"none",error:"resource_decision_error"
+    };
+  }
   const decidedResource=decision.resourceId?resources.find((r:any)=>String(r.id)===decision.resourceId)||null:null;
   const alreadySent=Boolean(decidedResource&&(state.resources_sent||[]).map(String).includes(String(decidedResource.id)));
 
