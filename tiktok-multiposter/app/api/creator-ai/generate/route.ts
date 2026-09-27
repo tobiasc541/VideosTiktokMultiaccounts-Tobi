@@ -24,6 +24,10 @@ export async function POST(req:Request){
   if(!key){await diag(db,{user_id:session.userId,stage:"config",ok:false,error_code:"missing_key",error_message:"VYRAL_CREATOR_PRODUCTION is not configured"});return NextResponse.json({error:"Falta configurar la API de OpenAI.",diagnosticStage:"config"},{status:503})}
   const body=await req.json();const humanMode=body.humanMode===true;const logoPath=typeof body.logoPath==="string"&&body.logoPath.startsWith(`${session.userId}/creator-ai/references/`)?body.logoPath:"";const personRefPaths=Array.isArray(body.personRefPaths)?body.personRefPaths.filter((x:any)=>typeof x==="string"&&x.startsWith(`${session.userId}/creator-ai/references/`)).slice(0,5):[];const count=Math.min(7,Math.max(1,Number(body.count)||6));const single=!!body.slide;
   const variationSeed=String(body.variationSeed||crypto.randomUUID());
+  const contentBrief=String(body.brief||"").trim();
+  const conversionGoal=String(body.conversionGoal||body.cta||"").trim();
+  const selectedIdea=body.selectedIdea&&typeof body.selectedIdea==="object"?body.selectedIdea:null;
+  const selectedIdeaText=selectedIdea?[`name: ${String(selectedIdea.name||"")}`,`hook: ${String(selectedIdea.hook||"")}`,`angle: ${String(selectedIdea.angle||"")}`,`creative_direction: ${String(selectedIdea.humanStyle||"")}`].join("\\n"):"";
   const visualStyles:Record<string,string>={
    "hand-drawn-editorial":"HAND-DRAWN EDITORIAL SKETCH — Dirección visual obligatoria: fondo blanco o papel blanco cálido con textura física sutil; ilustración artesanal claramente dibujada a mano con marcador negro, lápiz y crayón; trazos imperfectos, presión irregular y pequeñas imperfecciones humanas; personajes simples tipo monigote cuando aporten a la historia; objetos, teléfonos, flechas, ondas de audio, globos, subrayados y anotaciones dibujados manualmente. Tipografía principal con apariencia manuscrita/rotulador, grande y expresiva; palabras clave resaltadas con marcador cyan/turquesa y, de forma secundaria, amarillo. Mucho espacio blanco y una sola idea visual dominante por placa. Composición editorial limpia pero deliberadamente humana, como una página de sketchbook creada por un ilustrador real. Evitar fotografía, render 3D, CGI, interfaces futuristas, neón, glassmorphism, estética SaaS genérica, plantillas corporativas y acabado vectorial perfecto. No copiar la composición de la miniatura: usar solamente su lenguaje artístico y crear una escena distinta para cada historia. Mantener consistentes papel, materiales, grosor de trazo y paleta durante todas las placas.",
    "minimal-editorial":"MINIMAL EDITORIAL PREMIUM — Dirección visual obligatoria: composición editorial sofisticada y espaciosa, inspirada en dirección de arte de revista contemporánea y campañas premium. Base crema, marfil, beige cálido o blanco roto; tipografía sans serif negra de alto contraste con titulares grandes, contundentes y perfectamente jerarquizados; textos secundarios pequeños, aireados y precisos. Integrar fotografía lifestyle/producto realista de alta calidad con luz natural suave, sombras arquitectónicas de ventana y materiales sobrios como papel, madera clara, metal negro y cerámica. Usar pocos objetos cuidadosamente colocados, abundante espacio negativo, líneas finas, microetiquetas editoriales e iconografía monocromática mínima. Paleta restringida y elegante, sin saturación innecesaria. Cada placa debe sentirse diseñada por un director de arte, no como una plantilla de redes. Variar composición, encuadre y recurso narrativo entre historias sin perder identidad visual. Evitar neón, cyberpunk, dibujos infantiles, 3D caricaturesco, gradientes tecnológicos, interfaces SaaS, exceso de stickers, collages caóticos y fondos cargados. No copiar la composición de la miniatura: conservar únicamente iluminación, materiales, tipografía, sobriedad, fotografía editorial y nivel premium.",
@@ -64,31 +68,43 @@ export async function POST(req:Request){
   const humanDirection=humanMode?`MODO HUMANO / PERSONAL BRAND: el carrusel debe sentirse producido por un director creativo y fotógrafo humano. Usá a la persona de las referencias cuando aporte a la narrativa, alternando retrato/lifestyle/acción/trabajo/producto/capturas/diagramas para no repetir composiciones. Fotografía hiperrealista, piel y textura naturales, iluminación y óptica plausibles, manos y anatomía realistas, escenarios creíbles, imperfecciones fotográficas sutiles. La persona debe conservar identidad visual consistente entre placas: forma del rostro, ojos, nariz, boca, mandíbula, cabello, tono de piel y proporciones. No embellecer, rejuvenecer ni rediseñar rasgos. No copiar literalmente piezas, marcas, usernames o composiciones de otros creadores. Cada placa debe tener una composición diferente pero una dirección de arte coherente.`:"";
   const {data:brandRow}=await db.from("vyral_bussines_profile").select("*").eq("user_id",session.userId).maybeSingle();
   const brandBrainText=brandRow?Object.entries(brandRow).filter(([k,v])=>!["user_id","created_at","updated_at"].includes(k)&&String(v||"").trim()).map(([k,v])=>`${k}: ${String(v).trim()}`).join("\n"):"";
-  const adaptiveStoryRules=`VIRAL CAROUSEL STORY ENGINE — THIS OVERRIDES GENERIC COPY.
-Use the full Brand Brain below as the source of truth, not just the short form fields.
-BRAND BRAIN:
-${brandBrainText||"No persistent Brand Brain available; use only current request fields."}
+  const adaptiveStoryRules=`VIRAL CAROUSEL STORY ENGINE — CONTENT CONTRACT.
+CURRENT USER BRIEF — PRIMARY SOURCE OF WHAT THIS CAROUSEL IS ABOUT:
+${contentBrief||String(body.business||"")}
 
-The selected idea/current form tells you WHAT this carousel is about. The Brand Brain tells you WHO is speaking, their real business, offer, audience, proof, voice, objections, geography, prices and goals. Cross both. Never invent missing facts.
+SELECTED CREATIVE BRAIN IDEA — PRESERVE ITS THESIS AND NARRATIVE:
+${selectedIdeaText||"No Creative Brain idea was selected; follow the current user brief."}
 
-Build ONE coherent story across exactly ${count} slides. The slide count changes the compression, NEVER the need for a complete story:
-- 1 slide: compress hook + core insight + resolution/CTA into one self-contained poster. Do not output a fragment.
-- 2 slides: slide 1 hook/tension; slide 2 payoff/resolution + CTA.
-- 3 slides: hook; development/reveal; payoff + CTA.
-- 4 slides: hook; tension/context; mechanism/value; payoff + CTA.
-- 5 slides: hook; tension; reveal; proof/value; payoff + CTA.
-- 6 slides: hook; tension; reveal; development; payoff/proof; CTA.
-- 7 slides: hook; tension; reveal; development 1; development 2/proof; resolution; CTA.
-If the user regenerates a single slide, preserve its role in the existing story.
+CONVERSION DESTINATION — THIS IS ONLY THE DESTINATION/CTA, NOT THE SUBJECT OF THE CAROUSEL:
+${conversionGoal||"No separate conversion destination supplied."}
 
-COPY QUALITY — STRICT:
-Every title and copy must be a COMPLETE, NATURAL Spanish sentence or deliberate headline. NEVER cut a phrase merely to satisfy a word limit. Forbidden broken constructions like "El mercado sigue. Vos no tenés que." or dangling copy like "Quedarte mirando cada movimiento puede convertir una actividad en una guardia permanente." when it does not logically advance the previous line. Prefer one strong complete sentence over two chopped fragments.
-Write as an elite Instagram carousel copywriter, not as a motivational quote generator. Use concrete nouns, verbs and specifics from the Brand Brain. Avoid generic filler: disciplina, mentalidad, constancia, éxito, libertad, proceso, foco, unless the actual story needs them.
-Each slide must answer or deepen the previous slide and create a reason to swipe. No six independent slogans. No repeating the same thesis in different words.
-Slide 1 must create a real curiosity gap rooted in the audience's pain/desire. Slides 2..N-1 progressively resolve it. The last slide must feel earned, not appended.
-Use rioplatense Spanish naturally when compatible with the Brand Brain. Do not force slang.
-VIRALITY = specificity + tension + recognition + useful payoff + strong visual idea. No fake clickbait.
-The chosen visual style controls HOW the story looks, never WHAT the business story is about.`;
+BRAND BRAIN — SECONDARY CONTEXT / FACTUAL GUARDRAIL:
+${brandBrainText||"No persistent Brand Brain available."}
+
+CONTENT PRIORITY — ABSOLUTE:
+1. The CURRENT USER BRIEF decides WHAT the carousel talks about.
+2. The SELECTED IDEA decides the chosen thesis, hook and narrative progression.
+3. The CONVERSION DESTINATION decides only where the final CTA leads.
+4. The BRAND BRAIN may adapt voice, audience awareness and verify factual business claims. It MUST NOT replace, narrow or redirect the requested topic.
+
+If the brief asks about a GENERAL TOPIC, explain that general topic. Do NOT turn it into the founder's story, personal method, proprietary system, strategy, routine, community, product, proof, results or business philosophy unless the brief/selected idea explicitly asks for that.
+Example principle: a brief about "benefits of X related to freedom of time" must explain benefits of X and freedom of time; it must NOT become "how I simplified my system" merely because Brand Brain contains a method.
+The CTA/resource can appear naturally at the end, but its existence does NOT authorize rewriting the preceding slides around that resource.
+Never invent missing facts.
+
+Build ONE coherent story across exactly ${count} slides, preserving the selected idea:
+- 1: self-contained hook + insight + CTA.
+- 2: hook/tension; payoff + CTA.
+- 3: hook; development; payoff + CTA.
+- 4: hook; development; value; payoff + CTA.
+- 5: hook; development; reveal; value; payoff + CTA.
+- 6: hook; development 1; development 2; benefit 1; benefit 2/payoff; CTA.
+- 7: hook; development 1; development 2; value 1; value 2; resolution; CTA.
+If regenerating one slide, preserve its role in this exact story.
+
+COPY QUALITY:
+Use complete natural Spanish. Every slide must advance the selected thesis. No independent motivational slogans, no repeated thesis, no automatic founder storytelling, and no automatic insertion of proprietary methods. Use Brand Brain specifics only when the selected content actually requires them.
+The chosen visual style controls HOW the story looks, never WHAT it is about.`
   const prompt=`Sos el director creativo de VYRAL. Diseñás carruseles de Instagram persuasivos en español rioplatense, claros y modernos. SEPARÁ DOS CAPAS QUE NO DEBEN CONFUNDIRSE: (A) IDEA/NARRATIVA = libertad creativa máxima y variación radical entre generaciones; (B) TEMPLATE VISUAL = fidelidad máxima al estilo seleccionado. Nunca sacrifiques diversidad de ideas para copiar el contenido de una referencia, ni sacrifiques el template para variar la idea. ${adaptiveStoryRules} ${referenceSystem} ${humanDirection} No inventes testimonios, cifras ni garantías. Cada placa debe tener poco texto y avanzar una historia. Negocio/producto: ${String(body.business||"")}. Oferta: ${String(body.offer||"")}. Público: ${String(body.audience||"")}. Objetivo: ${String(body.goal||"ventas")}. CTA solicitado por el usuario: ${String(body.cta||"")}. REGLA GLOBAL DE CTA — MÁXIMA PRIORIDAD PARA TODOS LOS ESTILOS: el CTA final SIEMPRE debe pedir un comentario con UNA palabra clave corta, clara, en mayúsculas y relacionada con el contenido/beneficio (ej.: "Comentá GUÍA", "Comentá PLAN", "Comentá CHECKLIST"). La IA debe elegir automáticamente la palabra más natural para esa publicación. El propósito del comentario es enviarle al usuario un recurso/archivo/GIF por DM; por eso NO usar "conocé más", "link en bio", "seguime", "guardalo", "escribime", "mandame DM", "comprá", "descargá acá" ni CTAs vagos. Formato visible obligatorio: "Comentá PALABRA y te mando [recurso] por DM", pudiendo acortarse a "Comentá PALABRA" dentro de la placa si el espacio del template lo exige. No duplicar el verbo ni la palabra. El CTA debe adaptarse al lenguaje nativo del estilo seleccionado SIN cambiar su template visual. Estética solicitada: ${String(body.tone||"animado premium")}. ${styleNarrativeAdapter} ${styleLock} ${visualStylePrompt?`ESTILO VISUAL SELECCIONADO POR EL USUARIO — respetar literalmente por encima de la dirección visual genérica: ${visualStylePrompt}`:""} ${strategy} Respondé SOLO JSON array con objetos {"role":"hook|problema|tension|solucion|beneficio|oferta|cta","title":"titular completo, ideal 3-12 palabras; puede excederlo si cortarlo rompe la frase","copy":"copy completo y natural, ideal 8-28 palabras; puede excederlo si hace falta para cerrar la idea","visualPrompt":"dirección de arte detallada para una placa TERMINADA, indicando layout, fondo, tipografía, jerarquía, bloques, fotos/ilustraciones, flechas/stickers y ubicación del texto; LIENZO OBLIGATORIO 4:5; describir cómo esta placa conserva EXACTAMENTE la arquitectura/UI/tipografía del template seleccionado y cambia solo el contenido permitido"}.`;
   const textModel=process.env.VYRAL_TEXT_MODEL||"gpt-5.6-sol"; stage="text_model";
   const tr=await fetch(OPENAI+"/chat/completions",{method:"POST",headers:{Authorization:`Bearer ${key}`,"Content-Type":"application/json"},body:JSON.stringify({model:textModel,messages:[{role:"user",content:prompt}]})});
