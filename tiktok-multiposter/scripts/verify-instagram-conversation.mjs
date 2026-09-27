@@ -7,7 +7,7 @@ const webhook=fs.readFileSync(path.join(root,"app","api","meta","instagram","web
 
 const checks=[
  ["Opening reservation remains outside conversation agent",webhook.includes("opening_in_progress:true")],
- ["Opening still sends first-name DM",webhook.includes("firstName")&&webhook.indexOf("opening_in_progress:true")<webhook.indexOf("if(dm){const j=await ig")],
+ ["Opening derives and sends the short contact name after reservation",webhook.includes("const shortName=instagramFirstName(username)")&&webhook.includes('const dm=firstVoice?.url?shortName:""')&&webhook.indexOf("opening_in_progress:true")<webhook.indexOf("if(dm){const j=await ig")],
  ["Opening still sends configured audio",webhook.includes('stage==="opening"')],
  ["Inbound webhook remains idempotent",webhook.includes('if(String(claim.error.code)==="23505")return')],
  ["Recent conversation history remains bounded",webhook.includes(".limit(30)")&&webhook.includes(".slice(-12000)")],
