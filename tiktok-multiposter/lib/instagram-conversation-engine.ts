@@ -62,7 +62,7 @@ function responseText(j:any){
   return out.trim();
 }
 
-async function generateReply(event:InstagramConversationEvent,profile:any,resources:any[]){
+async function generateReply(event:InstagramConversationEvent,profile:any,resources:any[],sentResourceIds:string[]){
   const key=process.env.VYRAL_CREATOR_PRODUCTION;
   if(!key)throw new Error("openai_key_missing");
   const prompt=`Respondé el mensaje actual como si fueras la persona detrás de este negocio.
@@ -78,6 +78,9 @@ ${event.history||""}
 
 RECURSOS DISPONIBLES:
 ${JSON.stringify(resourceCatalog(resources))}
+
+RECURSOS YA ENVIADOS EN ESTA CONVERSACIÓN (ids):
+${JSON.stringify(sentResourceIds)}
 
 MENSAJE ACTUAL:
 ${event.text}
@@ -97,9 +100,12 @@ CALIDAD CONVERSACIONAL — REGLAS UNIVERSALES:
 - Estas reglas son semánticas y multilingües: adaptalas al idioma, cultura y registro de la conversación; no dependen de palabras concretas ni de un negocio específico.
 
 No inventes ni escribas links, URLs o adjuntos. Si corresponde enviar uno de los recursos disponibles, elegí su id exacto en send_resource_id. Si no corresponde, dejalo en null.
+- Un recurso cuyo id figura en RECURSOS YA ENVIADOS ya fue entregado. NO lo vuelvas a seleccionar por continuidad temática, agradecimiento, aceptación, cierre ni porque vuelva a mencionarse.
+- Solo podés solicitar el reenvío de un recurso ya enviado cuando el MENSAJE ACTUAL pide inequívocamente recibir ESE MISMO recurso otra vez o afirma que no lo recibió, lo perdió o ya no puede acceder a él. En ese único caso usá resend_resource=true.
+- Una petición inicial de acceso no es reenvío. resend_resource existe exclusivamente para una segunda entrega explícitamente solicitada.
 
 Respondé únicamente JSON:
-{"text":"respuesta al usuario","send_resource_id":null}`;
+{"text":"respuesta al usuario","send_resource_id":null,"resend_resource":false}`;
 
   const r=await fetch("https://api.openai.com/v1/responses",{
     method:"POST",headers:{Authorization:`Bearer ${key}`,"Content-Type":"application/json"},
@@ -113,7 +119,8 @@ Respondé únicamente JSON:
   if(!text)throw new Error("openai_empty_output");
   const candidate=parsed?.send_resource_id==null?null:String(parsed.send_resource_id);
   const resourceId=candidate&&resources.some((x:any)=>String(x.id)===candidate)?candidate:null;
-  return{text,resourceId};
+  const resendResource=parsed?.resend_resource===true;
+  return{text,resourceId,resendResource};
 }
 
 async function sendResource(event:InstagramConversationEvent,r:any){
@@ -129,24 +136,38 @@ async function sendResource(event:InstagramConversationEvent,r:any){
 
 export async function processInstagramConversationEvent(event:InstagramConversationEvent){
   const db=supabaseAdmin(),automationId=String(event.automation?.id||"");
-  const [profileQ,resources]=await Promise.all([
+  const [profileQ,resources,stateQ]=await Promise.all([
     db.from("vyral_bussines_profile").select("*").eq("user_id",String(event.account.user_id)).maybeSingle(),
-    loadResources(String(event.account.user_id))
+    loadResources(String(event.account.user_id)),
+    db.from("instagram_conversation_state").select("id,resources_sent")
+      .eq("account_id",String(event.account.id)).eq("contact_id",event.contactId).eq("automation_id",automationId).maybeSingle()
   ]);
-  const reply=await generateReply(event,profileQ.data||{},resources);
-  const selected=reply.resourceId?resources.find((r:any)=>String(r.id)===reply.resourceId)||null:null;
+  const sentResourceIds=(stateQ.data?.resources_sent||[]).map(String);
+  const reply=await generateReply(event,profileQ.data||{},resources,sentResourceIds);
+  const candidate=reply.resourceId?resources.find((r:any)=>String(r.id)===reply.resourceId)||null:null;
+  const alreadySent=Boolean(candidate&&sentResourceIds.includes(String(candidate.id)));
+  const selected=candidate&&(!alreadySent||reply.resendResource===true)?candidate:null;
 
   let resourceMessageId="";
   if(selected){
     const resourceSent=await sendResource(event,selected);
     resourceMessageId=String(resourceSent.message_id||"");
+    if(resourceMessageId&&!sentResourceIds.includes(String(selected.id))){
+      const nextSent=[...sentResourceIds,String(selected.id)];
+      if(stateQ.data?.id)await db.from("instagram_conversation_state").update({resources_sent:nextSent,updated_at:new Date().toISOString()}).eq("id",stateQ.data.id);
+    }
   }
 
-  const sent=await metaSend(event.account,event.contactId,reply.text);
+  let replyText=reply.text;
+  for(const resource of resources){
+    const url=String(resource.external_url||"").trim();
+    if(url)replyText=replyText.split(url).join("").replace(/\n{3,}/g,"\n\n").trim();
+  }
+  const sent=await metaSend(event.account,event.contactId,replyText);
   const textMessageId=String(sent.message_id||"");
   await db.from("vyral_inbox_messages").insert({
     user_id:event.account.user_id,account_id:event.account.id,platform:"instagram",contact_id:event.contactId,
-    message_id:textMessageId,body:reply.text,direction:"out",sender_type:"ai",automation_id:automationId
+    message_id:textMessageId,body:replyText,direction:"out",sender_type:"ai",automation_id:automationId
   });
 
   return{
