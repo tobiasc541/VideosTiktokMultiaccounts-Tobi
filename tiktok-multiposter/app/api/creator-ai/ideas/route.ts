@@ -128,15 +128,16 @@ ${brainText||"El usuario todavía no completó suficiente información en Mi neg
 PEDIDO ACTUAL DEL USUARIO:
 "${brief}"
 
-REGLAS DE MEMORIA:
-- Cruzá SIEMPRE el pedido actual con el Brand Brain antes de idear.
-- El pedido actual define QUÉ quiere comunicar/vender hoy; el Brand Brain define QUIÉN es, qué hace, qué vende, a quién, dónde y con qué contexto.
-- Priorizá datos concretos del Brand Brain cuando sean relevantes: identidad, rubro, ubicación, oferta, público, resultados, precios, trayectoria, equipo, tono, diferenciadores y objetivos.
-- Nunca inventes facturación, edad, clientes, resultados, precios, trayectoria, equipo, ubicaciones ni credenciales que no estén en el Brand Brain o en el pedido actual.
-- Si un dato no existe, construí la idea sin ese dato; no rellenes huecos con suposiciones.
-- No repitas todo el perfil: seleccioná únicamente los datos que hagan el concepto más específico, creíble y potente.
+JERARQUÍA DE CONTEXTO — REGLA CENTRAL:
+- EL PEDIDO ACTUAL ES LA FUENTE TEMÁTICA PRINCIPAL. Define DE QUÉ hablan las ideas.
+- El Brand Brain define principalmente QUIÉN HABLA: identidad, tono, vocabulario, conocimientos reales y límites de verdad. NO convierte automáticamente cada publicación en una publicación sobre el negocio.
+- Si el brief pide un tema general, educativo, cultural, aspiracional, emocional, conceptual o de opinión, desarrollá ESE TEMA directamente. No lo redirijas hacia la oferta, historia, método, comunidad, resultados, rutina, producto o servicio del negocio.
+- De las 4 propuestas, COMO MÁXIMO 1 puede apoyarse explícitamente en datos particulares del Brand Brain (historia del fundador, método propio, oferta, resultados, comunidad, producto, rutina, precios, etc.), salvo que el brief pida explícitamente hablar del negocio, producto, servicio, caso propio o experiencia personal.
+- Las otras 3 propuestas deben poder sostenerse por el valor y la fuerza del tema pedido, sin necesitar mencionar datos particulares del negocio.
+- El Brand Brain sí puede influir silenciosamente en tono, audiencia, nivel de conocimiento y exactitud de las 4 propuestas.
+- Nunca inventes facturación, edad, clientes, resultados, precios, trayectoria, equipo, ubicaciones ni credenciales.
 - Si el pedido actual contradice explícitamente un dato del Brand Brain, para ESTA pieza prevalece el pedido actual.
-- Las ideas deben sentirse escritas para ESTE negocio, no para un negocio genérico del mismo rubro.
+- TEST: si al quitar el nombre/oferta/método del negocio tres ideas dejan de funcionar, estás usando demasiado el Brand Brain y debés regenerarlas.
 
 ESTILO VISUAL YA SELECCIONADO: "${visualStyle}". MOLDE SEMÁNTICO OBLIGATORIO: ${styleGuide}\nRESTRICCIONES ESPECÍFICAS DEL ESTILO: ${forbidden}\n\nFORMATO ADAPTATIVO Y ÁNGULOS UNIVERSALES — OBLIGATORIO:
 - Variables activas: user_brain = Brand Brain permanente; slide_count = ${slideCount}; visual_style = "${visualStyle}"; conversion_goal = "${conversionGoal}".
@@ -144,26 +145,28 @@ ESTILO VISUAL YA SELECCIONADO: "${visualStyle}". MOLDE SEMÁNTICO OBLIGATORIO: $
 - Si slide_count == 1: cada propuesta es UNA sola imagen fija con Hook visual + Copy. PROHIBIDO escribir "Slide 1", secuencias, carrusel o divisiones.
 - Si slide_count >= 2: repartí la narrativa EXACTAMENTE en ${slideCount} diapositivas. El campo angle debe enumerar Slide 1 hasta Slide ${slideCount}, sin agregar ni quitar placas.
 
-GENERÁ EXACTAMENTE ESTOS 4 ÁNGULOS, UNO POR OPCIÓN:
-1) TRANSFORMACIÓN Y STORYTELLING PERSONAL
-   - Extraé de user_brain el contraste real entre situación inicial/frustración/pasado y estado actual/solución/transformación.
-   - Construí un relato humano de cambio, aprendizaje, superación o lección que conecte emocionalmente.
-   - PROHIBIDO inventar pasado, fracasos, trabajos, resultados o biografía que user_brain no respalde.
+GENERÁ EXACTAMENTE 4 PROPUESTAS CON ÁNGULOS REALMENTE DISTINTOS:
+1) DISRUPTIVO / MITO / CONTRASTE
+   - Partí del TEMA DEL BRIEF y cuestioná una creencia, hábito, expectativa o contradicción relacionada con ese tema.
+   - No necesitás mencionar al negocio ni su método.
 
-2) PSICOLOGÍA Y FRUSTRACIONES DEL CLIENTE IDEAL
-   - Mapeá customer_pains, customer_desires, objections, audience y dudas frecuentes disponibles en user_brain.
-   - Elegí un dolor profundo o bloqueo cotidiano y explicá empáticamente por qué una conducta, creencia o método habitual falla.
-   - No conviertas esta opción en una explicación del producto desde el comienzo: primero hacé sentir entendido al público.
+2) STORYTELLING / ESCENA HUMANA
+   - Construí una situación, transformación, dilema o mini historia alrededor del TEMA DEL BRIEF.
+   - Puede ser universal o representativa del público. NO inventes que esa historia le ocurrió al fundador.
+   - Sólo usá founder_story si decidís que ésta será la única propuesta explícitamente personalizada y el dato está respaldado.
 
-3) EDUCATIVO / FRAMEWORK / PASO A PASO
-   - Detectá el método, proceso, experiencia, diferenciador o pilar útil disponible en user_brain y convertílo en valor práctico.
-   - Estructuralo como tutorial, framework, checklist, pasos, errores/soluciones o sistema accionable según lo que mejor encaje.
-   - Priorizá claridad, utilidad inmediata y aprendizaje rápido. No dependas de resultados monetarios ni de evidencia técnica específica de un nicho.
+3) EDUCATIVO / PASO A PASO / FRAMEWORK
+   - Enseñá algo útil directamente sobre el TEMA DEL BRIEF: pasos, principios, errores, comparación, checklist o marco mental.
+   - Primero resolvé el tema. No conviertas automáticamente el contenido en una explicación del producto, servicio o método propio.
 
-4) DISRUPTIVO / ATAQUE A MITOS DEL SECTOR
-   - Identificá una creencia popular, consejo repetido, práctica asumida o mito relevante para la industria inferida desde user_brain.
-   - Abrí con un hook contundente y defendible que genere curiosidad o debate y después explicá el contraste.
-   - PROHIBIDO inventar estadísticas, consensos o afirmaciones falsas sólo para volverlo polémico.
+4) PERSPECTIVA NUEVA / ANTES-DESPUÉS / PARADOJA
+   - Explorá el TEMA DEL BRIEF desde una consecuencia, comparación, paradoja, cambio de perspectiva o antes/después diferente a las otras tres.
+   - Esta opción PUEDE ser la única que use datos particulares del Brand Brain si realmente mejoran la idea; no es obligatorio.
+
+REGLA DE PERSONALIZACIÓN:
+- En una tanda normal de 4 ideas: 3 deben estar centradas en el brief y ser independientes de datos particulares del negocio; 0 o 1 puede incorporar explícitamente esos datos.
+- Si el brief explícitamente pide hablar del negocio/producto/servicio/fundador/caso propio, esta limitación se libera y podés usar Brand Brain en las 4.
+- No confundas "relevante para la audiencia del negocio" con "hablar del negocio". Un contenido puede ser totalmente relevante sin mencionar oferta, comunidad, método, fundador o resultados.
 
 DIVERSIDAD REAL — CERO REPETICIÓN:
 - Las 4 opciones deben tener tesis, hook, tensión y estructura narrativa distintas.
@@ -172,7 +175,7 @@ DIVERSIDAD REAL — CERO REPETICIÓN:
 - No mezcles los cuatro ángulos ni conviertas cuatro opciones en paráfrasis de la misma idea.
 
 MOTORES DE HOOK RECOMENDADOS: contraste disruptivo; resultado fuerte solo si está respaldado; frase literal del mercado; pregunta incómoda; provocación directa; error costoso; secreto/mecanismo; antes vs después; creencia popular vs realidad.
-La viralidad debe salir de una tensión REAL del público + especificidad del Brand Brain + claridad. Prohibido clickbait falso.
+La viralidad debe salir de una tensión REAL del tema/público + claridad. La especificidad del Brand Brain es opcional y secundaria salvo que el brief la requiera. Prohibido clickbait falso.
 Las 4 propuestas deben ser conceptos que puedan convertirse inmediatamente en carruseles completos. El campo angle debe describir la progresión narrativa, no solamente una imagen.
 
 OBJETIVO CENTRAL: todo contenido de VYRAL debe detener el scroll, hacerse notar, ser recordado y cumplir el objetivo del usuario. No generes ideas meramente correctas: generá conceptos con una imagen mental instantánea y un hook que invite a leer, compartir, guardar, comentar o comprar según corresponda.
