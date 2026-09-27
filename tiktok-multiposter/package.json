@@ -4,8 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
-    "start": "next start"
+    "build": "npm run verify:instagram && next build",
+    "start": "next start",
+    "verify:instagram": "node scripts/verify-instagram-conversation.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",
