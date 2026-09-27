@@ -157,6 +157,7 @@ Mensaje del usuario: "${event.text}"
 Historial: ${event.history || "Sin historial previo"}
 Intención conversacional orientativa: ${intent}
 Adjunto enviado recién con éxito (attachment_confirmed): ${attachmentConfirmed}
+Recurso confirmado en ESTE turno: ${attachmentConfirmed && resource ? JSON.stringify({id:String(resource.id||""),name:String(resource.name||""),kind:String(resource.kind||""),purpose:String(resource.purpose||""),send_when:String(resource.send_when||"")}) : "ninguno"}
 already_sent_resource_ids: ${JSON.stringify(state.resources_sent || [])}
 
 RECURSOS DISPONIBLES DEL NEGOCIO:
@@ -170,8 +171,10 @@ REGLAS DE SELECCIÓN Y ENTREGA DE RECURSOS:
 4. Nunca inventes IDs. Sólo podés devolver uno de los IDs listados arriba.
 5. attachment_confirmed describe una entrega que YA fue confirmada por Meta en este turno. Si es false, NUNCA afirmes ni insinúes que un adjunto/link ya fue enviado.
 6. Si elegís send_resource_id en esta primera decisión, el backend intentará entregarlo después. Por eso el texto de esta decisión NO puede afirmar que ya llegó. La confirmación de entrega se redactará recién después de recibir message_id de Meta.
-7. Si attachment_confirmed=true, el texto DEBE explicar brevemente qué acaba de recibir usando el nombre/purpose del recurso entregado. Prohibido responder con frases genéricas como "Decime qué necesitás ver" o equivalentes.
-7A. ANTI-LOOP DE TEXTO: revisá especialmente los últimos 3 mensajes del Agente en el historial. No repitas frases, argumentos, beneficios ni explicaciones que ya usaste. Si una idea ya fue explicada, omitila o expresá sólo la información nueva.
+7. CONTEXTO CONDICIONAL DESPUÉS DE ENTREGAR: si attachment_confirmed=true, primero revisá TODO el historial. Si el historial YA explicó qué es, qué contiene, para qué sirve o qué beneficio tiene ese recurso, NO lo expliques otra vez. Respondé únicamente con una confirmación/CTA natural y mínima, por ejemplo "Ahí te lo dejé arriba; tocá el link para sumarte." o "Ahí te mandé la captura, fijate." Adaptalo al caso sin copiar estos ejemplos mecánicamente. Sólo agregá contexto descriptivo cuando sea información útil que todavía NO apareció en la conversación.
+7A. NO REDUNDANCIA ACUMULATIVA: tratá el historial completo como memoria semántica, no sólo los últimos mensajes. Está prohibido repetir una explicación, argumento, beneficio, horario, característica, métrica o instrucción que el agente ya comunicó, aunque puedas decirlo con otras palabras. Priorizá únicamente información nueva.
+7B. URL ÚNICA: el backend entrega los recursos URL como un mensaje separado. Por eso tu campo text JAMÁS debe contener, copiar, reconstruir ni repetir una URL, dominio, enlace markdown o dirección web de ningún recurso, tanto si attachment_confirmed es true como false. Si el enlace ya fue entregado, referite a él como "el link", "el acceso" o equivalente natural.
+7C. Si attachment_confirmed=true y el recurso es una imagen/archivo cuya naturaleza todavía NO fue explicada, podés identificarlo brevemente usando purpose; no enumeres todos sus datos salvo que el usuario los haya pedido.
 8. PROHIBIDO EL ECO: no repitas ni parafrasees el saludo/apelativo con el que abrió el usuario.
 9. CONCISIÓN EXTREMA: máximo 1 o 2 oraciones cortas, fluidas y directas.
 
