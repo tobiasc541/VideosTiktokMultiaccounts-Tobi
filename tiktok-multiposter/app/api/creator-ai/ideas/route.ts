@@ -145,47 +145,29 @@ ESTILO VISUAL YA SELECCIONADO: "${visualStyle}". MOLDE SEMÁNTICO OBLIGATORIO: $
 - Si slide_count == 1: cada propuesta es UNA sola imagen fija con Hook visual + Copy. PROHIBIDO escribir "Slide 1", secuencias, carrusel o divisiones.
 - Si slide_count >= 2: repartí la narrativa EXACTAMENTE en ${slideCount} diapositivas. El campo angle debe enumerar Slide 1 hasta Slide ${slideCount}, sin agregar ni quitar placas.
 
-GENERÁ EXACTAMENTE 4 PROPUESTAS CON ÁNGULOS REALMENTE DISTINTOS:
-1) DISRUPTIVO / MITO / CONTRASTE
-   - Partí del TEMA DEL BRIEF y cuestioná una creencia, hábito, expectativa o contradicción relacionada con ese tema.
-   - No necesitás mencionar al negocio ni su método.
-
-2) STORYTELLING / ESCENA HUMANA
-   - Construí una situación, transformación, dilema o mini historia alrededor del TEMA DEL BRIEF.
-   - Puede ser universal o representativa del público. NO inventes que esa historia le ocurrió al fundador.
-   - Sólo usá founder_story si decidís que ésta será la única propuesta explícitamente personalizada y el dato está respaldado.
-
-3) EDUCATIVO / PASO A PASO / FRAMEWORK
-   - Enseñá algo útil directamente sobre el TEMA DEL BRIEF: pasos, principios, errores, comparación, checklist o marco mental.
-   - Primero resolvé el tema. No conviertas automáticamente el contenido en una explicación del producto, servicio o método propio.
-
-4) PERSPECTIVA NUEVA / ANTES-DESPUÉS / PARADOJA
-   - Explorá el TEMA DEL BRIEF desde una consecuencia, comparación, paradoja, cambio de perspectiva o antes/después diferente a las otras tres.
-   - Esta opción PUEDE ser la única que use datos particulares del Brand Brain si realmente mejoran la idea; no es obligatorio.
+GENERÁ EXACTAMENTE 4 PROPUESTAS, PERO NO EXISTEN CUATRO CASILLEROS CREATIVOS:
+- IDEA 01, 02, 03 y 04 son solamente posiciones de salida. NO representan mito, storytelling, educativo, antes/después ni ningún otro arquetipo fijo.
+- En CADA ejecución inventá desde cero cuatro conceptos que compitan por ser la mejor respuesta al brief. Vos decidís libremente la tesis, estructura, emoción, punto de vista, mecanismo narrativo, tipo de hook, ritmo y progresión de cada uno.
+- NO repartas automáticamente funciones entre las cuatro ideas. Ninguna tiene que ser obligatoriamente educativa, emocional, disruptiva, compartible, guardable, polémica, narrativa o comparativa.
+- NO recorras una lista de arquetipos. Si una estructura conocida aparece, debe surgir porque es excepcionalmente buena para este brief, no porque le tocó a una posición.
+- Permitite mecanismos nuevos que no estén nombrados en este prompt. La ausencia de una categoría previa es una ventaja, no un problema.
+- Una nueva tanda con el mismo brief debe poder sentirse como si la hubiera pensado OTRO equipo creativo: nuevos territorios conceptuales, nuevas tensiones, nuevas imágenes mentales, nuevas progresiones y nuevos remates.
+- El único denominador común entre las cuatro es CALIDAD VIRAL: deben tener una razón fuerte para detener el scroll y continuar consumiendo la pieza.
+- No confundas diversidad con cambiar sustantivos dentro de la misma moraleja. Cambiá la IDEA, no solamente el contexto.
 
 REGLA DE PERSONALIZACIÓN:
 - En una tanda normal de 4 ideas: 3 deben estar centradas en el brief y ser independientes de datos particulares del negocio; 0 o 1 puede incorporar explícitamente esos datos.
 - Si el brief explícitamente pide hablar del negocio/producto/servicio/fundador/caso propio, esta limitación se libera y podés usar Brand Brain en las 4.
 - No confundas "relevante para la audiencia del negocio" con "hablar del negocio". Un contenido puede ser totalmente relevante sin mencionar oferta, comunidad, método, fundador o resultados.
 
-DIVERSIDAD REAL — CERO REPETICIÓN:
-- Las 4 opciones deben tener tesis, hook, tensión, mecanismo de curiosidad, escena mental y estructura narrativa distintas.
-- user_brain es materia prima, NO un texto para recitar. No repitas automáticamente los mismos diferenciales, cifras, logros, términos técnicos o mecanismos.
-- Aplicá DISTANCIA CREATIVA: si dos propuestas podrían usar el mismo titular cambiando pocas palabras, descartá una y rehacela desde otro territorio conceptual.
-- Evitá recurrir siempre a fórmulas como "menos es más", "no es X, es Y", "el error", "la clave", listas numeradas, "mi método" o "mi sistema". Usalas sólo si son realmente la mejor idea.
+LIBERTAD CREATIVA + UMBRAL VIRAL:
+- No hay motores obligatorios, cuotas por categoría ni estructuras reservadas para ninguna posición.
+- La IA puede inventar cualquier concepto compatible con el brief y el formato, incluso uno que no encaje en ninguna categoría conocida.
+- Las cuatro deben ser semánticamente lejanas entre sí: distinta idea central, distinta promesa de lectura y distinta progresión. Si dos se pueden resumir con la misma moraleja, regenerá una.
+- Viral NO significa usar una fórmula repetida. Significa maximizar la probabilidad de atención y continuidad mediante una idea específica, clara, memorable y relevante para esa audiencia.
+- Rechazá internamente lo primero obvio. Buscá una segunda o tercera asociación más interesante antes de cerrar cada concepto.
+- No prometas viralidad ni inventes evidencia.
 
-MOTOR VIRAL UNIVERSAL — OBLIGATORIO:
-- Elegí para cada propuesta un motor de atención distinto y adecuado al brief: curiosidad específica, contradicción, identificación, utilidad guardable, sorpresa visual, tensión humana, comparación inesperada, demostración, opinión defendible, historia con giro, dato respaldado, desafío, aspiración concreta o revelación.
-- Hook: debe crear una razón inmediata para detenerse SIN clickbait falso. Priorizá especificidad, tensión y novedad.
-- Retención: cada slide debe abrir o resolver una micro-pregunta y dar una razón real para avanzar.
-- Compartibilidad: al menos una propuesta debe provocar ganas de enviársela a otra persona por identificación, utilidad o sorpresa.
-- Guardabilidad: al menos una propuesta debe contener una estructura, criterio, mapa mental o explicación que valga la pena conservar.
-- Comentabilidad: al menos una propuesta debe abrir una opinión, elección o experiencia que la audiencia pueda responder naturalmente.
-- Test interno por propuesta: ¿frenaría el scroll?, ¿se distingue claramente de las otras tres?, ¿la recordaría mañana? Si falla uno, regenerala.
-- No prometas viralidad ni inventes evidencia. Optimizá para atención, retención, guardados, compartidos y conversación.
-
-MOTORES DE HOOK RECOMENDADOS: contraste disruptivo; resultado fuerte solo si está respaldado; frase literal del mercado; pregunta incómoda; provocación directa; error costoso; secreto/mecanismo; antes vs después; creencia popular vs realidad.
-La fuerza viral debe salir de tensión REAL + claridad + novedad + valor social. La especificidad del Brand Brain es secundaria salvo que el brief la requiera. Prohibido clickbait falso.
 Las 4 propuestas deben ser conceptos que puedan convertirse inmediatamente en carruseles completos. El campo angle debe describir la progresión narrativa, no solamente una imagen.
 
 OBJETIVO CENTRAL: todo contenido de VYRAL debe detener el scroll, hacerse notar, ser recordado y cumplir el objetivo del usuario. No generes ideas meramente correctas: generá conceptos con una imagen mental instantánea y un hook que invite a leer, compartir, guardar, comentar o comprar según corresponda.
@@ -204,9 +186,7 @@ Creá exactamente 4 conceptos realmente diferentes, TODOS nacidos del mensaje de
 
 RESPETÁ LA IMAGEN MENTAL DEL USUARIO. Si el brief ya contiene una metáfora clara, desarrollala primero en formas visuales directas y potentes. Ejemplo: si pide "sé el lobo distinto a toda la multitud", explorá una manada uniforme con un lobo diferente, una multitud humana uniforme con una persona que rompe el patrón u otros equivalentes claramente conectados. NO reemplaces una metáfora clara por conceptos abstractos sin relación. Si el tono es motivacional, cada propuesta debe incluir un hook/frase motivacional fuerte que exprese la tesis.
 
-DIVERSIDAD REAL: no hagas cuatro paráfrasis de la misma escena. Explorá cuando sean compatibles: metáfora literal potente, equivalente humano, masa/individuo o antes/después, símbolo/objeto, paradoja visual, escena cinematográfica, comparación inesperada y concepto provocador. Son motores de exploración, no nuevos formatos. Cada propuesta debe tener escena central, tesis y hook diferentes.
-
-FILTRO DE VIRALIDAD: rechazá internamente cualquier idea genérica, burocrática, excesivamente explicativa, visualmente difícil de imaginar o repetitiva. Antes de aceptar cada idea preguntate: ¿entiendo la imagen en dos segundos? ¿el hook me haría frenar? ¿representa lo que realmente pidió el usuario? ¿cumple el objetivo? ¿sigue perteneciendo al estilo seleccionado? Si alguna respuesta es no, regenerala.
+FILTRO DE CALIDAD VIRAL, SIN RECETA: rechazá internamente cualquier idea genérica, burocrática, previsible, repetitiva o que sólo cambie el decorado de una idea anterior. Antes de aceptar cada concepto preguntate: ¿hay una razón real para frenar?, ¿quiero saber qué viene después?, ¿la idea es diferente de las otras tres y de las ya mostradas?, ¿representa exactamente el brief?, ¿puede recordarse por SU concepto y no sólo por su diseño? Si alguna respuesta es no, buscá otra idea desde cero.
 
 Cada propuesta debe aprovechar los slots, objetos, UI, metáfora o estructura propios del molde SIN permitir que esos slots secuestren el significado. La creatividad ocurre dentro del lenguaje visual, nunca cambiándolo. NO cambies dirección de arte, formato, tipografía, encuadre ni sistema visual entre ideas. No propongas UGC, chat, revista, checklist, documental u otro formato si el molde no lo contiene.\n\nTEST OBLIGATORIO: antes de devolver cada idea preguntate "¿esto aprovecha específicamente el estilo ${visualStyle}, o es genérico?". Si es genérica, RECHAZALA. Segundo test: "¿esta idea viola alguna restricción específica del estilo?". Si sí, RECHAZALA Y GENERÁ OTRA. Las 4 deben ser distintas entre sí pero nativas del mismo molde.\n\nIdeas/títulos ya mostrados al usuario que NO debés repetir ni parafrasear de cerca: ${previousIdeas.length?previousIdeas.join(" | "):"ninguna"}.
 Semilla de variación de esta tanda: ${variationSeed}. Usala solo para forzar una nueva exploración creativa, no la menciones en la respuesta.
