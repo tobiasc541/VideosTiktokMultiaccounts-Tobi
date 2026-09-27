@@ -151,6 +151,25 @@ function formattedResources(resources:any[]){
   Cuándo se debe enviar: "${String(r.send_when||"Sin condición")}"`).join("\n"):"No hay recursos disponibles.";
 }
 
+const RESOURCE_STOPWORDS=new Set("a al algo como con cual cuando de del el en es esta este esto la las lo los me mi para por que se si su te tu un una y ya".split(" "));
+function resourceTerms(value:any){return new Set(norm(value).replace(/https?:\\/\\/\\S+/g," ").replace(/[^a-z0-9ñ]+/g," ").split(/\\s+/).filter((w:string)=>w.length>2&&!RESOURCE_STOPWORDS.has(w)))}
+function resourceContextScore(r:any,current:string,history:string){
+  const meta=resourceTerms(`${r?.name||""} ${r?.purpose||""} ${r?.send_when||""}`),cur=resourceTerms(current),hist=resourceTerms(history);
+  let a=0,b=0;for(const w of cur)if(meta.has(w))a++;for(const w of hist)if(meta.has(w))b++;return a*5+Math.min(b,5);
+}
+function resolveContextualResource(resources:any[],current:string,history:string,pending?:string|null){
+  if(pending){const p=resources.find((r:any)=>String(r.id)===String(pending));if(p)return p}
+  const ranked=resources.map((r:any)=>({r,score:resourceContextScore(r,current,history)})).sort((a:any,b:any)=>b.score-a.score);
+  if(!ranked.length||ranked[0].score<2||(ranked[1]&&ranked[0].score===ranked[1].score))return null;
+  return ranked[0].r;
+}
+function explicitResourceAction(text:string){
+  const t=norm(text);
+  if(/\\b(no (me )?(llego|aparece)|no me (lo|la) (mandaste|enviaste|pasaste)|reenvi|otra vez|de nuevo)\\b/.test(t))return "RESEND" as ResourceAction;
+  if(/\\b(mandame|enviame|pasame|compartime|dame|me lo podrias enviar|me la podrias enviar|como (me )?(uno|unir|entro|ingreso|accedo)|donde (me )?(uno|entro|ingreso|accedo)|quiero (unirme|entrar|ingresar|acceder))\\b/.test(t))return "SEND" as ResourceAction;
+  return null;
+}
+
 function parseAiJson(rawValue:any){
   const raw=String(rawValue||"").trim();
   if(!raw)throw new Error("openai_empty_output");
@@ -196,6 +215,12 @@ async function openAiJson(prompt:string,maxOutputTokens=300){
  */
 async function decideResourceAction(event:InstagramConversationEvent,state:any,resources:any[]){
   if(!resources.length)return{action:"NONE" as ResourceAction,resourceId:null as string|null};
+  // Explicit requests are deterministic: they must not wait for an LLM/network decision.
+  const explicitAction=explicitResourceAction(event.text);
+  if(explicitAction){
+    const resolved=resolveContextualResource(resources,event.text,event.history||"",state.pending_resource_id);
+    if(resolved)return{action:explicitAction,resourceId:String(resolved.id),source:"deterministic" as const};
+  }
   const prompt=`Tu única tarea es decidir si el mensaje ACTUAL requiere entregar un recurso real.
 No redactes una respuesta al usuario. No hagas conversación.
 
@@ -232,7 +257,8 @@ JSON estricto:
     return{action,resourceId:validId};
   }catch(err:any){
     console.error("[VYRAL Instagram] Error al decidir recurso:",String(err?.message||err));
-    return{action:"ERROR" as ResourceAction,resourceId:null,error:String(err?.message||err)};
+    // Ambiguous AI failure must never freeze the conversation. Explicit delivery was handled above.
+    return{action:"NONE" as ResourceAction,resourceId:null,source:"ai_error" as const,error:String(err?.message||err)};
   }
 }
 
@@ -336,17 +362,6 @@ export async function processInstagramConversationEvent(event: InstagramConversa
 
   // Phase 1: action decision. No user-facing prose exists here.
   const decision=await decideResourceAction(event,state,resources);
-  if(decision.action==="ERROR"){
-    console.error("[VYRAL Instagram] Turno detenido: no se pudo determinar de forma confiable la acción de recurso.",{
-      accountId:event.account.id,contactId:event.contactId,automationId,messageId:event.messageId,error:(decision as any).error||"resource_decision_error"
-    });
-    // Never reinterpret an infrastructure/model failure as NONE and never let the Writer
-    // invent a delivery protocol while the action decision is unknown.
-    return{
-      success:false,attachmentConfirmed:false,messageId:"",textMessageId:"",resourceMessageId:"",
-      selectedResourceId:null,resourceAction:"ERROR",deliveryStatus:"none",error:"resource_decision_error"
-    };
-  }
   const decidedResource=decision.resourceId?resources.find((r:any)=>String(r.id)===decision.resourceId)||null:null;
   const alreadySent=Boolean(decidedResource&&(state.resources_sent||[]).map(String).includes(String(decidedResource.id)));
 
