@@ -14,7 +14,7 @@ const checks=[
  ["Decision runs before executor",engine.indexOf("const decision=await decideResourceAction")<engine.indexOf("const delivery=await deliverResource")],
  ["Executor runs before Writer",engine.lastIndexOf("const delivery=await deliverResource")<engine.lastIndexOf("writeConversationReply(event")],
  ["Explicit delivery has deterministic path",engine.includes('const explicitAction=explicitResourceAction(event.text)')&&engine.includes('source:"deterministic"')],
- ["Generic resource reference persists by resource_id",,engine.includes('decision.action==="REFER"')&&engine.includes('state.pending_resource_id=String(decidedResource.id)')],
+ ["Generic resource reference persists by resource_id",engine.includes('decision.action==="REFER"')&&engine.includes('state.pending_resource_id=String(decidedResource.id)')],
  ["Ambiguous AI failure does not freeze conversation",engine.includes('source:"ai_error"')&&!engine.includes('if(decision.action==="ERROR")')],
  ["Structured JSON requested",engine.includes('text:{format:{type:"json_object"}}')],
  ["JSON parser accepts standard fences",engine.includes("(?:\`\`\`|~~~)")],
