@@ -258,13 +258,29 @@ REGLAS DE REDACCIÓN:
 JSON estricto:
 {"text":"respuesta"}`;
   try{
-    const parsed=await openAiJson(prompt,260);
-    return String(parsed.text||"").trim();
-  }catch(err:any){
-    console.error("[VYRAL Instagram] Error al redactar respuesta:",String(err?.message||err));
-    if(status==="delivered")return resource?.kind==="url"?"Ahí te dejé el acceso.":"Ahí te lo mandé, fijate.";
-    if(status==="failed")return"No pude enviarlo en este momento. Pedímelo de nuevo y lo intento otra vez.";
-    return"Contame un poco más y te ayudo.";
+    const parsed=await openAiJson(prompt,360);
+    const text=String(parsed.text||"").trim();
+    if(text)return text;
+    throw new Error("writer_empty_text");
+  }catch(firstErr:any){
+    console.error("[VYRAL Instagram] Primer intento de redacción falló:",String(firstErr?.message||firstErr));
+    // Retry only the copy. Resource decision/execution is already immutable at this point.
+    try{
+      const retryPrompt=prompt+`\n\nREINTENTO DE REDACCIÓN: el intento anterior no produjo JSON utilizable. Devolvé únicamente JSON válido con una propiedad text no vacía. Contestá específicamente el MENSAJE ACTUAL usando el perfil y el historial; no uses respuestas genéricas.`;
+      const parsed=await openAiJson(retryPrompt,420);
+      const text=String(parsed.text||"").trim();
+      if(text)return text;
+      throw new Error("writer_retry_empty_text");
+    }catch(secondErr:any){
+      console.error("[VYRAL Instagram] Segundo intento de redacción falló:",String(secondErr?.message||secondErr));
+      if(status==="delivered")return resource?.kind==="url"?"Ahí te dejé el acceso.":"Ahí te lo mandé, fijate.";
+      if(status==="failed")return"No pude enviarlo en este momento. Pedímelo de nuevo y lo intento otra vez.";
+      if(status==="already_sent")return"Ya te lo había dejado más arriba. Si no te aparece, decime y lo revisamos.";
+      // Last-resort copy must still acknowledge the actual turn instead of emitting a canned loop.
+      const current=String(event.text||"").trim();
+      if(/\?/.test(current))return"Sí, entendí tu pregunta. Ahora mismo no pude generar una respuesta completa; escribímela una vez más y te respondo puntual.";
+      return"Entendí lo que me decís. Ahora mismo no pude generar la respuesta completa; mandame el siguiente punto y sigo desde ahí.";
+    }
   }
 }
 
