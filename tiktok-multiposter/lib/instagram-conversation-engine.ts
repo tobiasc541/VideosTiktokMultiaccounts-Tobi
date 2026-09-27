@@ -272,14 +272,17 @@ JSON estricto:
       if(text)return text;
       throw new Error("writer_retry_empty_text");
     }catch(secondErr:any){
-      console.error("[VYRAL Instagram] Segundo intento de redacción falló:",String(secondErr?.message||secondErr));
-      if(status==="delivered")return resource?.kind==="url"?"Ahí te dejé el acceso.":"Ahí te lo mandé, fijate.";
-      if(status==="failed")return"No pude enviarlo en este momento. Pedímelo de nuevo y lo intento otra vez.";
-      if(status==="already_sent")return"Ya te lo había dejado más arriba. Si no te aparece, decime y lo revisamos.";
-      // Last-resort copy must still acknowledge the actual turn instead of emitting a canned loop.
-      const current=String(event.text||"").trim();
-      if(/\?/.test(current))return"Sí, entendí tu pregunta. Ahora mismo no pude generar una respuesta completa; escribímela una vez más y te respondo puntual.";
-      return"Entendí lo que me decís. Ahora mismo no pude generar la respuesta completa; mandame el siguiente punto y sigo desde ahí.";
+      console.error("[VYRAL Instagram] Segundo intento de redacción falló; se suprime el DM para no exponer un fallback al cliente.",{
+        firstError:String(firstErr?.message||firstErr),
+        secondError:String(secondErr?.message||secondErr),
+        deliveryStatus:status,
+        resourceId:resource?.id?String(resource.id):null,
+        contactId:event.contactId
+      });
+      // Production rule: never expose canned/error copy to the Instagram user.
+      // Returning an empty string makes the caller skip Meta text delivery while preserving
+      // any resource action that the independent executor already confirmed.
+      return"";
     }
   }
 }
