@@ -140,66 +140,35 @@ async function loadResources(userId: string, a: any) {
   return q.data || [];
 }
 
-type ResourceAction = "NONE" | "REFER" | "SEND" | "RESEND" | "ERROR";
 type DeliveryStatus = "none" | "delivered" | "already_sent" | "failed";
 
 function formattedResources(resources:any[]){
   return resources.length?resources.map((r:any)=>`- ID: "${String(r.id)}"
   Nombre: "${String(r.name||"Sin nombre")}"
   Tipo: "${String(r.kind||(r.storage_path?"file":"url"))}"
-  Qué demuestra o contiene: "${String(r.purpose||"Sin descripción")}"
-  Cuándo se debe enviar: "${String(r.send_when||"Sin condición")}"`).join("\n"):"No hay recursos disponibles.";
-}
-
-const RESOURCE_STOPWORDS=new Set("a al algo como con cual cuando de del el en es esta este esto la las lo los me mi para por que se si su te tu un una y ya".split(" "));
-function resourceTerms(value:any){return new Set(norm(value).replace(/https?:\/\/\S+/g," ").replace(/[^a-z0-9ñ]+/g," ").split(/\s+/).filter((w:string)=>w.length>2&&!RESOURCE_STOPWORDS.has(w)))}
-function resourceContextScore(r:any,current:string,history:string){
-  const meta=resourceTerms(`${r?.name||""} ${r?.purpose||""} ${r?.send_when||""}`),cur=resourceTerms(current),hist=resourceTerms(history);
-  let a=0,b=0;for(const w of cur)if(meta.has(w))a++;for(const w of hist)if(meta.has(w))b++;return a*5+Math.min(b,5);
-}
-function resolveContextualResource(resources:any[],current:string,history:string,pending?:string|null){
-  if(pending){const p=resources.find((r:any)=>String(r.id)===String(pending));if(p)return p}
-  const ranked=resources.map((r:any)=>({r,score:resourceContextScore(r,current,history)})).sort((a:any,b:any)=>b.score-a.score);
-  if(!ranked.length||ranked[0].score<2||(ranked[1]&&ranked[0].score===ranked[1].score))return null;
-  return ranked[0].r;
-}
-function explicitResourceAction(text:string){
-  const t=norm(text);
-  if(/\b(no (me )?(llego|aparece)|no me (lo|la) (mandaste|enviaste|pasaste)|reenvi|otra vez|de nuevo)\b/.test(t))return "RESEND" as ResourceAction;
-  if(/\b(mandame|enviame|pasame|compartime|dame|me lo podrias enviar|me la podrias enviar|como (me )?(uno|unir|entro|ingreso|accedo)|donde (me )?(uno|entro|ingreso|accedo)|quiero (unirme|entrar|ingresar|acceder))\b/.test(t))return "SEND" as ResourceAction;
-  return null;
+  Contenido/propósito: "${String(r.purpose||"Sin descripción")}"
+  Cuándo corresponde entregarlo: "${String(r.send_when||"Sin condición")}"`).join("\n"):"No hay recursos disponibles.";
 }
 
 function parseAiJson(rawValue:any){
   const raw=String(rawValue||"").trim();
   if(!raw)throw new Error("openai_empty_output");
-  const unfenced=raw
-    .replace(/^\s*(?:```|~~~)(?:json)?\s*/i,"")
-    .replace(/\s*(?:```|~~~)\s*$/i,"")
-    .trim();
+  const unfenced=raw.replace(/^\s*(?:```|~~~)(?:json)?\s*/i,"").replace(/\s*(?:```|~~~)\s*$/i,"").trim();
   try{return JSON.parse(unfenced)}catch(firstErr){
-    // Defensive compatibility only: structured output should normally make this unnecessary.
     const start=unfenced.indexOf("{"),end=unfenced.lastIndexOf("}");
-    if(start>=0&&end>start){
-      try{return JSON.parse(unfenced.slice(start,end+1))}catch{}
-    }
+    if(start>=0&&end>start){try{return JSON.parse(unfenced.slice(start,end+1))}catch{}}
     throw new Error(`openai_invalid_json: ${String((firstErr as any)?.message||firstErr)}`);
   }
 }
 
-async function openAiJson(prompt:string,maxOutputTokens=300){
+async function openAiJson(prompt:string,maxOutputTokens=700){
   const key=process.env.VYRAL_CREATOR_PRODUCTION;
   if(!key)throw new Error("openai_key_missing");
   const r=await fetch("https://api.openai.com/v1/responses",{
     method:"POST",
     headers:{Authorization:`Bearer ${key}`,"Content-Type":"application/json"},
-    body:JSON.stringify({
-      model:"gpt-5.6-luna",
-      input:prompt,
-      max_output_tokens:maxOutputTokens,
-      text:{format:{type:"json_object"}}
-    }),
-    signal:AbortSignal.timeout(12000)
+    body:JSON.stringify({model:"gpt-5.6-luna",input:prompt,max_output_tokens:maxOutputTokens,text:{format:{type:"json_object"}}}),
+    signal:AbortSignal.timeout(15000)
   });
   const j=await r.json().catch(()=>({}));
   if(!r.ok)throw new Error(j?.error?.message||`OpenAI HTTP ${r.status}`);
@@ -208,214 +177,102 @@ async function openAiJson(prompt:string,maxOutputTokens=300){
   return parseAiJson(raw);
 }
 
-/**
- * RESOURCE DECISION ENGINE
- * Decides only whether a resource action exists. It never writes user-facing copy.
- * Style/tone rules cannot influence execution anymore.
- */
-async function decideResourceAction(event:InstagramConversationEvent,state:any,resources:any[]){
-  if(!resources.length)return{action:"NONE" as ResourceAction,resourceId:null as string|null};
-  // Explicit requests are deterministic: they must not wait for an LLM/network decision.
-  const explicitAction=explicitResourceAction(event.text);
-  if(explicitAction){
-    const resolved=resolveContextualResource(resources,event.text,event.history||"",state.pending_resource_id);
-    if(resolved)return{action:explicitAction,resourceId:String(resolved.id),source:"deterministic" as const};
-  }
-  const prompt=`Tu única tarea es decidir si el mensaje ACTUAL requiere entregar un recurso real.
-No redactes una respuesta al usuario. No hagas conversación.
+async function runConversationAgent(event:InstagramConversationEvent,profile:any,resources:any[],state:any){
+  const prompt=`Sos el agente conversacional de Instagram de este negocio. Tenés libertad para conversar como un excelente humano especializado en esta empresa.
+
+BRAND BRAIN (fuente factual privada):
+${JSON.stringify(profile||{})}
+
+CONTEXTO DE LA PUBLICACIÓN/HISTORIA QUE ORIGINÓ LA CONVERSACIÓN:
+${JSON.stringify(event.contextPayload||{})}
+
+HISTORIAL RECIENTE:
+${event.history||"Sin historial previo"}
 
 MENSAJE ACTUAL:
 ${event.text}
 
-HISTORIAL:
-${event.history||"Sin historial previo"}
-
-RECURSOS DISPONIBLES:
+RECURSOS REALES DISPONIBLES:
 ${formattedResources(resources)}
 
-IDS YA ENTREGADOS EN ESTA ACTIVACIÓN:
+RECURSOS YA ENTREGADOS EN ESTA ACTIVACIÓN:
 ${JSON.stringify(state.resources_sent||[])}
 
-REGLAS:
-- Compará semánticamente el mensaje actual + historial con "Cuándo se debe enviar" y "Qué demuestra o contiene".
-- REFER: la conversación identifica claramente un recurso concreto como respuesta útil, pero el usuario todavía no pidió/aceptó recibirlo. REFER sólo fija continuidad; NO envía nada.\n- SEND: el usuario pide/acepta recibir acceso, link, archivo, prueba, muestra, evidencia o algo que coincide claramente con la condición de un recurso y ese recurso todavía no fue entregado.
-- RESEND: únicamente cuando el usuario actual indica que no lo recibió/no aparece o pide explícitamente que se lo vuelvan a enviar.
-- NONE: conversación, agradecimiento, preguntas sobre algo ya visto, o cuando no corresponde entregar nada.
-- Una pregunta como "cómo me uno/entro/accedo" sí requiere SEND si existe un recurso de acceso pertinente y todavía no fue entregado.
-- No selecciones por simple afinidad temática. Tiene que existir intención real de recibir/usar/ver el recurso o una condición send_when inequívoca.
-- Nunca inventes IDs.
+TU TRABAJO:
+- Respondé primero a lo que la persona quiso decir AHORA.
+- Usá el historial como memoria real. No vuelvas a explicar algo que ya quedó explicado salvo que te lo pidan.
+- Adaptá idioma, tono, longitud y nivel técnico a la persona y al Brand Brain.
+- No inventes datos del negocio.
+- No fuerces preguntas, ventas ni recursos.
+- Si el usuario pide, acepta, necesita o claramente corresponde recibir UNO de los recursos disponibles según la conversación y su condición de entrega, elegí su ID exacto en send_resource_id.
+- Esto es semántico: puede ser cualquier negocio y cualquier tipo de recurso. Nunca dependas de palabras clave, nombres de plataformas, rubros o ejemplos concretos.
+- Si el usuario hace referencia contextual como "pasámelo", "cómo accedo", "quiero verlo" o equivalente, resolvé qué significa usando TODO el historial y los metadatos de recursos.
+- Si un recurso ya figura como entregado, no lo vuelvas a elegir por mera continuidad. Sólo elegilo nuevamente y poné resend=true si el usuario pide reenviarlo o dice que no lo recibió.
+- Cuando el usuario pide recibir algo y existe un recurso pertinente, NO te limites a explicarle cómo se obtiene: seleccioná el recurso real.
+- No escribas URLs ni copies direcciones web en text. El backend entrega URLs/archivos físicamente.
+- No afirmes que algo "ya llegó", "ya te lo mandé" o "está arriba". Tu texto se genera antes de conocer el resultado técnico. Si seleccionás un recurso, podés decir naturalmente "te lo paso por acá" o responder sin mencionar la mecánica.
+- No menciones estados internos, recursos, IDs, automatizaciones ni limitaciones técnicas.
+- Evitá repetición semántica: antes de responder, compará tu respuesta con las últimas respuestas del agente.
 
-JSON estricto:
-{"action":"NONE|REFER|SEND|RESEND","resource_id":null}`;
-  try{
-    const parsed=await openAiJson(prompt,180);
-    const candidate=parsed.resource_id==null?null:String(parsed.resource_id);
-    const validId=candidate&&resources.some((r:any)=>String(r.id)===candidate)?candidate:null;
-    const rawAction=String(parsed.action||"NONE").toUpperCase();
-    const action:ResourceAction=rawAction==="REFER"||rawAction==="SEND"||rawAction==="RESEND"?rawAction:"NONE";
-    if(!validId||action==="NONE")return{action:"NONE" as ResourceAction,resourceId:null};
-    return{action,resourceId:validId};
-  }catch(err:any){
-    console.error("[VYRAL Instagram] Error al decidir recurso:",String(err?.message||err));
-    // Ambiguous AI failure must never freeze the conversation. Explicit delivery was handled above.
-    return{action:"NONE" as ResourceAction,resourceId:null,source:"ai_error" as const,error:String(err?.message||err)};
-  }
-}
+Devolvé SOLAMENTE JSON válido:
+{"text":"respuesta natural","send_resource_id":null,"resend":false}
 
-/**
- * RESPONSE WRITER
- * Writes only from the executor result. It cannot select or trigger resources.
- */
-async function writeConversationReply(event:InstagramConversationEvent,intent:string,profile:any,resource:any,status:DeliveryStatus){
-  const resourceContext=resource?JSON.stringify({name:String(resource.name||""),kind:String(resource.kind||""),purpose:String(resource.purpose||""),send_when:String(resource.send_when||"")}):"ninguno";
-  const prompt=`Sos el cerebro conversacional de Instagram de este negocio. Conversá con la comprensión, continuidad y criterio de un excelente asistente humano que conoce profundamente la empresa.
-No sos un bot de respuestas prearmadas ni un árbol de automatizaciones. Tu única responsabilidad es comprender y REDACTAR; jamás decidís ni ejecutás acciones externas.
-
-FUENTE DE VERDAD DEL NEGOCIO (BRAND BRAIN):
-${JSON.stringify(profile||{})}
-
-CONTEXTO DE ORIGEN:
-${JSON.stringify(event.contextPayload||{})}
-
-HISTORIAL RECIENTE DE LA CONVERSACIÓN:
-${event.history||"Sin historial previo"}
-
-MENSAJE ACTUAL DEL USUARIO:
-${event.text}
-
-INTENCIÓN ORIENTATIVA DEL SISTEMA:
-${intent}
-
-RESULTADO INMUTABLE DEL EJECUTOR:
-delivery_status=${status}
-resource=${resourceContext}
-
-CÓMO PENSAR LA CONVERSACIÓN:
-1. Entendé primero qué quiso comunicar o conseguir la persona AHORA. Contestá esa intención concreta antes de intentar avanzar la conversación.
-2. Usá el Brand Brain como conocimiento privado y fuente factual del negocio. Integralo naturalmente; nunca recites campos ni digas que consultaste un perfil.
-3. Usá el historial como memoria semántica. Recordá qué preguntó, qué respondió el agente, qué ya quedó claro, qué está pendiente y el tono de la conversación.
-4. No repitas información ya comunicada salvo que el usuario pida aclararla, repetirla o exista una necesidad real de desambiguación. Parafrasear la misma idea también cuenta como repetición.
-5. Adaptate a la persona: idioma, registro, formalidad, vocabulario, longitud y nivel técnico. Si escribe corto, normalmente respondé corto. Si hace una pregunta técnica o pide explicación, desarrollá lo necesario sin convertirlo en un ensayo.
-6. Soná humano y contextual. Evitá muletillas de bot, cierres automáticos, preguntas de seguimiento innecesarias y frases genéricas. No termines cada turno con una pregunta.
-7. Si falta un dato del negocio, no lo inventes. Podés reconocer el límite de manera natural o hacer UNA pregunta concreta sólo si realmente es necesaria para responder.
-8. No fuerces ventas, recursos ni CTAs. Si corresponde continuar conversando, continuá. Si la respuesta ya está completa, terminá ahí.
-9. No hagas eco del saludo ni copies la frase del usuario como introducción.
-10. Respetá especialmente brand_voice, words_to_use y words_to_avoid cuando existan. Si no existen, inferí un tono natural del historial.
-
-VERDAD SOBRE ACCIONES Y ENTREGAS:
-- delivered = Meta confirmó message_id en ESTE turno. Sólo entonces podés hablar de algo que acaba de enviarse.
-- already_sent = ya había sido entregado antes. No digas que acabás de enviarlo ni que lo reenviás.
-- failed = el intento de entrega falló. No afirmes ni insinúes éxito.
-- none = no hubo entrega en este turno. Está prohibido afirmar o insinuar "te lo pasé", "ahí está", "tocá el link que te mandé", "te adjunto", "te envié" o equivalentes.
-- Nunca inventes mecanismos, palabras clave, pasos o promesas para provocar una entrega futura. Si el Executor no confirmó una entrega, no digas "respondé X", "avisame y te lo paso", "pedímelo de nuevo", "no se adjuntó", ni equivalentes. No expliques estados internos del sistema.
-- Si delivered y el historial ya explicó qué contiene/para qué sirve, limitate a una confirmación o CTA mínima; no vuelvas a vender ni explicar lo mismo.
-- Si delivered y el recurso todavía necesita contexto para que el usuario entienda qué recibió, agregá sólo el contexto nuevo imprescindible.
-- JAMÁS copies, reconstruyas ni escribas URLs, dominios, enlaces markdown o direcciones web de recursos. Los enlaces los entrega exclusivamente el backend.
-- No uses frente al cliente jerga interna como "recurso", "asset", "lead magnet", "send_when", "Brand Brain" o nombres de estados internos.
-
-LONGITUD:
-- Conversación cotidiana, confirmaciones y preguntas simples: preferí 1–2 oraciones.
-- Preguntas técnicas, explicativas o comparativas: usá las oraciones necesarias para responder bien, normalmente 2–5.
-- Nunca alargues una respuesta sólo para parecer útil.
-
-CONTROL FINAL ANTES DE RESPONDER:
-Preguntate silenciosamente: ¿respondí lo que realmente preguntó?, ¿estoy repitiendo algo que ya sabe?, ¿inventé algún dato?, ¿afirmé una acción que el ejecutor no confirmó?, ¿suena como esta marca hablando con esta persona? Corregí cualquiera de esos problemas antes de devolver el JSON.
-
-Devolvé únicamente JSON válido:
-{"text":"respuesta final al usuario"}`;
-  try{
-    const parsed=await openAiJson(prompt,520);
-    const text=String(parsed.text||"").trim();
-    if(text)return text;
-    throw new Error("writer_empty_text");
-  }catch(firstErr:any){
-    console.error("[VYRAL Instagram] Primer intento de redacción falló:",String(firstErr?.message||firstErr));
-    try{
-      const retryPrompt=prompt+`\n\nREINTENTO TÉCNICO: la salida anterior no pudo procesarse. Conservá exactamente el mismo razonamiento conversacional y devolvé únicamente JSON válido con una propiedad text no vacía. No simplifiques a una respuesta genérica.`;
-      const parsed=await openAiJson(retryPrompt,600);
-      const text=String(parsed.text||"").trim();
-      if(text)return text;
-      throw new Error("writer_retry_empty_text");
-    }catch(secondErr:any){
-      console.error("[VYRAL Instagram] Segundo intento de redacción falló; se suprime el DM para no exponer un fallback al cliente.",{
-        firstError:String(firstErr?.message||firstErr),
-        secondError:String(secondErr?.message||secondErr),
-        deliveryStatus:status,
-        resourceId:resource?.id?String(resource.id):null,
-        contactId:event.contactId
-      });
-      return"";
-    }
-  }
+send_resource_id debe ser null o un ID EXACTO de RECURSOS REALES DISPONIBLES. resend sólo puede ser true cuando el usuario actual pide una nueva entrega de algo previamente enviado.`;
+  const parsed=await openAiJson(prompt,750);
+  const text=String(parsed.text||"").trim();
+  const candidate=parsed.send_resource_id==null?null:String(parsed.send_resource_id);
+  const resourceId=candidate&&resources.some((r:any)=>String(r.id)===candidate)?candidate:null;
+  return{text,resourceId,resend:Boolean(parsed.resend)&&Boolean(resourceId)};
 }
 
 export async function processInstagramConversationEvent(event: InstagramConversationEvent) {
   const db=supabaseAdmin(),a=event.automation,automationId=String(a.id||"");
   const key={account_id:event.account.id,contact_id:event.contactId,automation_id:automationId};
   const found=await db.from("instagram_conversation_state").select("*").match(key).maybeSingle();
-  let state:any=found.data||{...key,user_id:event.account.user_id,thread_id:event.threadId||null,current_stage:"opening",origin:event.origin||"direct_dm",resources_offered:[],resources_sent:[],pending_resource_id:null};
+  const state:any=found.data||{...key,user_id:event.account.user_id,thread_id:event.threadId||null,current_stage:"discovery",origin:event.origin||"direct_dm",resources_offered:[],resources_sent:[],pending_resource_id:null};
 
-  const resources=await loadResources(event.account.user_id,a);
-  const intent=classifyIntent(event.text);
-  const profileQ=await db.from("vyral_bussines_profile").select("*").eq("user_id",String(event.account.user_id)).maybeSingle();
+  const [resources,profileQ]=await Promise.all([
+    loadResources(event.account.user_id,a),
+    db.from("vyral_bussines_profile").select("*").eq("user_id",String(event.account.user_id)).maybeSingle()
+  ]);
   const profile=profileQ.data||{};
 
-  // Phase 1: action decision. No user-facing prose exists here.
-  const decision=await decideResourceAction(event,state,resources);
-  const decidedResource=decision.resourceId?resources.find((r:any)=>String(r.id)===decision.resourceId)||null:null;
-  if(decision.action==="REFER"&&decidedResource){
-    state.resources_offered=uniq([...(state.resources_offered||[]),String(decidedResource.id)]);
-    state.pending_resource_id=String(decidedResource.id);
-  }
-  const alreadySent=Boolean(decidedResource&&(state.resources_sent||[]).map(String).includes(String(decidedResource.id)));
-
-  // Phase 2: deterministic executor. Only this phase can physically send a resource.
-  let deliveryStatus:DeliveryStatus="none";
-  let resourceMessageId="";
-  let executedResource:any=null;
-
-  if(decidedResource){
-    if(decision.action==="RESEND"){
-      const delivery=await deliverResource(db,event,automationId,state,decidedResource);
-      executedResource=decidedResource;
-      deliveryStatus=delivery.sent?"delivered":"failed";
-      resourceMessageId=delivery.messageId||"";
-    }else if(decision.action==="SEND"&&!alreadySent){
-      const delivery=await deliverResource(db,event,automationId,state,decidedResource);
-      executedResource=decidedResource;
-      deliveryStatus=delivery.sent?"delivered":"failed";
-      resourceMessageId=delivery.messageId||"";
-    }else if(decision.action==="SEND"&&alreadySent){
-      executedResource=decidedResource;
-      deliveryStatus="already_sent";
-      state.pending_resource_id=null;
-      if(state.current_stage==="resource_ready")state.current_stage="resource_sent";
-    }
+  let agent:{text:string;resourceId:string|null;resend:boolean};
+  try{
+    agent=await runConversationAgent(event,profile,resources,state);
+  }catch(err:any){
+    console.error("[VYRAL Instagram] Error del agente conversacional:",String(err?.message||err));
+    return{success:false,attachmentConfirmed:false,messageId:"",textMessageId:"",resourceMessageId:"",selectedResourceId:null,resourceAction:"ERROR",deliveryStatus:"none",error:"conversation_agent_error"};
   }
 
-  // Phase 3: copy only. REFER gives the Writer context but never executes delivery.
-  const writerResource=executedResource||(decision.action==="REFER"?decidedResource:null);
-  const replyText=await writeConversationReply(event,intent,profile,writerResource,deliveryStatus);
+  const selected=agent.resourceId?resources.find((r:any)=>String(r.id)===agent.resourceId)||null:null;
+  const alreadySent=Boolean(selected&&(state.resources_sent||[]).map(String).includes(String(selected.id)));
+  let deliveryStatus:DeliveryStatus="none",resourceMessageId="";
+
+  if(selected&&(!alreadySent||agent.resend)){
+    const delivery=await deliverResource(db,event,automationId,state,selected);
+    deliveryStatus=delivery.sent?"delivered":"failed";
+    resourceMessageId=delivery.messageId||"";
+  }else if(selected&&alreadySent){
+    deliveryStatus="already_sent";
+  }
+
   let textMessageId="";
-  if(replyText){
-    const metaRes=await metaSend(event.account,event.contactId,{message:{text:replyText}});
+  if(agent.text){
+    const metaRes=await metaSend(event.account,event.contactId,{message:{text:agent.text}});
     textMessageId=String(metaRes.message_id||"");
     await db.from("vyral_inbox_messages").insert({
       user_id:event.account.user_id,account_id:event.account.id,platform:"instagram",contact_id:event.contactId,
-      message_id:textMessageId,body:replyText,direction:"out",sender_type:"ai",automation_id:automationId
+      message_id:textMessageId,body:agent.text,direction:"out",sender_type:"ai",automation_id:automationId
     });
   }
 
+  state.pending_resource_id=null;
   await db.from("instagram_conversation_state").upsert({...state,updated_at:new Date().toISOString()},{onConflict:"account_id,contact_id,automation_id"});
 
   return{
-    success:true,
-    attachmentConfirmed:deliveryStatus==="delivered",
-    messageId:textMessageId||resourceMessageId||"",
-    textMessageId,
-    resourceMessageId,
-    selectedResourceId:executedResource?String(executedResource.id):null,
-    resourceAction:decision.action,
-    deliveryStatus
+    success:true,attachmentConfirmed:deliveryStatus==="delivered",messageId:textMessageId||resourceMessageId||"",
+    textMessageId,resourceMessageId,selectedResourceId:selected?String(selected.id):null,
+    resourceAction:selected?(agent.resend?"RESEND":"SEND"):"NONE",deliveryStatus
   };
 }
