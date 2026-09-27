@@ -13,7 +13,7 @@ const checks=[
  ["Writer exists",engine.includes("async function writeConversationReply")],
  ["Decision runs before executor",engine.indexOf("const decision=await decideResourceAction")<engine.indexOf("const delivery=await deliverResource")],
  ["Executor runs before Writer",engine.lastIndexOf("const delivery=await deliverResource")<engine.lastIndexOf("writeConversationReply(event")],
- ["Explicit delivery has deterministic path",engine.includes('const explicitAction=explicitResourceAction(event.text)')&&engine.includes('source:"deterministic"')],
+ ["Explicit delivery has deterministic path",engine.includes('const explicitAction=explicitResourceAction(event.text)')&&engine.includes('source:"deterministic"')],\n ["Mentioned resource persists as pending context",engine.includes('decision.action==="REFER"')&&engine.includes('state.pending_resource_id=String(decidedResource.id)')],
  ["Ambiguous AI failure does not freeze conversation",engine.includes('source:"ai_error"')&&!engine.includes('if(decision.action==="ERROR")')],
  ["Structured JSON requested",engine.includes('text:{format:{type:"json_object"}}')],
  ["JSON parser accepts standard fences",engine.includes("(?:\`\`\`|~~~)")],
@@ -41,7 +41,7 @@ const scenarios=[
  "topic change -> reason about current turn with history",
  "Writer failure -> no canned DM",
  "explicit access request -> deterministic SEND without LLM dependency",
- "contextual pronoun request -> resolve resource from recent history",
+ "resource mentioned without request -> REFER -> persist pending_resource_id without delivery",\n "contextual pronoun acceptance -> SEND exact pending_resource_id",
  "ambiguous Decision AI failure -> continue conversation without claiming delivery",
  "duplicate inbound webhook -> no duplicate processing",
  "opening comment -> name + configured opening audio without AI opener"
