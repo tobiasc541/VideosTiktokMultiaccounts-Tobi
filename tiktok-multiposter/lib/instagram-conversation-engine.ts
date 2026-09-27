@@ -140,7 +140,7 @@ async function loadResources(userId: string, a: any) {
   return q.data || [];
 }
 
-type ResourceAction = "NONE" | "SEND" | "RESEND" | "ERROR";
+type ResourceAction = "NONE" | "REFER" | "SEND" | "RESEND" | "ERROR";
 type DeliveryStatus = "none" | "delivered" | "already_sent" | "failed";
 
 function formattedResources(resources:any[]){
@@ -238,7 +238,7 @@ ${JSON.stringify(state.resources_sent||[])}
 
 REGLAS:
 - Compará semánticamente el mensaje actual + historial con "Cuándo se debe enviar" y "Qué demuestra o contiene".
-- SEND: el usuario pide acceso, link, archivo, prueba, muestra, evidencia o algo que coincide claramente con la condición de un recurso y ese recurso todavía no fue entregado.
+- REFER: la conversación identifica claramente un recurso concreto como respuesta útil, pero el usuario todavía no pidió/aceptó recibirlo. REFER sólo fija continuidad; NO envía nada.\n- SEND: el usuario pide/acepta recibir acceso, link, archivo, prueba, muestra, evidencia o algo que coincide claramente con la condición de un recurso y ese recurso todavía no fue entregado.
 - RESEND: únicamente cuando el usuario actual indica que no lo recibió/no aparece o pide explícitamente que se lo vuelvan a enviar.
 - NONE: conversación, agradecimiento, preguntas sobre algo ya visto, o cuando no corresponde entregar nada.
 - Una pregunta como "cómo me uno/entro/accedo" sí requiere SEND si existe un recurso de acceso pertinente y todavía no fue entregado.
@@ -246,13 +246,13 @@ REGLAS:
 - Nunca inventes IDs.
 
 JSON estricto:
-{"action":"NONE|SEND|RESEND","resource_id":null}`;
+{"action":"NONE|REFER|SEND|RESEND","resource_id":null}`;
   try{
     const parsed=await openAiJson(prompt,180);
     const candidate=parsed.resource_id==null?null:String(parsed.resource_id);
     const validId=candidate&&resources.some((r:any)=>String(r.id)===candidate)?candidate:null;
     const rawAction=String(parsed.action||"NONE").toUpperCase();
-    const action:ResourceAction=rawAction==="SEND"||rawAction==="RESEND"?rawAction:"NONE";
+    const action:ResourceAction=rawAction==="REFER"||rawAction==="SEND"||rawAction==="RESEND"?rawAction:"NONE";
     if(!validId||action==="NONE")return{action:"NONE" as ResourceAction,resourceId:null};
     return{action,resourceId:validId};
   }catch(err:any){
@@ -363,6 +363,10 @@ export async function processInstagramConversationEvent(event: InstagramConversa
   // Phase 1: action decision. No user-facing prose exists here.
   const decision=await decideResourceAction(event,state,resources);
   const decidedResource=decision.resourceId?resources.find((r:any)=>String(r.id)===decision.resourceId)||null:null;
+  if(decision.action==="REFER"&&decidedResource){
+    state.resources_offered=uniq([...(state.resources_offered||[]),String(decidedResource.id)]);
+    state.pending_resource_id=String(decidedResource.id);
+  }
   const alreadySent=Boolean(decidedResource&&(state.resources_sent||[]).map(String).includes(String(decidedResource.id)));
 
   // Phase 2: deterministic executor. Only this phase can physically send a resource.
@@ -389,8 +393,9 @@ export async function processInstagramConversationEvent(event: InstagramConversa
     }
   }
 
-  // Phase 3: copy only. The writer cannot create/cancel/alter the action above.
-  const replyText=await writeConversationReply(event,intent,profile,executedResource,deliveryStatus);
+  // Phase 3: copy only. REFER gives the Writer context but never executes delivery.
+  const writerResource=executedResource||(decision.action==="REFER"?decidedResource:null);
+  const replyText=await writeConversationReply(event,intent,profile,writerResource,deliveryStatus);
   let textMessageId="";
   if(replyText){
     const metaRes=await metaSend(event.account,event.contactId,{message:{text:replyText}});
