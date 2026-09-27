@@ -152,7 +152,7 @@ function formattedResources(resources:any[]){
 }
 
 const RESOURCE_STOPWORDS=new Set("a al algo como con cual cuando de del el en es esta este esto la las lo los me mi para por que se si su te tu un una y ya".split(" "));
-function resourceTerms(value:any){return new Set(norm(value).replace(/https?:\\/\\/\\S+/g," ").replace(/[^a-z0-9ñ]+/g," ").split(/\\s+/).filter((w:string)=>w.length>2&&!RESOURCE_STOPWORDS.has(w)))}
+function resourceTerms(value:any){return new Set(norm(value).replace(/https?:\/\/\S+/g," ").replace(/[^a-z0-9ñ]+/g," ").split(/\s+/).filter((w:string)=>w.length>2&&!RESOURCE_STOPWORDS.has(w)))}
 function resourceContextScore(r:any,current:string,history:string){
   const meta=resourceTerms(`${r?.name||""} ${r?.purpose||""} ${r?.send_when||""}`),cur=resourceTerms(current),hist=resourceTerms(history);
   let a=0,b=0;for(const w of cur)if(meta.has(w))a++;for(const w of hist)if(meta.has(w))b++;return a*5+Math.min(b,5);
@@ -165,8 +165,8 @@ function resolveContextualResource(resources:any[],current:string,history:string
 }
 function explicitResourceAction(text:string){
   const t=norm(text);
-  if(/\\b(no (me )?(llego|aparece)|no me (lo|la) (mandaste|enviaste|pasaste)|reenvi|otra vez|de nuevo)\\b/.test(t))return "RESEND" as ResourceAction;
-  if(/\\b(mandame|enviame|pasame|compartime|dame|me lo podrias enviar|me la podrias enviar|como (me )?(uno|unir|entro|ingreso|accedo)|donde (me )?(uno|entro|ingreso|accedo)|quiero (unirme|entrar|ingresar|acceder))\\b/.test(t))return "SEND" as ResourceAction;
+  if(/\b(no (me )?(llego|aparece)|no me (lo|la) (mandaste|enviaste|pasaste)|reenvi|otra vez|de nuevo)\b/.test(t))return "RESEND" as ResourceAction;
+  if(/\b(mandame|enviame|pasame|compartime|dame|me lo podrias enviar|me la podrias enviar|como (me )?(uno|unir|entro|ingreso|accedo)|donde (me )?(uno|entro|ingreso|accedo)|quiero (unirme|entrar|ingresar|acceder))\b/.test(t))return "SEND" as ResourceAction;
   return null;
 }
 
@@ -174,8 +174,8 @@ function parseAiJson(rawValue:any){
   const raw=String(rawValue||"").trim();
   if(!raw)throw new Error("openai_empty_output");
   const unfenced=raw
-    .replace(/^\\s*(?:```|~~~)(?:json)?\\s*/i,"")
-    .replace(/\\s*(?:```|~~~)\\s*$/i,"")
+    .replace(/^\s*(?:```|~~~)(?:json)?\s*/i,"")
+    .replace(/\s*(?:```|~~~)\s*$/i,"")
     .trim();
   try{return JSON.parse(unfenced)}catch(firstErr){
     // Defensive compatibility only: structured output should normally make this unnecessary.
