@@ -13,8 +13,8 @@ const checks=[
  ["Writer exists",engine.includes("async function writeConversationReply")],
  ["Decision runs before executor",engine.indexOf("const decision=await decideResourceAction")<engine.indexOf("const delivery=await deliverResource")],
  ["Executor runs before Writer",engine.lastIndexOf("const delivery=await deliverResource")<engine.lastIndexOf("writeConversationReply(event")],
- ["Decision errors are not NONE",engine.includes('action:"ERROR" as ResourceAction')],
- ["Decision error stops before Writer",engine.includes('if(decision.action==="ERROR")')],
+ ["Explicit delivery has deterministic path",engine.includes('const explicitAction=explicitResourceAction(event.text)')&&engine.includes('source:"deterministic"')],
+ ["Ambiguous AI failure does not freeze conversation",engine.includes('source:"ai_error"')&&!engine.includes('if(decision.action==="ERROR")')],
  ["Structured JSON requested",engine.includes('text:{format:{type:"json_object"}}')],
  ["JSON parser accepts standard fences",engine.includes("(?:\`\`\`|~~~)")],
  ["Writer cannot choose resource id",!engine.slice(engine.indexOf("async function writeConversationReply"),engine.indexOf("export async function processInstagramConversationEvent")).includes("send_resource_id")],
@@ -40,7 +40,9 @@ const scenarios=[
  "farewell plus substantive question -> continue conversation",
  "topic change -> reason about current turn with history",
  "Writer failure -> no canned DM",
- "Decision failure -> ERROR/fail-closed, never silently NONE",
+ "explicit access request -> deterministic SEND without LLM dependency",
+ "contextual pronoun request -> resolve resource from recent history",
+ "ambiguous Decision AI failure -> continue conversation without claiming delivery",
  "duplicate inbound webhook -> no duplicate processing",
  "opening comment -> name + configured opening audio without AI opener"
 ];
