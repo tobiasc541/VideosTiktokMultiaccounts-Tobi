@@ -30,12 +30,13 @@ async function loadVoiceConfig(userId:string,automationId:string){
   const profileQ=await db.from("vyral_voice_profiles").select("*").eq("id",settings.voice_profile_id).eq("user_id",userId).eq("status","ready").maybeSingle();
   return {settings,profile:profileQ.data||null};
 }
-function shouldUseVoice(settings:VoiceSettings|null,sentCount:number,text:string){
+function shouldUseVoice(settings:VoiceSettings|null,sentCount:number,replyNumber:number,text:string){
   if(!settings?.enabled||settings.mode==="text_only"||sentCount>=Math.min(3,Number(settings.max_ai_audios||3)))return false;
   const clean=String(text||"").trim();
   if(!clean||clean.length>700||/https?:\/\//i.test(clean))return false;
-  const probability=Math.max(0,Math.min(100,Number(settings.voice_probability??35)));
-  return Math.random()*100<probability;
+  // Deterministic VYRAL sequence after the owner-configured opening:
+  // AI reply 1 text, 2 audio, 3 text, 4 audio, 5 text, 6 audio, then text forever.
+  return replyNumber===2||replyNumber===4||replyNumber===6;
 }
 async function synthesizeVoice(text:string,profile:any,maxSeconds:number){
   const key=process.env.ELEVENLABS_API_KEY;
@@ -176,11 +177,12 @@ export async function processInstagramConversationEvent(event:InstagramConversat
   const [profileQ,resources,stateQ]=await Promise.all([
     db.from("vyral_bussines_profile").select("*").eq("user_id",String(event.account.user_id)).maybeSingle(),
     loadResources(String(event.account.user_id)),
-    db.from("instagram_conversation_state").select("id,resources_sent,ai_voice_messages_sent")
+    db.from("instagram_conversation_state").select("id,resources_sent,ai_voice_messages_sent,ai_reply_count")
       .eq("account_id",String(event.account.id)).eq("contact_id",event.contactId).eq("automation_id",automationId).maybeSingle()
   ]);
   const sentResourceIds=(stateQ.data?.resources_sent||[]).map(String);
   const voiceCount=Math.max(0,Number(stateQ.data?.ai_voice_messages_sent||0));
+  const replyNumber=Math.max(0,Number(stateQ.data?.ai_reply_count||0))+1;
   const voiceConfig=await loadVoiceConfig(String(event.account.user_id),automationId);
   const reply=await generateReply(event,profileQ.data||{},resources,sentResourceIds);
   const candidate=reply.resourceId?resources.find((r:any)=>String(r.id)===reply.resourceId)||null:null;
@@ -203,7 +205,7 @@ export async function processInstagramConversationEvent(event:InstagramConversat
     if(url)replyText=replyText.split(url).join("").replace(/\n{3,}/g,"\n\n").trim();
   }
   let textMessageId="",audioMessageId="",audioPath="";
-  const wantsVoice=Boolean(voiceConfig.profile&&shouldUseVoice(voiceConfig.settings,voiceCount,replyText));
+  const wantsVoice=Boolean(voiceConfig.profile&&shouldUseVoice(voiceConfig.settings,voiceCount,replyNumber,replyText));
   if(wantsVoice){
     const audio=await synthesizeVoice(replyText,voiceConfig.profile,Number(voiceConfig.settings?.max_audio_seconds||40)).catch(()=>null);
     if(audio){
@@ -221,6 +223,8 @@ export async function processInstagramConversationEvent(event:InstagramConversat
       message_id:textMessageId,body:replyText,direction:"out",sender_type:"ai",automation_id:automationId
     });
   }
+
+  if(stateQ.data?.id)await db.from("instagram_conversation_state").update({ai_reply_count:replyNumber,updated_at:new Date().toISOString()}).eq("id",stateQ.data.id);
 
   return{
     success:true,attachmentConfirmed:Boolean(resourceMessageId||audioMessageId),messageId:textMessageId||audioMessageId||resourceMessageId,
