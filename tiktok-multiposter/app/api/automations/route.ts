@@ -16,6 +16,15 @@ let availableVoices:any[]=[];const elevenKey=process.env.ELEVENLABS_API_KEY;
 if(elevenKey){try{const vr=await fetch("https://api.elevenlabs.io/v2/voices?page_size=100",{headers:{"xi-api-key":elevenKey},cache:"no-store"});if(vr.ok){const vj=await vr.json();availableVoices=(Array.isArray(vj.voices)?vj.voices:[]).map((v:any)=>({voice_id:String(v.voice_id||""),name:String(v.name||"Voz"),category:String(v.category||""),preview_url:String(v.preview_url||""),labels:v.labels||{}})).filter((v:any)=>v.voice_id)}}catch{}}
 return NextResponse.json({automations,paused:Boolean(meta.vyral_automations_paused),voiceProfiles:profiles.data||[],availableVoices})}
 export async function POST(req:NextRequest){const ctx=await loadUser();if(!ctx)return NextResponse.json({error:"No autorizado"},{status:401});const body=await req.json().catch(()=>({})),meta=ctx.user.user_metadata||{};
+if(body.action==="voice_preview"){
+ const voiceId=String(body.voiceId||"").trim(),language=String(body.language||"es").toLowerCase();
+ if(!voiceId)return NextResponse.json({error:"Elegí una voz."},{status:400});
+ const key=process.env.ELEVENLABS_API_KEY;if(!key)return NextResponse.json({error:"La voz todavía no está disponible."},{status:503});
+ const samples:any={es:"Hola, soy tu asistente de VYRAL. Esta es una prueba de cómo voy a sonar hablando en español.",en:"Hi, I am your VYRAL assistant. This is a preview of how I will sound speaking English.",pt:"Olá, sou seu assistente da VYRAL. Esta é uma amostra de como vou falar em português.",fr:"Bonjour, je suis votre assistant VYRAL. Voici un aperçu de ma voix en français.",de:"Hallo, ich bin dein VYRAL-Assistent. So werde ich auf Deutsch klingen.",it:"Ciao, sono il tuo assistente VYRAL. Questa è un'anteprima di come parlerò in italiano."};
+ const tr=await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}`,{method:"POST",headers:{"xi-api-key":key,"Content-Type":"application/json","Accept":"audio/mpeg"},body:JSON.stringify({text:samples[language]||samples.es,model_id:"eleven_multilingual_v2"})});
+ if(!tr.ok)return NextResponse.json({error:"No se pudo generar la prueba en ese idioma."},{status:502});
+ return new NextResponse(await tr.arrayBuffer(),{status:200,headers:{"Content-Type":"audio/mpeg","Cache-Control":"no-store"}});
+}
 if(body.action==="save_voice_settings"){
  const automationId=String(body.automationId||"");if(!automationId)return NextResponse.json({error:"Falta automationId"},{status:400});
  const enabled=Boolean(body.enabled),voiceProfileId=body.voiceProfileId?String(body.voiceProfileId):null;
