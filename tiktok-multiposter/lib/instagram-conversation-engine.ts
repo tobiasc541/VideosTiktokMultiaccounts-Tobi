@@ -19,6 +19,43 @@ async function metaRequest(account:any,recipientId:string,message:any){
   return j;
 }
 const metaSend=(account:any,recipientId:string,text:string)=>metaRequest(account,recipientId,{text});
+const metaSendAudio=(account:any,recipientId:string,url:string)=>metaRequest(account,recipientId,{attachment:{type:"audio",payload:{url}}});
+
+type VoiceSettings={enabled:boolean;voice_profile_id:string|null;max_ai_audios:number;max_audio_seconds:number;mode:string;voice_probability:number};
+async function loadVoiceConfig(userId:string,automationId:string){
+  const db=supabaseAdmin();
+  const settingsQ=await db.from("vyral_automation_voice_settings").select("*").eq("user_id",userId).eq("automation_id",automationId).maybeSingle();
+  const settings=(settingsQ.data||null) as VoiceSettings|null;
+  if(!settings?.enabled||!settings.voice_profile_id)return {settings,profile:null};
+  const profileQ=await db.from("vyral_voice_profiles").select("*").eq("id",settings.voice_profile_id).eq("user_id",userId).eq("status","ready").maybeSingle();
+  return {settings,profile:profileQ.data||null};
+}
+function shouldUseVoice(settings:VoiceSettings|null,sentCount:number,text:string){
+  if(!settings?.enabled||settings.mode==="text_only"||sentCount>=Math.min(3,Number(settings.max_ai_audios||3)))return false;
+  const clean=String(text||"").trim();
+  if(!clean||clean.length>700||/https?:\/\//i.test(clean))return false;
+  const probability=Math.max(0,Math.min(100,Number(settings.voice_probability??35)));
+  return Math.random()*100<probability;
+}
+async function synthesizeVoice(text:string,profile:any,maxSeconds:number){
+  const key=process.env.ELEVENLABS_API_KEY;
+  const voiceId=String(profile?.provider_voice_id||profile?.preset_voice_id||"").trim();
+  if(!key||!voiceId)return null;
+  const model=String(profile?.provider_settings?.model_id||"eleven_multilingual_v2");
+  const r=await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}`,{
+    method:"POST",headers:{"xi-api-key":key,"Content-Type":"application/json","Accept":"audio/mpeg"},
+    body:JSON.stringify({text,model_id:model,voice_settings:profile?.provider_settings?.voice_settings||undefined}),
+    signal:AbortSignal.timeout(Math.max(12000,Math.min(30000,Number(maxSeconds||40)*750)))
+  });
+  if(!r.ok)return null;
+  const bytes=new Uint8Array(await r.arrayBuffer());
+  if(!bytes.length)return null;
+  const path=`ai-voice/${profile.user_id}/${crypto.randomUUID()}.mp3`;
+  const up=await supabaseAdmin().storage.from("scheduled-media").upload(path,bytes,{contentType:"audio/mpeg",upsert:false});
+  if(up.error)return null;
+  const url=await signed(path);
+  return url?{url,path}:null;
+}
 
 async function signed(path:string){
   if(/^https:\/\//i.test(path))return path;
@@ -139,10 +176,12 @@ export async function processInstagramConversationEvent(event:InstagramConversat
   const [profileQ,resources,stateQ]=await Promise.all([
     db.from("vyral_bussines_profile").select("*").eq("user_id",String(event.account.user_id)).maybeSingle(),
     loadResources(String(event.account.user_id)),
-    db.from("instagram_conversation_state").select("id,resources_sent")
+    db.from("instagram_conversation_state").select("id,resources_sent,ai_voice_messages_sent")
       .eq("account_id",String(event.account.id)).eq("contact_id",event.contactId).eq("automation_id",automationId).maybeSingle()
   ]);
   const sentResourceIds=(stateQ.data?.resources_sent||[]).map(String);
+  const voiceCount=Math.max(0,Number(stateQ.data?.ai_voice_messages_sent||0));
+  const voiceConfig=await loadVoiceConfig(String(event.account.user_id),automationId);
   const reply=await generateReply(event,profileQ.data||{},resources,sentResourceIds);
   const candidate=reply.resourceId?resources.find((r:any)=>String(r.id)===reply.resourceId)||null:null;
   const alreadySent=Boolean(candidate&&sentResourceIds.includes(String(candidate.id)));
@@ -163,16 +202,29 @@ export async function processInstagramConversationEvent(event:InstagramConversat
     const url=String(resource.external_url||"").trim();
     if(url)replyText=replyText.split(url).join("").replace(/\n{3,}/g,"\n\n").trim();
   }
-  const sent=await metaSend(event.account,event.contactId,replyText);
-  const textMessageId=String(sent.message_id||"");
-  await db.from("vyral_inbox_messages").insert({
-    user_id:event.account.user_id,account_id:event.account.id,platform:"instagram",contact_id:event.contactId,
-    message_id:textMessageId,body:replyText,direction:"out",sender_type:"ai",automation_id:automationId
-  });
+  let textMessageId="",audioMessageId="",audioPath="";
+  const wantsVoice=Boolean(voiceConfig.profile&&shouldUseVoice(voiceConfig.settings,voiceCount,replyText));
+  if(wantsVoice){
+    const audio=await synthesizeVoice(replyText,voiceConfig.profile,Number(voiceConfig.settings?.max_audio_seconds||40)).catch(()=>null);
+    if(audio){
+      const audioSent=await metaSendAudio(event.account,event.contactId,audio.url);
+      audioMessageId=String(audioSent.message_id||"");audioPath=audio.path;
+      if(audioMessageId&&stateQ.data?.id)await db.from("instagram_conversation_state").update({ai_voice_messages_sent:voiceCount+1,updated_at:new Date().toISOString()}).eq("id",stateQ.data.id);
+      await db.from("vyral_inbox_messages").insert({user_id:event.account.user_id,account_id:event.account.id,platform:"instagram",contact_id:event.contactId,message_id:audioMessageId,body:replyText,direction:"out",sender_type:"ai",automation_id:automationId});
+    }
+  }
+  if(!audioMessageId){
+    const sent=await metaSend(event.account,event.contactId,replyText);
+    textMessageId=String(sent.message_id||"");
+    await db.from("vyral_inbox_messages").insert({
+      user_id:event.account.user_id,account_id:event.account.id,platform:"instagram",contact_id:event.contactId,
+      message_id:textMessageId,body:replyText,direction:"out",sender_type:"ai",automation_id:automationId
+    });
+  }
 
   return{
-    success:true,attachmentConfirmed:Boolean(resourceMessageId),messageId:textMessageId||resourceMessageId,
-    textMessageId,resourceMessageId,selectedResourceId:selected?String(selected.id):null,
+    success:true,attachmentConfirmed:Boolean(resourceMessageId||audioMessageId),messageId:textMessageId||audioMessageId||resourceMessageId,
+    textMessageId,audioMessageId,audioPath,resourceMessageId,selectedResourceId:selected?String(selected.id):null,
     resourceAction:selected?"SEND":"NONE",deliveryStatus:selected?"delivered":"none"
   };
 }
