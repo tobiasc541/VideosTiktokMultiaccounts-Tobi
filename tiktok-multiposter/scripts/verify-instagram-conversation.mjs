@@ -14,9 +14,9 @@ const checks=[
  ["Agent can select exact resource id",engine.includes('"send_resource_id":null')&&engine.includes("resources.some((x:any)=>String(x.id)===candidate)")],
  ["Selected resource is physically sent",engine.includes("async function sendResource")&&engine.includes("if(selected)")],
  ["No legacy pending state",!engine.includes("pending_resource_id")],
- ["Sent-resource memory only guards duplicate delivery",engine.includes('.select("id,resources_sent,ai_voice_messages_sent")')&&engine.includes("sentResourceIds.includes(String(candidate.id))")&&engine.includes("!alreadySent||reply.resendResource===true")&&engine.includes("resources_sent:nextSent")&&!engine.includes("pending_resource_id")],
+ ["Sent-resource memory only guards duplicate delivery",engine.includes('.select("id,resources_sent,ai_voice_messages_sent,ai_reply_count")')&&engine.includes("sentResourceIds.includes(String(candidate.id))")&&engine.includes("!alreadySent||reply.resendResource===true")&&engine.includes("resources_sent:nextSent")&&!engine.includes("pending_resource_id")],
  ["No intent classifier or REFER engine",!engine.includes("classifyIntent")&&!engine.includes("decideResourceAction")&&!engine.includes('action==="REFER"')],
- ["AI voice is capped and optional",engine.includes("ai_voice_messages_sent")&&engine.includes("Math.min(3,Number(settings.max_ai_audios||3))")&&engine.includes("voiceConfig.profile&&shouldUseVoice")],
+ ["AI voice follows fixed text/audio sequence",engine.includes("ai_voice_messages_sent")&&engine.includes("ai_reply_count")&&engine.includes("Math.min(3,Number(settings.max_ai_audios||3))")&&engine.includes("replyNumber===2||replyNumber===4||replyNumber===6")&&!engine.includes("Math.random()")],
  ["AI voice falls back to text",engine.includes("if(!audioMessageId)")&&engine.includes("metaSend(event.account,event.contactId,replyText)")],
  ["AI voice uses confirmed Meta audio delivery",engine.includes("metaSendAudio")&&engine.includes('attachment:{type:"audio"')],
 ];
