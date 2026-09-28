@@ -62,7 +62,7 @@ async function processComment(db:any,account:any,value:any){const commentId=Stri
        user_id:account.user_id,account_id:account.id,automation_id:String(a.id||""),contact_id:fromId,
        current_stage:"opening",origin:"post_comment",
        context_payload:{post_title:String(a.contentLabel||""),media_id:mediaId,target_topic:String(a.contentLabel||""),opening_in_progress:true,opening_sent:false},
-       last_audio_id:null,voice_assets_sent:[],resources_offered:[],resources_sent:[],pending_resource_id:null,last_intent:"opening",updated_at:new Date().toISOString()
+       last_audio_id:null,voice_assets_sent:[],resources_offered:[],resources_sent:[],pending_resource_id:null,last_intent:"opening",ai_reply_count:0,ai_voice_messages_sent:0,updated_at:new Date().toISOString()
      },{onConflict:"account_id,contact_id,automation_id"});
    }
    if(dm){const j=await ig(`${GRAPH}/${VER}/${encodeURIComponent(account.instagram_user_id)}/messages`,account.access_token,{recipient:{comment_id:commentId},message:{text:dm}});messageId=String(j.message_id||"")}
