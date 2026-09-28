@@ -19,9 +19,9 @@ export async function POST(req:NextRequest){const ctx=await loadUser();if(!ctx)r
 if(body.action==="voice_catalog"){
  const key=process.env.ELEVENLABS_API_KEY;if(!key)return NextResponse.json({voices:[]});
  const language=String(body.language||"").toLowerCase(),country=String(body.country||"").toLowerCase(),section=String(body.section||"trending");
- const accentMap:any={argentina:"argentinian",mexico:"mexican",spain:"castilian",usa:"american",uk:"british",australia:"australian",brazil:"brazilian",portugal:"portuguese"};
+ const localeMap:any={argentina:"es-AR",mexico:"es-MX",spain:"es-ES",usa:"en-US",uk:"en-GB",australia:"en-AU",brazil:"pt-BR",portugal:"pt-PT"};
  const qs=new URLSearchParams({page_size:"60",sort:section==="popular"?"cloned_by_count":section==="viral"?"usage_character_count_1y":"trending"});
- if(language&&language!=="all")qs.set("language",language);if(country&&country!=="all"&&accentMap[country])qs.set("accent",accentMap[country]);
+ if(language&&language!=="all")qs.set("language",language);if(country&&country!=="all"&&localeMap[country])qs.set("locale",localeMap[country]);
  const vr=await fetch("https://api.elevenlabs.io/v1/shared-voices?"+qs.toString(),{headers:{"xi-api-key":key},cache:"no-store"});
  if(!vr.ok)return NextResponse.json({voices:[]});
  const j=await vr.json();return NextResponse.json({voices:(j.voices||[]).map((v:any)=>({voice_id:v.voice_id,name:v.name,language:v.language,locale:v.locale,accent:v.accent,gender:v.gender,age:v.age,use_case:v.use_case,description:v.description,preview_url:v.preview_url,public_owner_id:v.public_owner_id,usage_character_count_1y:v.usage_character_count_1y,cloned_by_count:v.cloned_by_count,featured:v.featured}))});
