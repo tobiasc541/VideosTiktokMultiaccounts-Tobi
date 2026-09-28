@@ -19,12 +19,12 @@ export async function POST(req:NextRequest){const ctx=await loadUser();if(!ctx)r
 if(body.action==="voice_catalog"){
  const key=process.env.ELEVENLABS_API_KEY;if(!key)return NextResponse.json({voices:[]});
  const language=String(body.language||"").toLowerCase(),country=String(body.country||"").toLowerCase(),section=String(body.section||"trending");
- const localeMap:any={argentina:"es-AR",mexico:"es-MX",spain:"es-ES",usa:"en-US",uk:"en-GB",australia:"en-AU",brazil:"pt-BR",portugal:"pt-PT"};
+ const localeMap:any={argentina:"es-AR",mexico:"es-MX",spain:"es-ES",usa:"en-US",uk:"en-GB",australia:"en-AU",brazil:"pt-BR",portugal:"pt-PT"};const accentMap:any={argentina:["argentine","argentinian"],mexico:["mexican"],spain:["castilian","spanish"],usa:["american"],uk:["british"],australia:["australian"],brazil:["brazilian"],portugal:["portuguese"]};
  const qs=new URLSearchParams({page_size:"60",sort:section==="popular"?"cloned_by_count":section==="viral"?"usage_character_count_1y":"trending"});
- if(language&&language!=="all")qs.set("language",language);if(country&&country!=="all"&&localeMap[country])qs.set("locale",localeMap[country]);
+ if(language&&language!=="all")qs.set("language",language);if(country&&country!=="all"&&accentMap[country]?.[0])qs.set("accent",accentMap[country][0]);
  const vr=await fetch("https://api.elevenlabs.io/v1/shared-voices?"+qs.toString(),{headers:{"xi-api-key":key},cache:"no-store"});
  if(!vr.ok)return NextResponse.json({voices:[]});
- const j=await vr.json();return NextResponse.json({voices:(j.voices||[]).map((v:any)=>({voice_id:v.voice_id,name:v.name,language:v.language,locale:v.locale,accent:v.accent,gender:v.gender,age:v.age,use_case:v.use_case,description:v.description,preview_url:v.preview_url,public_owner_id:v.public_owner_id,usage_character_count_1y:v.usage_character_count_1y,cloned_by_count:v.cloned_by_count,featured:v.featured}))});
+ const j=await vr.json();let voices=(j.voices||[]);if(country&&country!=="all"){const allowed=(accentMap[country]||[]).map((x:string)=>x.toLowerCase());const wantedLocale=String(localeMap[country]||"").toLowerCase();voices=voices.filter((v:any)=>{const a=String(v.accent||"").toLowerCase().trim();const verified=Array.isArray(v.verified_languages)?v.verified_languages:[];return allowed.includes(a)||verified.some((x:any)=>String(x.locale||"").toLowerCase()===wantedLocale&&allowed.includes(String(x.accent||"").toLowerCase().trim()))})}return NextResponse.json({voices:voices.map((v:any)=>({voice_id:v.voice_id,name:v.name,language:v.language,locale:v.locale,accent:v.accent,gender:v.gender,age:v.age,use_case:v.use_case,description:v.description,preview_url:v.preview_url,public_owner_id:v.public_owner_id,usage_character_count_1y:v.usage_character_count_1y,cloned_by_count:v.cloned_by_count,featured:v.featured}))});
 }
 if(body.action==="voice_preview"){
  const voiceId=String(body.voiceId||"").trim(),language=String(body.language||"es").toLowerCase();
