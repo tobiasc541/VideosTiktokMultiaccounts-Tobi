@@ -16,6 +16,17 @@ let availableVoices:any[]=[];const elevenKey=process.env.ELEVENLABS_API_KEY;
 if(elevenKey){try{const vr=await fetch("https://api.elevenlabs.io/v2/voices?page_size=100",{headers:{"xi-api-key":elevenKey},cache:"no-store"});if(vr.ok){const vj=await vr.json();availableVoices=(Array.isArray(vj.voices)?vj.voices:[]).map((v:any)=>({voice_id:String(v.voice_id||""),name:String(v.name||"Voz"),category:String(v.category||""),preview_url:String(v.preview_url||""),labels:v.labels||{}})).filter((v:any)=>v.voice_id)}}catch{}}
 return NextResponse.json({automations,paused:Boolean(meta.vyral_automations_paused),voiceProfiles:profiles.data||[],availableVoices})}
 export async function POST(req:NextRequest){const ctx=await loadUser();if(!ctx)return NextResponse.json({error:"No autorizado"},{status:401});const body=await req.json().catch(()=>({})),meta=ctx.user.user_metadata||{};
+if(body.action==="voice_catalog"&&String(body.section||"")==="test"){
+ const key=process.env.ELEVENLABS_API_KEY;if(!key)return NextResponse.json({voices:[]});
+ const vr=await fetch("https://api.elevenlabs.io/v2/voices?page_size=100",{headers:{"xi-api-key":key},cache:"no-store"});
+ if(!vr.ok)return NextResponse.json({voices:[]});
+ const j=await vr.json();const language=String(body.language||"all").toLowerCase(),country=String(body.country||"all").toLowerCase();
+ const localeMap:any={argentina:"es-AR",mexico:"es-MX",spain:"es-ES",usa:"en-US",uk:"en-GB",australia:"en-AU",brazil:"pt-BR",portugal:"pt-PT"};
+ let voices=(Array.isArray(j.voices)?j.voices:[]).map((v:any)=>({voice_id:String(v.voice_id||""),name:String(v.name||"Voz"),category:String(v.category||""),preview_url:String(v.preview_url||""),labels:v.labels||{},accent:String(v.labels?.accent||""),gender:String(v.labels?.gender||""),language:String(v.labels?.language||"")}));
+ if(language!=="all")voices=voices.filter((v:any)=>!v.language||v.language.toLowerCase()===language||v.category==="premade");
+ if(country!=="all"){const loc=localeMap[country]||"";const wanted=country==="argentina"?["argentine","argentinian"]:country==="mexico"?["mexican"]:country==="spain"?["spanish","castilian"]:country==="usa"?["american"]:country==="uk"?["british"]:country==="australia"?["australian"]:country==="brazil"?["brazilian"]:["portuguese"];voices=voices.filter((v:any)=>wanted.includes(v.accent.toLowerCase())||String(v.labels?.locale||"").toLowerCase()===loc.toLowerCase())}
+ return NextResponse.json({voices});
+}
 if(body.action==="voice_catalog"){
  const key=process.env.ELEVENLABS_API_KEY;if(!key)return NextResponse.json({voices:[]});
  const language=String(body.language||"").toLowerCase(),country=String(body.country||"").toLowerCase(),section=String(body.section||"trending");
