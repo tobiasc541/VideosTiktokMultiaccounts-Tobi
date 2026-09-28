@@ -16,6 +16,9 @@ const checks=[
  ["No legacy pending state",!engine.includes("pending_resource_id")],
  ["Sent-resource memory only guards duplicate delivery",engine.includes('.select("id,resources_sent")')&&engine.includes("sentResourceIds.includes(String(candidate.id))")&&engine.includes("!alreadySent||reply.resendResource===true")&&engine.includes("resources_sent:nextSent")&&!engine.includes("pending_resource_id")],
  ["No intent classifier or REFER engine",!engine.includes("classifyIntent")&&!engine.includes("decideResourceAction")&&!engine.includes('action==="REFER"')],
+ ["AI voice is capped and optional",engine.includes("ai_voice_messages_sent")&&engine.includes("Math.min(3,Number(settings.max_ai_audios||3))")&&engine.includes("voiceConfig.profile&&shouldUseVoice")],
+ ["AI voice falls back to text",engine.includes("if(!audioMessageId)")&&engine.includes("metaSend(event.account,event.contactId,replyText)")],
+ ["AI voice uses confirmed Meta audio delivery",engine.includes("metaSendAudio")&&engine.includes('attachment:{type:"audio"')],
 ];
 let failed=0;
 for(const [name,ok] of checks){console.log(`${ok?"PASS":"FAIL"}  ${name}`);if(!ok)failed++}
