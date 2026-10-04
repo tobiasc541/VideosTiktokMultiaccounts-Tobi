@@ -1,0 +1,34 @@
+"use client";
+import {useEffect,useMemo,useState} from "react";
+
+type Slot={name:string;url:string;value:string;description:string};
+type Props={brief:string;plan:any;mockup?:string};
+const empty=():Slot=>({name:"",url:"",value:"",description:""});
+const inputStyle={width:"100%",padding:"11px 12px",borderRadius:10,border:"1px solid #303044",background:"#09090f",color:"#fff"};
+
+export default function ImpulTiendaLanding({brief,plan,mockup}:Props){
+ const [main,setMain]=useState("");
+ const [bonuses,setBonuses]=useState<Slot[]>(()=>Array.from({length:5},empty));
+ const [upsells,setUpsells]=useState<Slot[]>(()=>Array.from({length:3},empty));
+ const [heroDesktop,setHeroDesktop]=useState("");
+ const [heroMobile,setHeroMobile]=useState("");
+ const [html,setHtml]=useState("");
+ const [loading,setLoading]=useState(false);
+ const [error,setError]=useState("");
+ const [copied,setCopied]=useState(false);
+ useEffect(()=>{if(mockup&&!main)setMain(mockup)},[mockup,main]);
+ const bonusCount=useMemo(()=>bonuses.filter(x=>x.url.trim()).length,[bonuses]);
+ const upsellCount=useMemo(()=>upsells.filter(x=>x.url.trim()).length,[upsells]);
+ function patch(kind:"bonus"|"upsell",i:number,key:keyof Slot,value:string){const setter=kind==="bonus"?setBonuses:setUpsells;setter(xs=>xs.map((x,n)=>n===i?{...x,[key]:value}:x))}
+ async function generate(){setLoading(true);setError("");setCopied(false);try{const r=await fetch("/api/creator-ai/ebook/impultienda",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({brief,plan,heroDesktop,heroMobile,assets:{main,bonuses:bonuses.filter(x=>x.url.trim()),upsells:upsells.filter(x=>x.url.trim())}})});const j=await r.json();if(!r.ok)throw new Error(j.error||"No se pudo generar el HTML");setHtml(j.html||"")}catch(e:any){setError(e.message)}finally{setLoading(false)}}
+ async function copy(){if(!html)return;await navigator.clipboard.writeText(html);setCopied(true)}
+ return <section style={{marginTop:24,border:"1px solid #29293a",borderRadius:22,padding:22,background:"#0d0d14"}}>
+   <div style={{display:"flex",justifyContent:"space-between",gap:16,flexWrap:"wrap",alignItems:"flex-start"}}><div><small style={{color:"#ffbd2e",fontWeight:900,letterSpacing:1}}>VYRAL · IMPULTIENDA LANDING</small><h3 style={{fontSize:28,margin:"7px 0 8px"}}>Landing HTML para ImpulTienda</h3><p style={{color:"#aaa",maxWidth:820,margin:0,lineHeight:1.55}}>Este módulo genera exclusivamente HTML listo para pegar en el editor de ImpulTienda. Usa automáticamente el brief, avatar, dolores, transformación, contenido y estilo del ebook que ya creaste en VYRAL.</p></div><div style={{padding:"8px 12px",borderRadius:999,background:"#181824",fontSize:12,color:"#bbb"}}>Se consumen créditos solo al tocar Generar HTML</div></div>
+   <div style={{marginTop:20,padding:18,borderRadius:16,background:"#12121c",border:"1px solid #252538"}}><b>Cómo usarlo</b><ol style={{color:"#bbb",lineHeight:1.7,marginBottom:0}}><li>Terminá el ebook y generá sus mockups en VYRAL.</li><li>Subí esos mockups/imágenes a Recursos de ImpulTienda.</li><li>Copiá la URL pública de cada imagen y pegala abajo. Solo el producto principal es obligatorio; los 5 bonos y 3 upsells son opcionales.</li><li>Opcionalmente pegá un fondo de hero para desktop y otro para celular.</li><li>Tocá <b>Generar HTML ImpulTienda</b>, copiá el resultado y pegalo en Diseño → Contenido / HTML de tu tienda.</li></ol></div>
+   <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(250px,1fr))",gap:12,marginTop:18}}><label><b>Producto principal *</b><input style={inputStyle} value={main} onChange={e=>setMain(e.target.value)} placeholder="URL pública del mockup principal"/></label><label><b>Fondo hero desktop</b><input style={inputStyle} value={heroDesktop} onChange={e=>setHeroDesktop(e.target.value)} placeholder="URL opcional"/></label><label><b>Fondo hero celular</b><input style={inputStyle} value={heroMobile} onChange={e=>setHeroMobile(e.target.value)} placeholder="URL opcional"/></label></div>
+   <h4 style={{margin:"24px 0 10px"}}>Bonos opcionales · {bonusCount}/5 cargados</h4><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:10}}>{bonuses.map((x,i)=><div key={i} style={{padding:13,border:"1px solid #272738",borderRadius:14}}><b>Bono {i+1}</b><input style={{...inputStyle,marginTop:8}} value={x.name} onChange={e=>patch("bonus",i,"name",e.target.value)} placeholder="Nombre (opcional)"/><input style={{...inputStyle,marginTop:7}} value={x.url} onChange={e=>patch("bonus",i,"url",e.target.value)} placeholder="URL de imagen"/><input style={{...inputStyle,marginTop:7}} value={x.value} onChange={e=>patch("bonus",i,"value",e.target.value)} placeholder="Valor/precio de referencia (opcional)"/><textarea style={{...inputStyle,marginTop:7,minHeight:65}} value={x.description} onChange={e=>patch("bonus",i,"description",e.target.value)} placeholder="Descripción opcional"/></div>)}</div>
+   <h4 style={{margin:"24px 0 6px"}}>Upsells post-compra · {upsellCount}/3 cargados</h4><p style={{color:"#888",fontSize:12,marginTop:0}}>Se guardan como contexto de la oferta, pero no se meten en la landing principal.</p><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:10}}>{upsells.map((x,i)=><div key={i} style={{padding:13,border:"1px solid #272738",borderRadius:14}}><b>Upsell {i+1}</b><input style={{...inputStyle,marginTop:8}} value={x.name} onChange={e=>patch("upsell",i,"name",e.target.value)} placeholder="Nombre (opcional)"/><input style={{...inputStyle,marginTop:7}} value={x.url} onChange={e=>patch("upsell",i,"url",e.target.value)} placeholder="URL de imagen"/><input style={{...inputStyle,marginTop:7}} value={x.value} onChange={e=>patch("upsell",i,"value",e.target.value)} placeholder="Precio (opcional)"/><textarea style={{...inputStyle,marginTop:7,minHeight:65}} value={x.description} onChange={e=>patch("upsell",i,"description",e.target.value)} placeholder="Descripción opcional"/></div>)}</div>
+   <div style={{display:"flex",gap:10,flexWrap:"wrap",marginTop:20}}><button onClick={generate} disabled={loading||!plan||!main.trim()} style={{padding:"12px 18px",borderRadius:12,fontWeight:800}}>{loading?"Generando landing…":"✦ Generar HTML ImpulTienda"}</button>{html&&<button onClick={copy} style={{padding:"12px 18px",borderRadius:12,fontWeight:800}}>{copied?"✓ HTML copiado":"Copiar HTML"}</button>}</div>{error&&<p style={{color:"#ff6b6b"}}>{error}</p>}
+   {html&&<div style={{marginTop:18}}><div style={{display:"flex",justifyContent:"space-between",gap:10,alignItems:"center"}}><b>HTML listo para ImpulTienda</b><small style={{color:"#888"}}>{html.length.toLocaleString()} caracteres</small></div><textarea readOnly value={html} style={{...inputStyle,marginTop:8,minHeight:420,fontFamily:"monospace",fontSize:12,lineHeight:1.45}}/></div>}
+ </section>
+}
