@@ -4,8 +4,8 @@ type Slot={name:string;url:string;value:string;description:string};
 type Props={brief:string;plan:any;mockup?:string;offerData?:any};
 const empty=():Slot=>({name:"",url:"",value:"",description:""});
 const inputStyle={width:"100%",padding:"11px 12px",borderRadius:10,border:"1px solid #303044",background:"#09090f",color:"#fff"};
-const buttonStyle={padding:"13px 19px",border:"1px solid #b99cff66",borderRadius:12,background:"linear-gradient(135deg,#6547ff,#9b4dff)",boxShadow:"0 9px 28px #7650ff42, inset 0 1px #ffffff55",color:"#fff",fontWeight:900,cursor:"pointer"} as const;
-const Logo=({height=22}:{height?:number})=><img src="/Impultienda.png" alt="ImpulTienda" style={{height,width:"auto",maxWidth:170,objectFit:"contain",verticalAlign:"middle"}}/>;
+const buttonStyle={padding:"13px 19px",border:"1px solid #b99cff66",borderRadius:12,background:"linear-gradient(135deg,#6547ff,#9c4dff)",boxShadow:"0 9px 28px #7650ff42, inset 0 1px #ffffff55",color:"#fff",fontWeight:900,cursor:"pointer"} as const;
+const Logo=({height=22}:{height?:number})=><img src="/impultienda.png" alt="ImpulTienda" style={{height,width:"auto",maxWidth:170,objectFit:"contain",verticalAlign:"middle"}}/>;
 export default function ImpulTiendaLanding({brief,plan,mockup,offerData}:Props){
  const [main,setMain]=useState("");const [bonuses,setBonuses]=useState<Slot[]>(()=>Array.from({length:5},empty));const [upsells,setUpsells]=useState<Slot[]>(()=>Array.from({length:3},empty));const [heroDesktop,setHeroDesktop]=useState("");const [heroMobile,setHeroMobile]=useState("");const [html,setHtml]=useState("");const [loading,setLoading]=useState(false);const [error,setError]=useState("");const [copied,setCopied]=useState(false);
  useEffect(()=>{if(mockup&&!main)setMain(mockup)},[mockup,main]);
