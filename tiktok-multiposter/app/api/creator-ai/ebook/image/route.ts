@@ -10,9 +10,15 @@ export async function POST(req:Request){
  const key=process.env.VYRAL_CREATOR_PRODUCTION;if(!key)return NextResponse.json({error:"Falta configurar la API de OpenAI."},{status:503});
  try{
   const b=await req.json();const page=Number(b.page);const total=Number(b.total);const prompt=String(b.prompt||"").trim();if(!page||!total||!prompt)return NextResponse.json({error:"Faltan datos de la página."},{status:400});
-  // EBOOK IA tiene una política de coste/calidad propia: siempre medium. No hereda High/Premium del Creator normal.
-  const model=process.env.VYRAL_EBOOK_IMAGE_MODEL||process.env.VYRAL_IMAGE_MODEL||"gpt-image-2";
-  const finalPrompt=`Create EXACTLY ONE finished ebook page. This request is page ${page} of ${total}, but NEVER render, preview, mention or include any other page. One image = one complete page. Vertical 4:5 canvas, flat front view, edge-to-edge. No book mockup, no perspective, no spread, no grid, no collage, no contact sheet, no thumbnails. Preserve exact supplied Spanish text and strong editorial legibility. ${prompt}`;
+  // Contrato interno permanente de EBOOK IA. El usuario nunca tiene que escribir estas reglas.
+  // Calidad buena/controlada: Flare + medium. Puede sobreescribirse solo con la env específica del motor de ebooks.
+  const model=process.env.VYRAL_EBOOK_IMAGE_MODEL||"gpt-image-2.5-flare";
+  const finalPrompt=`VYRAL EBOOK PAGE ENGINE — INTERNAL RULES. Create EXACTLY ONE finished editorial ebook page for this request: page ${page} of ${total}. This image must contain ONLY the current page. Never render, preview, mention or include another page. Never create a grid, collage, mosaic, contact sheet, book spread, multiple-page preview, open-book mockup or thumbnails. Do not crop a page out of another composition. ONE request = ONE complete master page.
+
+The page is a flat, frontal, edge-to-edge vertical master page, not a photographed book and not a generic social-media card. Produce the COMPLETE FINAL EDITORIAL PAGE directly: exact supplied text, typography hierarchy, composition, page-specific teaching visual and finished background integrated together. The visual must explain/demonstrate/compare/contextualize/simplify/exemplify the lesson, not merely decorate it. Preserve the Style Bible and global visual DNA supplied in the page direction while allowing the layout to vary appropriately for the content. Maintain premium legibility, safe margins, strong hierarchy, coherent palette, typography family, iconography, geometry, photographic/illustrative treatment and lighting. Do not invent statistics, testimonials, evidence, logos or claims. Do not add placeholder text, pseudo-text, watermarks or unrelated copy. Render all supplied Spanish text as faithfully and legibly as possible. Do not shrink important copy into unreadable microtext.
+
+CURRENT PAGE DIRECTION — this is the only page to render:
+${prompt}`;
   let r:Response|null=null,j:any=null;
   for(let attempt=0;attempt<4;attempt++){
    r=await fetch(OPENAI+"/images/generations",{method:"POST",headers:{Authorization:`Bearer ${key}`,"Content-Type":"application/json"},body:JSON.stringify({model,prompt:finalPrompt,size:"1024x1280",quality:"medium",output_format:"webp"})});
