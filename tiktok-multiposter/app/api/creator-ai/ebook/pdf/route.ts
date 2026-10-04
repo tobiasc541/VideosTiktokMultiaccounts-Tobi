@@ -9,15 +9,14 @@ function pdfFromJpegs(images:JpegPage[]){
  for(let i=0;i<images.length;i++){const im=images[i],pw=595.276,ph=841.89;start(pageObjs[i]);push(`<< /Type /Page /Parent ${pagesObj} 0 R /MediaBox [0 0 ${pw} ${ph}] /Resources << /XObject << /Im${i+1} ${imageObjs[i]} 0 R >> >> /Contents ${contentObjs[i]} 0 R >>\nendobj\n`);const stream=`q\n${pw} 0 0 ${ph} 0 0 cm\n/Im${i+1} Do\nQ\n`;start(contentObjs[i]);push(`<< /Length ${enc.encode(stream).length} >>\nstream\n${stream}endstream\nendobj\n`);start(imageObjs[i]);push(`<< /Type /XObject /Subtype /Image /Width ${im.width} /Height ${im.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${im.bytes.length} >>\nstream\n`);push(im.bytes);push("\nendstream\nendobj\n")}
  const xref=offset;push(`xref\n0 ${obj}\n0000000000 65535 f \n`);for(let n=1;n<obj;n++)push(`${String(offsets[n]).padStart(10,"0")} 00000 n \n`);push(`trailer\n<< /Size ${obj} /Root ${catalog} 0 R >>\nstartxref\n${xref}\n%%EOF`);const total=parts.reduce((a,b)=>a+b.length,0),out=new Uint8Array(total);let p=0;for(const b of parts){out.set(b,p);p+=b.length}return out
 }
-function signature(bytes:Uint8Array){if(bytes.length>=3&&bytes[0]===0xff&&bytes[1]===0xd8&&bytes[2]===0xff)return"jpeg";if(bytes.length>=8&&bytes[0]===0x89&&bytes[1]===0x50&&bytes[2]===0x4e&&bytes[3]===0x47)return"png";if(bytes.length>=12&&String.fromCharCode(...bytes.slice(0,4))==="RIFF"&&String.fromCharCode(...bytes.slice(8,12))==="WEBP")return"webp";if(bytes.length>=4&&String.fromCharCode(...bytes.slice(0,4))==="%PDF")return"pdf";return"unknown"}
+function signature(bytes:Uint8Array){if(bytes.length>=3&&bytes[0]===0xff&&bytes[1]===0xd8&&bytes[2]===0xff)return"jpeg";if(bytes.length>=8&&bytes[0]===0x89&&bytes[1]===0x50&&bytes[2]===0x4e&&bytes[3]===0x47)return"png";if(bytes.length>=12&&String.fromCharCode(...bytes.slice(0,4))==="RIFF"&&String.fromCharCode(...bytes.slice(8,12))==="WEBP")return"webp";return"unknown"}
 async function bytesFromBlob(blob:Blob){return new Uint8Array(await blob.arrayBuffer())}
 async function getImageBytes(db:any,path:string,url:string|undefined,index:number){
- const candidates:{source:string;bytes:Uint8Array}[]=[];
- if(path){const d=await db.storage.from("scheduled-media").download(path);if(!d.error&&d.data)candidates.push({source:"storage",bytes:await bytesFromBlob(d.data)})}
- if(url){try{const r=await fetch(url,{cache:"no-store"});if(r.ok)candidates.push({source:"signed-url",bytes:new Uint8Array(await r.arrayBuffer())})}catch{}}
- for(const c of candidates){const kind=signature(c.bytes);if(kind==="jpeg"||kind==="png"||kind==="webp")return {bytes:c.bytes,kind}}
- const found=candidates.map(c=>`${c.source}:${signature(c.bytes)}`).join(", ")||"sin datos";
- throw new Error(`La página ${index+1} no apunta a una imagen válida (${found}).`)
+ const candidates:Uint8Array[]=[];
+ if(path){const d=await db.storage.from("scheduled-media").download(path);if(!d.error&&d.data)candidates.push(await bytesFromBlob(d.data))}
+ if(url){try{const r=await fetch(url,{cache:"no-store"});if(r.ok)candidates.push(new Uint8Array(await r.arrayBuffer()))}catch{}}
+ for(const bytes of candidates){const kind=signature(bytes);if(kind!=="unknown")return {bytes,kind}}
+ throw new Error(`No se pudo leer la imagen de la página ${index+1}.`)
 }
 async function normalizeToJpeg(input:{bytes:Uint8Array;kind:string}){
  const sharp=(await import("sharp")).default;
@@ -31,10 +30,9 @@ export async function POST(req:Request){
   if(!paths.length||paths.length>45)return NextResponse.json({error:"El ebook debe tener entre 1 y 45 páginas generadas."},{status:400});
   if(paths.some((p:string)=>!p.startsWith(`${session.userId}/creator-ai/ebooks/`)||/\.pdf(?:$|\?)/i.test(p)))return NextResponse.json({error:"El PDF solo puede construirse a partir de páginas de imagen del ebook."},{status:400});
   const imgs:JpegPage[]=[];for(let i=0;i<paths.length;i++){const source=await getImageBytes(db,paths[i],urls[i],i);imgs.push(await normalizeToJpeg(source))}
-  const pdf=pdfFromJpegs(imgs);const safe=title.normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-zA-Z0-9_-]+/g,"-").replace(/^-+|-+$/g,"").toLowerCase()||"ebook";const pdfPath=`${session.userId}/creator-ai/ebooks/exports/${crypto.randomUUID()}-${safe}.pdf`;
-  // Supabase Storage JS interpreta Uint8Array usando su detector de MIME. Un PDF no debe pasar por
-  // esa inferencia: lo envolvemos explícitamente como Blob binario application/pdf antes de subirlo.
-  const pdfBlob=new Blob([pdf],{type:"application/pdf"});
-  const up=await db.storage.from("scheduled-media").upload(pdfPath,pdfBlob,{contentType:"application/pdf",upsert:false});if(up.error)throw new Error(`No se pudo guardar el PDF: ${up.error.message}`);const signed=await db.storage.from("scheduled-media").createSignedUrl(pdfPath,3600);if(signed.error||!signed.data?.signedUrl)throw new Error("El PDF se creó pero no se pudo preparar la descarga.");return NextResponse.json({url:signed.data.signedUrl,storagePath:pdfPath,pages:paths.length});
+  const pdf=pdfFromJpegs(imgs);const safe=title.normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-zA-Z0-9_-]+/g,"-").replace(/^-+|-+$/g,"").toLowerCase()||"ebook";
+  // El PDF final NO se guarda en Supabase. Se devuelve como archivo binario directamente al navegador.
+  // Storage sigue alojando únicamente las imágenes maestras de las páginas.
+  return new Response(Buffer.from(pdf),{status:200,headers:{"Content-Type":"application/pdf","Content-Disposition":`attachment; filename="${safe}.pdf"`,"Content-Length":String(pdf.byteLength),"Cache-Control":"no-store"}})
  }catch(e:any){return NextResponse.json({error:e.message||"No se pudo crear el PDF."},{status:500})}
 }
